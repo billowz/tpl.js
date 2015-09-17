@@ -21,6 +21,10 @@ var fs = require('fs'),
       path: 'observer',
       root: 'observer',
       lib: 'observer'
+    }, {
+      path: 'jquery',
+      root: 'jQuery',
+      lib: 'jquery'
     }]
   },
   devserver = {

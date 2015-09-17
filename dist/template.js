@@ -1,13 +1,13 @@
 (function webpackUniversalModuleDefinition(root, factory) {
 	if(typeof exports === 'object' && typeof module === 'object')
-		module.exports = factory();
+		module.exports = factory(require("_"));
 	else if(typeof define === 'function' && define.amd)
-		define([], factory);
+		define(["_"], factory);
 	else if(typeof exports === 'object')
-		exports["datTempl"] = factory();
+		exports["datTempl"] = factory(require("_"));
 	else
-		root["datTempl"] = factory();
-})(this, function() {
+		root["datTempl"] = factory(root["_"]);
+})(this, function(__WEBPACK_EXTERNAL_MODULE_1__) {
 return /******/ (function(modules) { // webpackBootstrap
 /******/ 	// The module cache
 /******/ 	var installedModules = {};
@@ -52,9 +52,25 @@ return /******/ (function(modules) { // webpackBootstrap
 /************************************************************************/
 /******/ ([
 /* 0 */
+/***/ function(module, exports, __webpack_require__) {
+
+	'use strict';
+	
+	function _classCallCheck(instance, Constructor) { if (!(instance instanceof Constructor)) { throw new TypeError('Cannot call a class as a function'); } }
+	
+	var _ = __webpack_require__(1);
+	
+	var Template = function Template() {
+	  _classCallCheck(this, Template);
+	};
+	
+	module.exports = Template;
+
+/***/ },
+/* 1 */
 /***/ function(module, exports) {
 
-	"use strict";
+	module.exports = __WEBPACK_EXTERNAL_MODULE_1__;
 
 /***/ }
 /******/ ])
