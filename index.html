@@ -15,7 +15,7 @@
     <script src="dependency/jQuery/dist/jquery.js"></script>
     <script src="dist/template.js"></script>
     <script>
-    var templ = '<div>hello <span>{name}</span>!</div>';
+    var templ = '<div id="001" class="{name}">hello <span>hello {name}</span>!</div>';
     $(document).ready(function(){
       window.tmpl = new datTempl(templ).complie({name:'Tao.Zeng'});
       $(document.body).append(window.tmpl);

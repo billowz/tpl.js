@@ -1,12 +1,13 @@
 const _ = require('lodash'),
   $ = require('jquery'),
+  observer = require('observer'),
   PRIMITIVE = 0,
   KEYPATH = 1,
   TEXT = 0,
   BINDING = 1,
   templateContentReg = /^[\s\t\r\n]*</,
   defaultCfg = {
-    delimiters: ['{', '}']
+    delimiter: ['{', '}']
   };
 
 class Template {
@@ -14,6 +15,9 @@ class Template {
     this.template = $(templ);
     this.cfg = _.assign(_.clone(defaultCfg), cfg || {});
     this.parse = this.parse.bind(this);
+    let s = this.cfg.delimiter[0],
+      e = this.cfg.delimiter[1];
+    this.delimiterReg = new RegExp(s + '([^' + s + e + ']*)' + e, 'g');
   }
 
   complie(bind) {
@@ -22,136 +26,98 @@ class Template {
     return el;
   }
 
-  parseText($el) {
-    let tokens = parseTemplate($el.text(), this.cfg.delimiters),
-      parent = $el.parent();
-    _.each(tokens, (token) => {
-      let text = document.createTextNode(token.value);
-      $(text).insertBefore($el);
-      if (token.type === BINDING) {
+  parseText(node) {
+    let $el = $(node),
+      content = $el.text(), token,
+      lastIdx = 0,
+      expressions = [],
+      directives = [],
+      reg = this.delimiterReg;
+    while ((token = reg.exec(content))) {
+
+      this.createTextNodeBefore(content.substr(lastIdx, reg.lastIndex - token[0].length), $el);
+
+      this.createCommentBefore(token[0], $el);
+
+      directives.push(new Directive(this.createTextNodeBefore(token[1], $el), token[1]));
+
+      lastIdx = reg.lastIndex;
+    }
+    this.createTextNodeBefore(content.substr(lastIdx), $el);
+    $el.remove();
+    return directives;
+  }
+
+  getDirective(attr) {}
+
+  parseElement(node) {
+    _.each(node.attributes, attr => {
+      let directive = this.getDirective(attr);
+      if (directive) {
 
       }
-    });
-    $el.remove();
+    })
   }
   parse(node) {
-    let block = false,
-      $el = $(node);
+    let block = false;
     switch (node.nodeType) {
       case 1: // Element
-
+        this.parseElement(node);
         break;
       case 3: // Text
-        this.parseText($el);
+        this.parseText(node);
         break;
       case 8: // Comments
     }
-    _.each($el.contents(), this.parse);
+    _.each($(node).contents(), this.parse);
   }
 
-  buildBinding(binding, node, type, declaration) {
-    let pipes = declaration.split('|').map(pipe => {
-      return pipe.trim()
-    })
 
-    let context = pipes.shift().split('<').map(ctx => {
-      return ctx.trim()
-    })
+  createCommentBefore(content, before) {
+    let el = document.createComment(content);
+    $(el).insertBefore(before);
+    return el;
+  }
 
-    let keypath = context.shift()
-    let dependencies = context.shift()
-    let options = {
-      formatters: pipes
+  createTextNodeBefore(content, before) {
+    if (content) {
+      let el = document.createTextNode(content);
+      $(el).insertBefore(before);
+      return el;
     }
-
-    if (dependencies) {
-      options.dependencies = dependencies.split(/\s+/)
-    }
-
-    this.bindings.push(new binding(this, node, type, keypath, options))
   }
 }
 
-function parseType(string) {
-  let type = PRIMITIVE
-  let value = string
-
-  if (/^'.*'$|^".*"$/.test(string)) {
-    value = string.slice(1, -1)
-  } else if (string === 'true') {
-    value = true
-  } else if (string === 'false') {
-    value = false
-  } else if (string === 'null') {
-    value = null
-  } else if (string === 'undefined') {
-    value = undefined
-  } else if (isNaN(Number(string)) === false) {
-    value = Number(string)
-  } else {
-    type = KEYPATH
+let ExpressionReg = /[\+\-\*/\(\)]/g;
+class Expression {
+  constructor(data, expression) {
+    this.expression = expression;
   }
-
-  return {
-    type: type,
-    value: value
+  getValue() {
+    return _.get(this.data, this.expression);
   }
+  observe(callback) {}
 }
 
-function parseTemplate(template, delimiters) {
-  let tokens = []
-  let length = template.length
-  let index = 0
-  let lastIndex = 0
+Template.Expression = Expression;
 
-  while (lastIndex < length) {
-    index = template.indexOf(delimiters[0], lastIndex)
+class Directive {
+  constructor(node, data, expression) {
+    this.node = node;
+    this.nodeType = node.nodeType;
+    this.expression = new Expression(data, expression);
 
-    if (index < 0) {
-      tokens.push({
-        type: TEXT,
-        value: template.slice(lastIndex)
-      })
-
-      break
-    } else {
-      if (index > 0 && lastIndex < index) {
-        tokens.push({
-          type: TEXT,
-          value: template.slice(lastIndex, index)
-        })
-      }
-
-      lastIndex = index + delimiters[0].length
-      index = template.indexOf(delimiters[1], lastIndex)
-
-      if (index < 0) {
-        let substring = template.slice(lastIndex - delimiters[1].length)
-        lastToken = tokens[tokens.length - 1]
-
-        if (lastToken && lastToken.type === TEXT) {
-          lastToken.value += substring
-        } else {
-          tokens.push({
-            type: TEXT,
-            value: substring
-          })
-        }
-
-        break
-      }
-
-      let value = template.slice(lastIndex, index).trim()
-
-      tokens.push({
-        type: BINDING,
-        value: value
-      })
-
-      lastIndex = index + delimiters[1].length
+    switch (this.nodeType) {
+      case 2:
+        break;
+      case 3:
+        $(node).text(this.expression.getValue());
+        break;
     }
-  }
 
-  return tokens
+  }
+  bind() {}
 }
+Template.Directive = Directive
+
 module.exports = Template;

@@ -1,12 +1,12 @@
 {
   "name": "observer",
   "version": "0.0.1",
-  "homepage": "https://github.com/tao-zeng/observer.js",
+  "homepage": "https://github.com/tao-zeng/dat-template",
   "authors": [
     "tao.zeng <tao.zeng.zt@gmail.com>"
   ],
   "description": "observer tool",
-  "main": "dist/observer.js",
+  "main": "dist/template.js",
   "keywords": [
     "databinding",
     "javascript",
