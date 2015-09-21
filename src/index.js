@@ -1,6 +1,7 @@
 const _ = require('lodash'),
   $ = require('jquery'),
-  observer = require('observer'),
+  Directive = require('./directive'),
+  {TextDirective} = Directive,
   PRIMITIVE = 0,
   KEYPATH = 1,
   TEXT = 0,
@@ -14,110 +15,96 @@ class Template {
   constructor(templ, cfg) {
     this.template = $(templ);
     this.cfg = _.assign(_.clone(defaultCfg), cfg || {});
-    this.parse = this.parse.bind(this);
+
     let s = this.cfg.delimiter[0],
       e = this.cfg.delimiter[1];
     this.delimiterReg = new RegExp(s + '([^' + s + e + ']*)' + e, 'g');
-  }
 
+  }
   complie(bind) {
-    let el = this.template.clone();
-    _.each(el, this.parse);
-    return el;
+    return new TemplateInstance(this, bind);
   }
+}
 
-  parseText(node) {
-    let $el = $(node),
-      content = $el.text(), token,
-      lastIdx = 0,
-      expressions = [],
-      directives = [],
-      reg = this.delimiterReg;
-    while ((token = reg.exec(content))) {
-
-      this.createTextNodeBefore(content.substr(lastIdx, reg.lastIndex - token[0].length), $el);
-
-      this.createCommentBefore(token[0], $el);
-
-      directives.push(new Directive(this.createTextNodeBefore(token[1], $el), token[1]));
-
-      lastIdx = reg.lastIndex;
+class TemplateInstance {
+  constructor(template, bind) {
+    if (!(template instanceof Template)) {
+      throw TypeError('Invalid Template ' + template);
     }
-    this.createTextNodeBefore(content.substr(lastIdx), $el);
-    $el.remove();
-    return directives;
+    this.template = template;
+    this.bind = bind;
+    this.directives = [];
+    this.el = this.template.template.clone();
+    this.init();
   }
 
-  getDirective(attr) {}
-
-  parseElement(node) {
-    _.each(node.attributes, attr => {
-      let directive = this.getDirective(attr);
-      if (directive) {
-
-      }
-    })
+  init() {
+    _.each(this.el, (el) => {
+      this._parse(el);
+    });
+    _.each(this.directives, directive => {
+      this.bind = directive.bind();
+    });
   }
-  parse(node) {
-    let block = false;
-    switch (node.nodeType) {
+
+  _parse(el) {
+    switch (el.nodeType) {
       case 1: // Element
-        this.parseElement(node);
+        this._parseElement(el);
         break;
       case 3: // Text
-        this.parseText(node);
+        this._parseText(el);
         break;
-      case 8: // Comments
     }
-    _.each($(node).contents(), this.parse);
   }
 
+  _parseElement(el) {
+    let block = false,
+      $el = $(el);
+    if (el.attributes) {
+      _.each(el.attributes, (attr) => {
+        let name = attr.name,
+          val = attr.value;
+      });
+    }
+    if (!block) {
+      _.each(el.childNodes, (el) => {
+        this._parse(el);
+      });
+    }
+  }
 
-  createCommentBefore(content, before) {
+  _parseText(el) {
+    let text = el.data,
+      token,
+      lastIndex = 0,
+      reg = this.template.delimiterReg;
+    while ((token = reg.exec(text))) {
+      this._createTextNode(text.substr(lastIndex, reg.lastIndex - token[0].length), el);
+      this._createComment(token[0], el);
+      this.directives.push(new TextDirective(this._createTextNode('binding', el), this.bind, token[1]));
+      lastIndex = reg.lastIndex;
+    }
+    this._createTextNode(text.substr(lastIndex), el);
+    $(el).remove();
+  }
+
+  _createComment(content, before) {
     let el = document.createComment(content);
     $(el).insertBefore(before);
     return el;
   }
 
-  createTextNodeBefore(content, before) {
+  _createTextNode(content, before) {
     if (content) {
       let el = document.createTextNode(content);
       $(el).insertBefore(before);
       return el;
     }
+    return undefined;
   }
 }
-
-let ExpressionReg = /[\+\-\*/\(\)]/g;
-class Expression {
-  constructor(data, expression) {
-    this.expression = expression;
-  }
-  getValue() {
-    return _.get(this.data, this.expression);
-  }
-  observe(callback) {}
-}
-
-Template.Expression = Expression;
-
-class Directive {
-  constructor(node, data, expression) {
-    this.node = node;
-    this.nodeType = node.nodeType;
-    this.expression = new Expression(data, expression);
-
-    switch (this.nodeType) {
-      case 2:
-        break;
-      case 3:
-        $(node).text(this.expression.getValue());
-        break;
-    }
-
-  }
-  bind() {}
-}
-Template.Directive = Directive
+Template.registerDirective = Directive.registerDirective;
+Template.getDirective = Directive.getDirective;
 
 module.exports = Template;

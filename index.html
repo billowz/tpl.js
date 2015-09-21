@@ -15,11 +15,20 @@
     <script src="dependency/jQuery/dist/jquery.js"></script>
     <script src="dist/template.js"></script>
     <script>
-    var templ = '<div id="001" class="{name}">hello <span>hello {name}</span>!</div>';
+    var arr = [];
+    for(var i=0; i<20000; i++){
+      arr.push(i+': <span>{test.name}</span>');
+    }
+    var templ = '<div id="001" class="{name}">hello '+arr.join('<br/>')+'!</div>';
     $(document).ready(function(){
-      window.tmpl = new datTempl(templ).complie({name:'Tao.Zeng'});
-      $(document.body).append(window.tmpl);
-    })
+      window.tmpl = new datTempl(templ).complie({name:'Tao Zeng', test:{name:'Tao.Zeng'}});
+      $(document.body).append(window.tmpl.el);
+      function each(){
+        window.tmpl.bind.test = {name : setTimeout(each, 1000)};
+      }
+      each();
+    });
+
     </script>
 </head>
 
