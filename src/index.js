@@ -1,14 +1,17 @@
 const _ = require('lodash'),
   $ = require('jquery'),
+  Directives = require('./directives'),
   Directive = require('./directive'),
-  {TextDirective} = Directive,
+  Expression = require('./expression'),
+  {TextNodeDirective} = Directives,
   PRIMITIVE = 0,
   KEYPATH = 1,
   TEXT = 0,
   BINDING = 1,
   templateContentReg = /^[\s\t\r\n]*</,
   defaultCfg = {
-    delimiter: ['{', '}']
+    delimiter: ['{', '}'],
+    directivePrefix: 'bind-'
   };
 
 class Template {
@@ -19,11 +22,13 @@ class Template {
     let s = this.cfg.delimiter[0],
       e = this.cfg.delimiter[1];
     this.delimiterReg = new RegExp(s + '([^' + s + e + ']*)' + e, 'g');
-
+    this.attrDirectiveTestReg = new RegExp('^' + this.cfg.directivePrefix);
   }
+
   complie(bind) {
     return new TemplateInstance(this, bind);
   }
+
 }
 
 class TemplateInstance {
@@ -39,10 +44,10 @@ class TemplateInstance {
   }
 
   init() {
-    _.each(this.el, (el) => {
+    _.each(this.el, el => {
       this._parse(el);
     });
-    _.each(this.directives, directive => {
+    this.directives.forEach(directive => {
       this.bind = directive.bind();
     });
   }
@@ -58,17 +63,34 @@ class TemplateInstance {
     }
   }
 
+  _parseDirectiveName(name) {
+    let reg = this.template.attrDirectiveTestReg;
+    if (reg.test(name)) {
+      return name.replace(reg, '');
+    }
+    return undefined;
+  }
+
   _parseElement(el) {
     let block = false,
       $el = $(el);
     if (el.attributes) {
-      _.each(el.attributes, (attr) => {
+      _.each(el.attributes, attr => {
         let name = attr.name,
-          val = attr.value;
+          val = attr.value, directiveConst, directive;
+        if ((name = this._parseDirectiveName(name)) && (directiveConst = Directive.getDirective(name))) {
+          directive = new directiveConst(el, this.bind, val);
+          this.directives.push(directive);
+          if (directive.isBlock()) {
+            block = true;
+          }
+        } else if (name) {
+          console.warn('Directive is undefined ' + attr.name);
+        }
       });
     }
     if (!block) {
-      _.each(el.childNodes, (el) => {
+      _.each(el.childNodes, el => {
         this._parse(el);
       });
     }
@@ -82,7 +104,7 @@ class TemplateInstance {
     while ((token = reg.exec(text))) {
       this._createTextNode(text.substr(lastIndex, reg.lastIndex - token[0].length), el);
       this._createComment(token[0], el);
-      this.directives.push(new TextDirective(this._createTextNode('binding', el), this.bind, token[1]));
+      this.directives.push(new TextNodeDirective(this._createTextNode('binding', el), this.bind, token[1]));
       lastIndex = reg.lastIndex;
     }
     this._createTextNode(text.substr(lastIndex), el);
@@ -104,7 +126,9 @@ class TemplateInstance {
     return undefined;
   }
 }
-Template.registerDirective = Directive.registerDirective;
-Template.getDirective = Directive.getDirective;
+
+Template.Directive = Directive;
+Template.Directives = Directives;
+Template.Expression = Expression;
 
 module.exports = Template;

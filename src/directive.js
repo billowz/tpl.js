@@ -1,24 +1,7 @@
-
 const _ = require('lodash'),
   $ = require('jquery'),
   observer = require('observer'),
   ExpressionReg = /[\+\-\*/\(\)]/g;
-
-class Expression {
-  constructor(bind, expression) {
-    this.bind = bind;
-    this.expression = expression;
-  }
-  getValue() {
-    return _.get(this.bind, this.expression);
-  }
-  observe(callback) {
-    return observer.observe(this.bind, this.expression, callback);
-  }
-  unobserve(callback) {
-    return observer.unobserve(this.bind, this.expression, callback);
-  }
-}
 
 class AbstractDirective {
   constructor(el, bind, expr) {
@@ -26,42 +9,21 @@ class AbstractDirective {
     this.nodeType = el.nodeType;
     this.target = bind;
     this.expr = expr;
+    if (!this.directiveName) {
+      this.directiveName = this.constructor.name;
+    }
+  }
+  getDirectiveClassName() {
+    return this.constructor.name ? this.constructor.name : (_.capitalize(this.directiveName) + 'Directive');
   }
   bind() {
-    throw 'Abstract Method [bind]';
+    throw 'Abstract Method [' + this.getDirectiveClassName() + '.bind]';
   }
   unbind() {
-    throw 'Abstract Method [unbind]';
+    throw 'Abstract Method [' + this.getDirectiveClassName() + '.unbind]';
   }
   isBlock() {
-    throw 'Abstract Method [unbind]';
-  }
-}
-
-
-class TextDirective extends AbstractDirective {
-  constructor(el, bind, expression) {
-    super(el, bind, expression);
-    this.expression = new Expression(bind, expression);
-    this.update = this.update.bind(this);
-  }
-
-  bind() {
-    let ret = this.expression.observe(this.update);
-    this.update();
-    return ret;
-  }
-
-  unbind() {
-    return this.expression.unobserve(this.update);
-  }
-
-  isBlock() {
-    return true;
-  }
-
-  update() {
-    this.el.data = this.expression.getValue();
+    return false;
   }
 }
 
@@ -71,33 +33,61 @@ let directives = {},
     bind: function() {},
     unbind: function() {}
   };
-function registerDirective(name, directive) {
+function isDirective(object) {
+  if (!object) {
+    return false;
+  }
+  let proto = object;
+  while ((proto = Object.getPrototypeOf(proto))) {
+    if (proto === AbstractDirective) {
+      return true;
+    }
+  }
+  return false;
+}
+function register(name, option) {
   if (name in directives) {
     console.warn('Directive[' + name + '] is defined');
   }
-  directive = (function(opt) {
-    let constructor = _.isFunction(opt.constructor) ? opt.constructor : undefined;
-    delete opt.constructor;
+  let directive;
+  if (_.isPlainObject(option)) {
+    directive = (function(opt) {
+      let constructor = _.isFunction(opt.constructor) ? opt.constructor : undefined;
+      delete opt.constructor;
 
-    function Directive() {
-      this.prototype = Object.create(AbstractDirective.prototype, {
+      let Directive = (function() {
+        return function() {
+          if (!(this instanceof AbstractDirective)) {
+            throw new TypeError('Cannot call a class as a function');
+          }
+          AbstractDirective.apply(this, arguments);
+          if (constructor) {
+            constructor.apply(this, arguments);
+          }
+        }
+      })();
+      Directive.prototype = Object.create(AbstractDirective.prototype, {
         constructor: {
-          value: this,
+          value: Directive,
           enumerable: false,
           writable: true,
           configurable: true
+        },
+        directiveName: {
+          value: name,
+          enumerable: false,
+          writable: false,
+          configurable: false
         }
       });
-      Object.setPrototypeOf ? Object.setPrototypeOf(this, AbstractDirective) : this.__proto__ = AbstractDirective;
-
-      AbstractDirective.apply(this, arguments);
-      if (constructor) {
-        constructor.apply(this, arguments);
-      }
-    }
-    _.assign(TextDirective.prototype, opt);
-    return Directive;
-  })(directive);
+      Object.setPrototypeOf(Directive, AbstractDirective);
+      return Directive;
+    })(option);
+  } else if (!isDirective(option)) {
+    throw TypeError('Invalid Directive Object ' + option);
+  } else {
+    directive = option;
+  }
   directives[name] = directive;
   return directive;
 }
@@ -105,10 +95,8 @@ function registerDirective(name, directive) {
 function getDirective(name) {
   return directives[name];
 }
-
 module.exports = {
   AbstractDirective: AbstractDirective,
-  TextDirective: TextDirective,
-  registerDirective: registerDirective,
+  register: register,
   getDirective: getDirective
 }

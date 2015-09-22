@@ -1,6 +1,5 @@
 {
   "name": "dat-template",
-  "version": "0.0.1",
   "description": "observer tool",
   "main": "src/index.js",
   "scripts": {
