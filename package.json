@@ -1,5 +1,5 @@
 {
-  "name": "dat-template",
+  "name": "tpl.js",
   "description": "observer tool",
   "main": "src/index.js",
   "scripts": {
@@ -7,7 +7,7 @@
   },
   "repository": {
     "type": "git",
-    "url": "https://github.com/tao-zeng/dat-template.js.git"
+    "url": "https://github.com/tao-zeng/tpl.js.git"
   },
   "keywords": [
     "compontent",
@@ -19,9 +19,13 @@
   "author": "Tao Zeng <tao.zeng.zt@gmail.com>",
   "license": "MIT",
   "bugs": {
-    "url": "https://github.com/tao-zeng/dat-template.js/issues"
+    "url": "https://github.com/tao-zeng/tpl.js/issues"
   },
-  "homepage": "https://github.com/tao-zeng/dat-template.js",
+  "homepage": "https://github.com/tao-zeng/tpl.js",
+  "dependencies": {
+    "todomvc-common": "^1.0.1",
+    "todomvc-app-css": "^2.0.0"
+  },
   "devDependencies": {
     "path": "^0.11.14",
     "gulp": "^3.9.0",

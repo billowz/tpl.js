@@ -1,4 +1,5 @@
-const Directive = require('./directive'),
+const _ = require('lodash'),
+  Directive = require('./directive'),
   Expression = require('./expression'),
   {AbstractDirective} = Directive;
 
@@ -46,18 +47,34 @@ export class HtmlDirective extends ExprDirective {
 }
 
 export class ClassDirective extends ExprDirective {
-  update() {}
+  update() {
+    let cls = this.getValue();
+    $(this.el).addClass(cls);
+  }
 }
 
 export class ShowDirective extends ExprDirective {
   update() {
-    let val = this.getValue();
-
+    $(this.el).css('display', this.getValue() ? '' : 'none');
   }
 }
 
 export class HideDirective extends ExprDirective {
-  update() {}
+  update() {
+    $(this.el).css('display', this.getValue() ? 'none' : '');
+  }
+}
+
+export class ValueDirective extends ExprDirective {
+  update() {
+    $(this.el).value(this.getValue());
+  }
+}
+
+export class checkedDirective extends ExprDirective {
+  update() {
+    $(this.el).attr('checked', !!this.getValue());
+  }
 }
 
 export class IfDirective extends AbstractDirective {
@@ -65,4 +82,8 @@ export class IfDirective extends AbstractDirective {
     return true;
   }
 }
-Directive.register('class', ClassDirective);
+_.each(module.exports, (cls, name) => {
+  if (Directive.isDirective(cls)) {
+    Directive.register(_.kebabCase(name.replace(/Directive$/, '')), cls);
+  }
+})

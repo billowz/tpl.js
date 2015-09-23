@@ -98,5 +98,6 @@ function getDirective(name) {
 module.exports = {
   AbstractDirective: AbstractDirective,
   register: register,
-  getDirective: getDirective
+  getDirective: getDirective,
+  isDirective: isDirective
 }

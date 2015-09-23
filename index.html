@@ -3,7 +3,7 @@
 
 <head>
     <meta charset="utf-8">
-    <title>Dat Template</title>
+    <title>tpl.js</title>
     <!--[if lt IE 9]>
       <script src="dependency/html5shiv/dist/html5shiv.js"></script>
       <script src="dependency/respond/dest/respond.src.js"></script>
@@ -13,21 +13,22 @@
     <script src="dependency/lodash/lodash.js"></script>
     <script src="dependency/observer.js/dist/observer.js"></script>
     <script src="dependency/jQuery/dist/jquery.js"></script>
-    <script src="dist/template.js"></script>
+    <script src="dist/tpl.js"></script>
     <script>
     var arr = [];
-    for(var i=0; i<1000; i++){
+    for(var i=0; i<1; i++){
       arr.push(i+': <span>{test.name}</span>');
     }
     var templ = '<div id="001" bind-class="{name}">hello '+arr.join('<br/>')+'!</div>';
     $(document).ready(function(){
-      window.tmpl = new datTempl(templ).complie({name:'Tao Zeng', test:{name:'Tao.Zeng'}});
+      window.tmpl = new tpl(templ).complie({name:'Tao Zeng', test:{name:'Tao.Zeng'}});
       $(document.body).append(window.tmpl.el);
       function each(){
         //window.tmpl.bind.test = {name : setTimeout(each, 1000)};
         window.tmpl.bind.test.name = setTimeout(each, 1000);
       }
       each();
+
     });
 
     </script>

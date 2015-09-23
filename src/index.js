@@ -11,7 +11,7 @@ const _ = require('lodash'),
   templateContentReg = /^[\s\t\r\n]*</,
   defaultCfg = {
     delimiter: ['{', '}'],
-    directivePrefix: 'bind-'
+    directivePrefix: 'tpl-'
   };
 
 class Template {
