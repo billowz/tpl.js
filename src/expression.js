@@ -8,11 +8,16 @@ class Expression {
   getValue() {
     return _.get(this.bind, this.expression);
   }
+  setValue(val) {
+    _.set(this.bind, this.expression, val);
+  }
   observe(callback) {
-    return observer.observe(this.bind, this.expression, callback);
+    this.bind = observer.observe(this.bind, this.expression, callback);
+    return this.bind;
   }
   unobserve(callback) {
-    return observer.unobserve(this.bind, this.expression, callback);
+    this.bind = observer.unobserve(this.bind, this.expression, callback);
+    return this.bind;
   }
 }
 module.exports = Expression;

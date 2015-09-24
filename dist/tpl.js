@@ -231,6 +231,7 @@ return /******/ (function(modules) { // webpackBootstrap
 	
 	function _inherits(subClass, superClass) { if (typeof superClass !== 'function' && superClass !== null) { throw new TypeError('Super expression must either be null or a function, not ' + typeof superClass); } subClass.prototype = Object.create(superClass && superClass.prototype, { constructor: { value: subClass, enumerable: false, writable: true, configurable: true } }); if (superClass) Object.setPrototypeOf ? Object.setPrototypeOf(subClass, superClass) : subClass.__proto__ = superClass; }
 	
+	var _ = __webpack_require__(1);
 	var Directive = __webpack_require__(4);
 	var Expression = __webpack_require__(6);
 	var AbstractDirective = Directive.AbstractDirective;
@@ -244,6 +245,7 @@ return /******/ (function(modules) { // webpackBootstrap
 	    _AbstractDirective.call(this, el, bind, expression);
 	    this.expression = new Expression(bind, expression);
 	    this.update = this.update.bind(this);
+	    this.$el = $(el);
 	  }
 	
 	  ExprDirective.prototype.bind = function bind() {
@@ -258,6 +260,10 @@ return /******/ (function(modules) { // webpackBootstrap
 	
 	  ExprDirective.prototype.getValue = function getValue() {
 	    return this.expression.getValue();
+	  };
+	
+	  ExprDirective.prototype.setValue = function setValue(val) {
+	    this.expression.setValue(val);
 	  };
 	
 	  ExprDirective.prototype.update = function update() {
@@ -297,7 +303,7 @@ return /******/ (function(modules) { // webpackBootstrap
 	  }
 	
 	  TextDirective.prototype.update = function update() {
-	    $(this.el).text(this.getValue() || '');
+	    this.$el.text(this.getValue() || '');
 	  };
 	
 	  return TextDirective;
@@ -315,7 +321,7 @@ return /******/ (function(modules) { // webpackBootstrap
 	  }
 	
 	  HtmlDirective.prototype.update = function update() {
-	    $(this.el).html(this.getValue() || '');
+	    this.$el.html(this.getValue() || '');
 	  };
 	
 	  return HtmlDirective;
@@ -334,7 +340,7 @@ return /******/ (function(modules) { // webpackBootstrap
 	
 	  ClassDirective.prototype.update = function update() {
 	    var cls = this.getValue();
-	    $(this.el).addClass(cls);
+	    this.$el.addClass(cls);
 	  };
 	
 	  return ClassDirective;
@@ -352,7 +358,7 @@ return /******/ (function(modules) { // webpackBootstrap
 	  }
 	
 	  ShowDirective.prototype.update = function update() {
-	    $(this.el).css('display', this.getValue() ? '' : 'none');
+	    this.$el.css('display', this.getValue() ? '' : 'none');
 	  };
 	
 	  return ShowDirective;
@@ -370,13 +376,80 @@ return /******/ (function(modules) { // webpackBootstrap
 	  }
 	
 	  HideDirective.prototype.update = function update() {
-	    $(this.el).css('display', this.getValue() ? 'none' : '');
+	    this.$el.css('display', this.getValue() ? 'none' : '');
 	  };
 	
 	  return HideDirective;
 	})(ExprDirective);
 	
 	exports.HideDirective = HideDirective;
+	
+	var ValueDirective = (function (_ExprDirective7) {
+	  _inherits(ValueDirective, _ExprDirective7);
+	
+	  function ValueDirective() {
+	    _classCallCheck(this, ValueDirective);
+	
+	    _ExprDirective7.apply(this, arguments);
+	  }
+	
+	  ValueDirective.prototype.update = function update() {
+	    this.$el.val(this.getValue());
+	  };
+	
+	  return ValueDirective;
+	})(ExprDirective);
+	
+	exports.ValueDirective = ValueDirective;
+	
+	var inputDirective = (function (_ValueDirective) {
+	  _inherits(inputDirective, _ValueDirective);
+	
+	  function inputDirective(el, bind, expression) {
+	    _classCallCheck(this, inputDirective);
+	
+	    _ValueDirective.call(this, el, bind, expression);
+	    this.onChange = this.onChange.bind(this);
+	
+	    this.event = el.tagName === 'SELECT' ? 'change' : 'input propertychange';
+	
+	    this.$el.on(this.event, this.onChange);
+	  }
+	
+	  inputDirective.prototype.onChange = function onChange() {
+	    var val = this.$el.val();
+	    if (val != this.val) {
+	      this.setValue(val);
+	    }
+	  };
+	
+	  inputDirective.prototype.update = function update() {
+	    this.val = this.getValue();
+	    if (this.val != this.$el.val()) this.$el.val(this.val);
+	  };
+	
+	  return inputDirective;
+	})(ValueDirective);
+	
+	exports.inputDirective = inputDirective;
+	
+	var checkedDirective = (function (_ExprDirective8) {
+	  _inherits(checkedDirective, _ExprDirective8);
+	
+	  function checkedDirective() {
+	    _classCallCheck(this, checkedDirective);
+	
+	    _ExprDirective8.apply(this, arguments);
+	  }
+	
+	  checkedDirective.prototype.update = function update() {
+	    this.$el.attr('checked', !!this.getValue());
+	  };
+	
+	  return checkedDirective;
+	})(ExprDirective);
+	
+	exports.checkedDirective = checkedDirective;
 	
 	var IfDirective = (function (_AbstractDirective2) {
 	  _inherits(IfDirective, _AbstractDirective2);
@@ -396,7 +469,11 @@ return /******/ (function(modules) { // webpackBootstrap
 	
 	exports.IfDirective = IfDirective;
 	
-	Directive.register('class', ClassDirective);
+	_.each(module.exports, function (cls, name) {
+	  if (Directive.isDirective(cls) && cls !== ExprDirective && cls !== TextNodeDirective) {
+	    Directive.register(_.kebabCase(name.replace(/Directive$/, '')), cls);
+	  }
+	});
 
 /***/ },
 /* 4 */
@@ -450,7 +527,8 @@ return /******/ (function(modules) { // webpackBootstrap
 	  unbind: function unbind() {}
 	};
 	function isDirective(object) {
-	  if (!object) {
+	  var type = typeof object;
+	  if (!object || type != 'function' && type != 'object') {
 	    return false;
 	  }
 	  var proto = object;
@@ -514,7 +592,8 @@ return /******/ (function(modules) { // webpackBootstrap
 	module.exports = {
 	  AbstractDirective: AbstractDirective,
 	  register: register,
-	  getDirective: getDirective
+	  getDirective: getDirective,
+	  isDirective: isDirective
 	};
 
 /***/ },
@@ -543,6 +622,10 @@ return /******/ (function(modules) { // webpackBootstrap
 	
 	  Expression.prototype.getValue = function getValue() {
 	    return _.get(this.bind, this.expression);
+	  };
+	
+	  Expression.prototype.setValue = function setValue(val) {
+	    _.set(this.bind, this.expression, val);
 	  };
 	
 	  Expression.prototype.observe = function observe(callback) {

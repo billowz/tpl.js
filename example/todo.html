@@ -3,29 +3,28 @@
 
 <head>
     <meta charset="utf-8">
-    <base href="../">
     <title>tpl.js • TodoMVC </title>
-    <link rel="stylesheet" href="node_modules/todomvc-common/base.css">
-    <link rel="stylesheet" href="node_modules/todomvc-app-css/index.css">
+    <link rel="stylesheet" href="../node_modules/todomvc-common/base.css">
+    <link rel="stylesheet" href="../node_modules/todomvc-app-css/index.css">
     <style>
 
     </style>
     <!--[if lt IE 9]>
-      <script src="dependency/html5shiv/dist/html5shiv.js"></script>
-      <script src="dependency/respond/dest/respond.src.js"></script>
-      <script src="dependency/console-polyfill/index.js"></script>
+      <script src="../dependency/html5shiv/dist/html5shiv.js"></script>
+      <script src="../dependency/respond/dest/respond.src.js"></script>
+      <script src="../dependency/console-polyfill/index.js"></script>
     <![endif]-->
-    <script src="dependency/observer.js/dist/shim.js"></script>
-    <script src="dependency/lodash/lodash.js"></script>
-    <script src="dependency/observer.js/dist/observer.js"></script>
-    <script src="dependency/jQuery/dist/jquery.js"></script>
-    <script src="dist/tpl.js"></script>
-    <!--<script src="node_modules/todomvc-common/base.js"></script>
-    <script src="node_modules/director/build/director.js"></script>-->
-    <script>
+    <script type="text/javascript" src="../dependency/observer.js/dist/shim.js"></script>
+    <script type="text/javascript" src="../dependency/lodash/lodash.js"></script>
+    <script type="text/javascript" src="../dependency/observer.js/dist/observer.js"></script>
+    <script type="text/javascript" src="../dependency/jQuery/dist/jquery.js"></script>
+    <script type="text/javascript" src="../dist/tpl.js"></script>
+    <!--<script src="../node_modules/todomvc-common/base.js"></script>
+    <script src="../node_modules/director/build/director.js"></script>-->
+    <script type="text/javascript">
     $(document).ready(function() {
-        window.tpl = new tpl($('#tpl_todo').text());
-        window.templ = tpl.complie({
+        window.template = new tpl($(document.getElementById('tpl/todo.html')).html());
+        window.templ = template.complie({
             addTodo: function() {
 
             },
@@ -33,55 +32,55 @@
                 completed: true,
                 title: 'Test'
             }],
-            allDone: true
+            allDone: true,
+            title: 'Todo MVC'
         });
         $('.todoapp').append(templ.el);
     })
     </script>
-    <script id="tpl_todo" type="text/template">
-        <section class="todoapp">
-            <header class="header">
-                <h1>todos</h1>
-                <input class="new-todo" autofocus autocomplete="off" placeholder="What needs to be done?" tpl-on="keyup:addTodo | key 'enter'">
-            </header>
-            <section class="main" tpl-show="todos.length">
-                <input class="toggle-all" type="checkbox" tpl-checked="allDone">
-                <ul class="todo-list">
-                    <li class="todo" tpl-repeat="todo: filteredTodos" tpl-class="completed: todo.completed, editing: todo == editedTodo">
-                        <div class="view">
-                            <input class="toggle" type="checkbox" tpl-model="todo.completed">
-                            <label tpl-on="dblclick: editTodo(todo)">{{todo.title}}</label>
-                            <button class="destroy" tpl-on="click: removeTodo(todo)"></button>
-                        </div>
-                        <input class="edit" type="text" tpl-model="todo.title" tpl-todo-focus="todo == editedTodo" tpl-on="blur: doneEdit(todo), keyup: doneEdit(todo) | key 'enter', keyup: cancelEdit(todo) | key 'esc'">
-                    </li>
-                </ul>
-            </section>
-            <footer class="footer" tpl-show="todos.length" >
-                <span class="todo-count">
-                    <strong tpl-text="remaining"></strong> {{remaining | pluralize 'item'}} left
-                </span>
-                <ul class="filters">
-                    <li><a href="#/all" tpl-class="selected: visibility == 'all'">All</a></li>
-                    <li><a href="#/active" tpl-class="selected: visibility == 'active'">Active</a></li>
-                    <li><a href="#/completed" tpl-class="selected: visibility == 'completed'">Completed</a></li>
-                </ul>
-                <button class="clear-completed" tpl-on="click:removeCompleted" tpl-show="todos.length > remaining">
-                    Clear completed
-                </button>
-            </footer>
-        </section>
+    <script id="tpl/todo.html" type="text/template">
+        <div class="header">
+            <h1 tpl-text="title"></h1>
+            <input class="new-todo" autofocus autocomplete="off" placeholder="What needs to be done?" tpl-on="keyup:addTodo | key 'enter'">
+        </div>
+        <div class="main" tpl-show="todos.length">
+            <input class="toggle-all" type="checkbox" tpl-checked="allDone">
+            <ul class="todo-list">
+                <li class="todo" tpl-repeat="todo: filteredTodos" tpl-class="completed: todo.completed, editing: todo == editedTodo">
+                    <div class="view">
+                        <input class="toggle" type="checkbox" tpl-model="todo.completed">
+                        <label tpl-on="dblclick: editTodo(todo)">{{todo.title}}</label>
+                        <button class="destroy" tpl-on="click: removeTodo(todo)"></button>
+                    </div>
+                    <input class="edit" type="text" tpl-model="todo.title" tpl-todo-focus="todo == editedTodo" tpl-on="blur: doneEdit(todo), keyup: doneEdit(todo) | key 'enter', keyup: cancelEdit(todo) | key 'esc'">
+                </li>
+            </ul>
+        </div>
+        <div class="footer" tpl-show="todos.length">
+            <span class="todo-count">
+                  <strong tpl-text="remaining"></strong> {{remaining | pluralize 'item'}} left
+              </span>
+            <ul class="filters">
+                <li><a href="#/all" tpl-class="selected: visibility == 'all'">All</a></li>
+                <li><a href="#/active" tpl-class="selected: visibility == 'active'">Active</a></li>
+                <li><a href="#/completed" tpl-class="selected: visibility == 'completed'">Completed</a></li>
+            </ul>
+            <button class="clear-completed" tpl-on="click:removeCompleted" tpl-show="todos.length > remaining">
+                Clear completed
+            </button>
+        </div>
     </script>
 </head>
 
 <body>
-    <section class="todoapp">
-    </section>
-    <footer class="info">
+    <a href="../index.html">Back</a>
+    <div class="todoapp">
+    </div>
+    <div class="info">
         <p>Double-click to edit a todo</p>
         <p>Written by <a href="http://evanyou.me">Evan You</a></p>
         <p>Part of <a href="http://todomvc.com">TodoMVC</a></p>
-    </footer>
+    </div>
 </body>
 
 </html>

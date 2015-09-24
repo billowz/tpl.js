@@ -38,32 +38,30 @@ class TemplateInstance {
     }
     this.template = template;
     this.bind = bind;
-    this.directives = [];
     this.el = this.template.template.clone();
     this.init();
   }
 
   init() {
+    this.directives = [];
     _.each(this.el, el => {
-      this._parse(el);
+      this.directives.push.apply(this.directives, this.parse(el));
     });
     this.directives.forEach(directive => {
       this.bind = directive.bind();
     });
   }
-
-  _parse(el) {
+  parse(el) {
     switch (el.nodeType) {
       case 1: // Element
-        this._parseElement(el);
-        break;
+        return this.parseElement(el);
       case 3: // Text
-        this._parseText(el);
-        break;
+        return this.parseText(el);
     }
+    return [];
   }
 
-  _parseDirectiveName(name) {
+  parseDirectiveName(name) {
     let reg = this.template.attrDirectiveTestReg;
     if (reg.test(name)) {
       return name.replace(reg, '');
@@ -71,16 +69,17 @@ class TemplateInstance {
     return undefined;
   }
 
-  _parseElement(el) {
+  parseElement(el) {
     let block = false,
-      $el = $(el);
+      $el = $(el),
+      directives = [];
     if (el.attributes) {
       _.each(el.attributes, attr => {
         let name = attr.name,
           val = attr.value, directiveConst, directive;
-        if ((name = this._parseDirectiveName(name)) && (directiveConst = Directive.getDirective(name))) {
-          directive = new directiveConst(el, this.bind, val);
-          this.directives.push(directive);
+        if ((name = this.parseDirectiveName(name)) && (directiveConst = Directive.getDirective(name))) {
+          directive = new directiveConst(el, this, val);
+          directives.push(directive);
           if (directive.isBlock()) {
             block = true;
           }
@@ -91,33 +90,35 @@ class TemplateInstance {
     }
     if (!block) {
       _.each(el.childNodes, el => {
-        this._parse(el);
+        directives.push.apply(directives, this.parse(el));
       });
     }
+    return directives;
   }
 
-  _parseText(el) {
+  parseText(el) {
     let text = el.data,
       token,
       lastIndex = 0,
-      reg = this.template.delimiterReg;
+      reg = this.template.delimiterReg,
+      directives = [];
     while ((token = reg.exec(text))) {
-      this._createTextNode(text.substr(lastIndex, reg.lastIndex - token[0].length), el);
-      this._createComment(token[0], el);
-      this.directives.push(new TextNodeDirective(this._createTextNode('binding', el), this.bind, token[1]));
+      this.createTextNode(text.substr(lastIndex, reg.lastIndex - token[0].length), el);
+      directives.push(new TextNodeDirective(this.createTextNode('binding', el), this, token[1]));
       lastIndex = reg.lastIndex;
     }
-    this._createTextNode(text.substr(lastIndex), el);
+    this.createTextNode(text.substr(lastIndex), el);
     $(el).remove();
+    return directives;
   }
 
-  _createComment(content, before) {
+  createComment(content, before) {
     let el = document.createComment(content);
     $(el).insertBefore(before);
     return el;
   }
 
-  _createTextNode(content, before) {
+  createTextNode(content, before) {
     if (content) {
       let el = document.createTextNode(content);
       $(el).insertBefore(before);

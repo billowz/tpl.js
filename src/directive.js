@@ -4,10 +4,11 @@ const _ = require('lodash'),
   ExpressionReg = /[\+\-\*/\(\)]/g;
 
 class AbstractDirective {
-  constructor(el, bind, expr) {
+  constructor(el, templateInst, expr) {
     this.el = el;
     this.nodeType = el.nodeType;
-    this.target = bind;
+    this.template = templateInst;
+    this.target = templateInst.bind;
     this.expr = expr;
     if (!this.directiveName) {
       this.directiveName = this.constructor.name;
@@ -34,7 +35,8 @@ let directives = {},
     unbind: function() {}
   };
 function isDirective(object) {
-  if (!object) {
+  let type = typeof object;
+  if (!object || (type != 'function' && type != 'object')) {
     return false;
   }
   let proto = object;
@@ -87,6 +89,9 @@ function register(name, option) {
     throw TypeError('Invalid Directive Object ' + option);
   } else {
     directive = option;
+    if (!directive.prototype.directiveName) {
+      directive.prototype.directiveName = name;
+    }
   }
   directives[name] = directive;
   return directive;

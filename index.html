@@ -15,26 +15,27 @@
     <script src="dependency/jQuery/dist/jquery.js"></script>
     <script src="dist/tpl.js"></script>
     <script>
-    var arr = [];
-    for(var i=0; i<1; i++){
-      arr.push(i+': <span>{test.name}</span>');
+    window.data = {
+      time:null
     }
-    var templ = '<div id="001" bind-class="{name}">hello '+arr.join('<br/>')+'!</div>';
-    $(document).ready(function(){
-      window.tmpl = new tpl(templ).complie({name:'Tao Zeng', test:{name:'Tao.Zeng'}});
-      $(document.body).append(window.tmpl.el);
-      function each(){
-        //window.tmpl.bind.test = {name : setTimeout(each, 1000)};
-        window.tmpl.bind.test.name = setTimeout(each, 1000);
-      }
-      each();
 
+    function updateTime() {
+        data.time = new Date().toLocaleString();
+        setTimeout(updateTime, 1000);
+    }
+    updateTime();
+    $(document).ready(function() {
+        $(document.body).append(new tpl('<h3> Current Time: <span style="color:red">{time}</span></h3>').complie(data).el);
     });
-
     </script>
 </head>
 
 <body>
+    <h3>Examples</h3>
+    <ul>
+        <li><a href="example/base.html">Base</a></li>
+        <li><a href="example/todo.html">TODO MVC</a></li>
+    </ul>
 </body>
 
 </html>

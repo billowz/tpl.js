@@ -1,0 +1,85 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="utf-8">
+    <title>tpl.js • TodoMVC </title>
+    <!--[if lt IE 9]>
+      <script src="../dependency/html5shiv/dist/html5shiv.js"></script>
+      <script src="../dependency/respond/dest/respond.src.js"></script>
+      <script src="../dependency/console-polyfill/index.js"></script>
+    <![endif]-->
+    <script type="text/javascript" src="../dependency/observer.js/dist/shim.js"></script>
+    <script type="text/javascript" src="../dependency/lodash/lodash.js"></script>
+    <script type="text/javascript" src="../dependency/observer.js/dist/observer.js"></script>
+    <script type="text/javascript" src="../dependency/jQuery/dist/jquery.js"></script>
+    <script type="text/javascript" src="../dist/tpl.js"></script>
+    <script type="text/javascript">
+    $(document).ready(function() {
+        var data = {
+            input: '',
+            radio1:'Radio1 Selected',
+            radio2: 'Radio2 Selected'
+        }
+        var docTpl = new tpl($(document.getElementById('tpl/code.html')).html());
+        function renderTempl(id, renderTo){
+            var tmpl = $(document.getElementById(id)).html();
+            $(renderTo||document.body).append(docTpl.complie({
+                template: tmpl,
+                templateUrl: id,
+                js: '$(document.body).append(new tpl('+id+').complie({\n\t\n}).el);'
+            }).el);
+            $(renderTo||document.body).append(new tpl(tmpl).complie(data).el);
+
+        }
+
+        renderTempl('tpl/input.html');
+        renderTempl('tpl/checkbox.html');
+
+    });
+    </script>
+    <script id="tpl/code.html" type="text/template">
+        <div style="margin:0 10px">
+        <a href="javascript:void 0;" type="button" tpl-onclick="openSource=!!openSource" >Source</a>
+        <div tpl-hide="openSource">
+            {templateUrl}:<br/>
+            <pre tpl-text="template"></pre>
+            javascript:<br/>
+            <pre tpl-text="js"></pre>
+        </div>
+        </div>
+    </script>
+    <script id="tpl/input.html" type="text/template">
+        <div style="padding:10px">
+            <label>One Way: </label>
+            <input tpl-value="input" />
+        </div>
+        <div style="padding:10px">
+            <label>Two Way: </label>
+            <input tpl-input="input" />
+            <p tpl-if="input">
+                Input: <strong>{input}</strong>
+            </p>
+        </div>
+    </script>
+    <script id="tpl/checkbox.html" type="text/template">
+        <div style="padding:10px">
+            <label for="radio1">Test Radio1</label>
+            <input type="Radio" id="radio1" name="radio" tpl-value="radio1"  tpl-input="input" />
+            <label for="radio2">Test Radio2</label>
+            <input type="Radio" id="radio2" name="radio" tpl-value="radio2" tpl-input="input" />
+        </div>
+        <div style="padding:10px">
+            <label for="check1">Test Radio1</label>
+            <input type="Radio" id="check1" name="check" tpl-value="radio1"  tpl-input="input" />
+            <label for="radio2">Test Radio2</label>
+            <input type="Radio" id="check2" name="check" tpl-value="radio2"  tpl-input="input" />
+        </div>
+    </script>
+</head>
+
+<body>
+    <a href="../index.html">Back</a>
+</body>
+
+</html>
