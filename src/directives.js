@@ -37,17 +37,26 @@ export class TextNodeDirective extends ExprDirective {
   update() {
     this.el.data = this.getValue();
   }
+  isBlock() {
+    return true;
+  }
 }
 
 export class TextDirective extends ExprDirective {
   update() {
     this.$el.text(this.getValue() || '');
   }
+  isBlock() {
+    return true;
+  }
 }
 
 export class HtmlDirective extends ExprDirective {
   update() {
     this.$el.html(this.getValue() || '');
+  }
+  isBlock() {
+    return true;
   }
 }
 
@@ -158,25 +167,116 @@ export class InputDirective extends ValueDirective {
   }
 }
 
+export class RadioGroupDirective extends ExprDirective {
+  bind() {
+    super();
+  }
+  isBlock() {
+    return true;
+  }
+}
+
 export class IfDirective extends ExprDirective {
   update() {
     if (!this.getValue()) {
       this.$el.css('display', 'none');
     } else {
       if (!this.directives) {
-        this.directives = []
-        _.each(this.el.childNodes, el => {
-          this.template.parse(el).forEach(directive => {
-            directive.bind();
-            this.directives.push(directive);
-          });
+        this.directives = this.template.parseChildNodes(this.el);
+        this.directives.forEach(directive => {
+          directive.bind();
         });
       }
       this.$el.css('display', '');
     }
   }
+  unbind() {
+    super();
+    if (this.directives) {
+      this.directives.forEach(directive => {
+        directive.unbind();
+      });
+    }
+  }
   isBlock() {
     return true;
+  }
+}
+
+export class EventDirective extends AbstractDirective {
+  constructor(el, templateInst, expression) {
+    super(el, templateInst, expression);
+    this.$el = $(el);
+  }
+  getEventType() {
+    throw 'Abstract Method [getEventType]';
+  }
+  getHandler() {
+    if (!this.handler) {
+      let handler = _.get(this.template.bind, this.expr);
+      if (!_.isFunction(handler)) {
+        throw TypeError('Invalid Event Handler ' + handler)
+      }
+      this.handler = handler.bind(this.template.bind);
+    }
+    return this.handler;
+  }
+  bind() {
+    this.$el.on(this.getEventType(), this.getHandler());
+  }
+
+  unbind() {
+    this.$el.un(this.getEventType(), this.getHandler());
+  }
+}
+function createEventDirective(name, eventType) {
+
+}
+createEventDirective('click')
+
+export class OnclickDirective extends EventDirective {
+  getEventType() {
+    return 'click';
+  }
+}
+export class OndbclickDirective extends EventDirective {
+  getEventType() {
+    return 'ondblclick';
+  }
+}
+export class OnchangeDirective extends EventDirective {
+  getEventType() {
+    return 'onchange';
+  }
+}
+export class OnchangeDirective extends EventDirective {
+  getEventType() {
+    return 'onchange';
+  }
+}
+export class KeyupDirective extends EventDirective {
+  getEventType() {
+    return 'keyup';
+  }
+}
+export class KeyupDirective extends EventDirective {
+  getEventType() {
+    return 'onkeydown';
+  }
+}
+export class KeyupDirective extends EventDirective {
+  getEventType() {
+    return 'onkeypress';
+  }
+}
+export class KeyupDirective extends EventDirective {
+  getEventType() {
+    return 'onmousedown';
+  }
+}
+export class KeyupDirective extends EventDirective {
+  getEventType() {
+    return 'onmousemove';
   }
 }
 _.each(module.exports, (cls, name) => {

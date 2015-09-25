@@ -19,7 +19,9 @@
         var data = {
             input: '',
             radio1:'Radio1 Selected',
-            radio2: 'Radio2 Selected'
+            radio2: 'Radio2 Selected',
+            check1:'CheckBox1 Selected',
+            check2: 'CheckBox2 Selected'
         }
         var docTpl = new tpl($(document.getElementById('tpl/code.html')).html());
         function renderTempl(id, renderTo){
@@ -27,7 +29,11 @@
             $(renderTo||document.body).append(docTpl.complie({
                 template: tmpl,
                 templateUrl: id,
-                js: '$(document.body).append(new tpl('+id+').complie({\n\t\n}).el);'
+                js: '$(document.body).append(new tpl('+id+').complie({\n\t\n}).el);',
+                toggleSource(){
+                    this.openSource = !this.openSource;
+                    console.log(arguments)
+                }
             }).el);
             $(renderTo||document.body).append(new tpl(tmpl).complie(data).el);
 
@@ -40,8 +46,8 @@
     </script>
     <script id="tpl/code.html" type="text/template">
         <div style="margin:0 10px">
-        <a href="javascript:void 0;" type="button" tpl-onclick="openSource=!!openSource" >Source</a>
-        <div tpl-hide="openSource">
+        <a href="javascript:void 0;" type="button" tpl-onclick="toggleSource" >Source</a>
+        <div tpl-if="openSource">
             {templateUrl}:<br/>
             <pre tpl-text="template"></pre>
             javascript:<br/>
@@ -70,10 +76,10 @@
             <input type="Radio" id="radio2" name="radio" tpl-value="radio2" tpl-input="input" />
         </div>
         <div style="padding:10px">
-            <label for="check1">Test Radio1</label>
-            <input type="Radio" id="check1" name="check" tpl-value="radio1"  tpl-input="input" />
-            <label for="radio2">Test Radio2</label>
-            <input type="Radio" id="check2" name="check" tpl-value="radio2"  tpl-input="input" />
+            <label for="check1">Test CheckBox1</label>
+            <input type="CheckBox" id="check1" name="check" tpl-value="check1"  tpl-input="input" />
+            <label for="check2">Test CheckBox2</label>
+            <input type="CheckBox" id="check2" name="check" tpl-value="check2"  tpl-input="input" />
         </div>
     </script>
 </head>

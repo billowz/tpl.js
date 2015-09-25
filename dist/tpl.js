@@ -102,7 +102,6 @@ return /******/ (function(modules) { // webpackBootstrap
 	    }
 	    this.template = template;
 	    this.bind = bind;
-	    this.directives = [];
 	    this.el = this.template.template.clone();
 	    this.init();
 	  }
@@ -110,28 +109,28 @@ return /******/ (function(modules) { // webpackBootstrap
 	  TemplateInstance.prototype.init = function init() {
 	    var _this = this;
 	
+	    this.directives = [];
 	    _.each(this.el, function (el) {
-	      _this._parse(el);
+	      _this.directives.push.apply(_this.directives, _this.parse(el));
 	    });
 	    this.directives.forEach(function (directive) {
 	      _this.bind = directive.bind();
 	    });
 	  };
 	
-	  TemplateInstance.prototype._parse = function _parse(el) {
+	  TemplateInstance.prototype.parse = function parse(el) {
 	    switch (el.nodeType) {
 	      case 1:
 	        // Element
-	        this._parseElement(el);
-	        break;
+	        return this.parseElement(el);
 	      case 3:
 	        // Text
-	        this._parseText(el);
-	        break;
+	        return this.parseText(el);
 	    }
+	    return [];
 	  };
 	
-	  TemplateInstance.prototype._parseDirectiveName = function _parseDirectiveName(name) {
+	  TemplateInstance.prototype.parseDirectiveName = function parseDirectiveName(name) {
 	    var reg = this.template.attrDirectiveTestReg;
 	    if (reg.test(name)) {
 	      return name.replace(reg, '');
@@ -139,20 +138,21 @@ return /******/ (function(modules) { // webpackBootstrap
 	    return undefined;
 	  };
 	
-	  TemplateInstance.prototype._parseElement = function _parseElement(el) {
+	  TemplateInstance.prototype.parseElement = function parseElement(el) {
 	    var _this2 = this;
 	
 	    var block = false,
-	        $el = $(el);
+	        $el = $(el),
+	        directives = [];
 	    if (el.attributes) {
 	      _.each(el.attributes, function (attr) {
 	        var name = attr.name,
 	            val = attr.value,
 	            directiveConst = undefined,
 	            directive = undefined;
-	        if ((name = _this2._parseDirectiveName(name)) && (directiveConst = Directive.getDirective(name))) {
-	          directive = new directiveConst(el, _this2.bind, val);
-	          _this2.directives.push(directive);
+	        if ((name = _this2.parseDirectiveName(name)) && (directiveConst = Directive.getDirective(name))) {
+	          directive = new directiveConst(el, _this2, val);
+	          directives.push(directive);
 	          if (directive.isBlock()) {
 	            block = true;
 	          }
@@ -163,33 +163,35 @@ return /******/ (function(modules) { // webpackBootstrap
 	    }
 	    if (!block) {
 	      _.each(el.childNodes, function (el) {
-	        _this2._parse(el);
+	        directives.push.apply(directives, _this2.parse(el));
 	      });
 	    }
+	    return directives;
 	  };
 	
-	  TemplateInstance.prototype._parseText = function _parseText(el) {
+	  TemplateInstance.prototype.parseText = function parseText(el) {
 	    var text = el.data,
 	        token = undefined,
 	        lastIndex = 0,
-	        reg = this.template.delimiterReg;
+	        reg = this.template.delimiterReg,
+	        directives = [];
 	    while (token = reg.exec(text)) {
-	      this._createTextNode(text.substr(lastIndex, reg.lastIndex - token[0].length), el);
-	      this._createComment(token[0], el);
-	      this.directives.push(new TextNodeDirective(this._createTextNode('binding', el), this.bind, token[1]));
+	      this.createTextNode(text.substr(lastIndex, reg.lastIndex - token[0].length), el);
+	      directives.push(new TextNodeDirective(this.createTextNode('binding', el), this, token[1]));
 	      lastIndex = reg.lastIndex;
 	    }
-	    this._createTextNode(text.substr(lastIndex), el);
+	    this.createTextNode(text.substr(lastIndex), el);
 	    $(el).remove();
+	    return directives;
 	  };
 	
-	  TemplateInstance.prototype._createComment = function _createComment(content, before) {
+	  TemplateInstance.prototype.createComment = function createComment(content, before) {
 	    var el = document.createComment(content);
 	    $(el).insertBefore(before);
 	    return el;
 	  };
 	
-	  TemplateInstance.prototype._createTextNode = function _createTextNode(content, before) {
+	  TemplateInstance.prototype.createTextNode = function createTextNode(content, before) {
 	    if (content) {
 	      var el = document.createTextNode(content);
 	      $(el).insertBefore(before);
@@ -239,16 +241,17 @@ return /******/ (function(modules) { // webpackBootstrap
 	var ExprDirective = (function (_AbstractDirective) {
 	  _inherits(ExprDirective, _AbstractDirective);
 	
-	  function ExprDirective(el, bind, expression) {
+	  function ExprDirective(el, templateInst, expression) {
 	    _classCallCheck(this, ExprDirective);
 	
-	    _AbstractDirective.call(this, el, bind, expression);
-	    this.expression = new Expression(bind, expression);
+	    _AbstractDirective.call(this, el, templateInst, expression);
+	    this.expression = new Expression(this.target, expression);
 	    this.update = this.update.bind(this);
 	    this.$el = $(el);
 	  }
 	
 	  ExprDirective.prototype.bind = function bind() {
+	    this.template.createComment(' Directive:' + this.directiveName + ' [' + this.expr + '] ', this.$el);
 	    var ret = this.expression.observe(this.update);
 	    this.update();
 	    return ret;
@@ -402,70 +405,127 @@ return /******/ (function(modules) { // webpackBootstrap
 	
 	exports.ValueDirective = ValueDirective;
 	
-	var inputDirective = (function (_ValueDirective) {
-	  _inherits(inputDirective, _ValueDirective);
+	var EVENT_CHANGE = 'change',
+	    EVENT_INPUT = 'input propertychange',
+	    EVENT_CLICK = 'click',
+	    TAG_SELECT = 'SELECT',
+	    TAG_INPUT = 'INPUT',
+	    TAG_TEXTAREA = 'TEXTAREA',
+	    RADIO = 'radio',
+	    CHECKBOX = 'checkbox';
 	
-	  function inputDirective(el, bind, expression) {
-	    _classCallCheck(this, inputDirective);
+	var InputDirective = (function (_ValueDirective) {
+	  _inherits(InputDirective, _ValueDirective);
 	
-	    _ValueDirective.call(this, el, bind, expression);
+	  function InputDirective(el, templateInst, expression) {
+	    _classCallCheck(this, InputDirective);
+	
+	    _ValueDirective.call(this, el, templateInst, expression);
+	
 	    this.onChange = this.onChange.bind(this);
 	
-	    this.event = el.tagName === 'SELECT' ? 'change' : 'input propertychange';
-	
+	    this.event = EVENT_INPUT;
+	    var tag = this.tag = el.tagName,
+	        type = undefined;
+	    if (this.isSelect()) {
+	      this.event = EVENT_CHANGE;
+	    } else if (this.isInput()) {
+	      type = this.type = el.type;
+	      if (this.isRadio() || this.isCheckBox()) {
+	        this.event = EVENT_CLICK;
+	      }
+	    } else if (!this.isTextArea()) {
+	      throw TypeError('Directive[input] not support ' + el.tagName);
+	    }
 	    this.$el.on(this.event, this.onChange);
 	  }
 	
-	  inputDirective.prototype.onChange = function onChange() {
-	    var val = this.$el.val();
+	  InputDirective.prototype.onChange = function onChange() {
+	    var val = this.elVal();
 	    if (val != this.val) {
 	      this.setValue(val);
 	    }
 	  };
 	
-	  inputDirective.prototype.update = function update() {
+	  InputDirective.prototype.update = function update() {
 	    this.val = this.getValue();
-	    if (this.val != this.$el.val()) this.$el.val(this.val);
+	    if (this.val != this.elVal()) this.elVal(this.val);
 	  };
 	
-	  return inputDirective;
+	  InputDirective.prototype.elVal = function elVal(val) {
+	    var isGet = arguments.length == 0;
+	    if (this.isSelect()) {} else if (this.isInput()) {
+	      if (this.isRadio() || this.isCheckBox()) {
+	        if (isGet) {
+	          return this.$el.prop('checked') ? this.$el.val() : undefined;
+	        } else {
+	          this.$el.prop('checked', _.isString(val) ? val == this.$el.val() : !!val);
+	        }
+	      } else {
+	        return this.$el.val.apply(this.$el, arguments);
+	      }
+	    } else if (this.isTextArea()) {}
+	  };
+	
+	  InputDirective.prototype.isInput = function isInput() {
+	    return this.tag == TAG_INPUT;
+	  };
+	
+	  InputDirective.prototype.isSelect = function isSelect() {
+	    return this.tag == TAG_SELECT;
+	  };
+	
+	  InputDirective.prototype.isTextArea = function isTextArea() {
+	    return this.tag == TAG_TEXTAREA;
+	  };
+	
+	  InputDirective.prototype.isRadio = function isRadio() {
+	    return this.type == RADIO;
+	  };
+	
+	  InputDirective.prototype.isCheckBox = function isCheckBox() {
+	    return this.type == CHECKBOX;
+	  };
+	
+	  return InputDirective;
 	})(ValueDirective);
 	
-	exports.inputDirective = inputDirective;
+	exports.InputDirective = InputDirective;
 	
-	var checkedDirective = (function (_ExprDirective8) {
-	  _inherits(checkedDirective, _ExprDirective8);
-	
-	  function checkedDirective() {
-	    _classCallCheck(this, checkedDirective);
-	
-	    _ExprDirective8.apply(this, arguments);
-	  }
-	
-	  checkedDirective.prototype.update = function update() {
-	    this.$el.attr('checked', !!this.getValue());
-	  };
-	
-	  return checkedDirective;
-	})(ExprDirective);
-	
-	exports.checkedDirective = checkedDirective;
-	
-	var IfDirective = (function (_AbstractDirective2) {
-	  _inherits(IfDirective, _AbstractDirective2);
+	var IfDirective = (function (_ExprDirective8) {
+	  _inherits(IfDirective, _ExprDirective8);
 	
 	  function IfDirective() {
 	    _classCallCheck(this, IfDirective);
 	
-	    _AbstractDirective2.apply(this, arguments);
+	    _ExprDirective8.apply(this, arguments);
 	  }
+	
+	  IfDirective.prototype.update = function update() {
+	    var _this = this;
+	
+	    if (!this.getValue()) {
+	      this.$el.css('display', 'none');
+	    } else {
+	      if (!this.directives) {
+	        this.directives = [];
+	        _.each(this.el.childNodes, function (el) {
+	          _this.template.parse(el).forEach(function (directive) {
+	            directive.bind();
+	            _this.directives.push(directive);
+	          });
+	        });
+	      }
+	      this.$el.css('display', '');
+	    }
+	  };
 	
 	  IfDirective.prototype.isBlock = function isBlock() {
 	    return true;
 	  };
 	
 	  return IfDirective;
-	})(AbstractDirective);
+	})(ExprDirective);
 	
 	exports.IfDirective = IfDirective;
 	
@@ -489,12 +549,13 @@ return /******/ (function(modules) { // webpackBootstrap
 	    ExpressionReg = /[\+\-\*/\(\)]/g;
 	
 	var AbstractDirective = (function () {
-	  function AbstractDirective(el, bind, expr) {
+	  function AbstractDirective(el, templateInst, expr) {
 	    _classCallCheck(this, AbstractDirective);
 	
 	    this.el = el;
 	    this.nodeType = el.nodeType;
-	    this.target = bind;
+	    this.template = templateInst;
+	    this.target = templateInst.bind;
 	    this.expr = expr;
 	    if (!this.directiveName) {
 	      this.directiveName = this.constructor.name;
@@ -581,6 +642,9 @@ return /******/ (function(modules) { // webpackBootstrap
 	    throw TypeError('Invalid Directive Object ' + option);
 	  } else {
 	    directive = option;
+	    if (!directive.prototype.directiveName) {
+	      directive.prototype.directiveName = name;
+	    }
 	  }
 	  directives[name] = directive;
 	  return directive;
@@ -629,11 +693,13 @@ return /******/ (function(modules) { // webpackBootstrap
 	  };
 	
 	  Expression.prototype.observe = function observe(callback) {
-	    return observer.observe(this.bind, this.expression, callback);
+	    this.bind = observer.observe(this.bind, this.expression, callback);
+	    return this.bind;
 	  };
 	
 	  Expression.prototype.unobserve = function unobserve(callback) {
-	    return observer.unobserve(this.bind, this.expression, callback);
+	    this.bind = observer.unobserve(this.bind, this.expression, callback);
+	    return this.bind;
 	  };
 	
 	  return Expression;

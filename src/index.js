@@ -43,22 +43,35 @@ class TemplateInstance {
   }
 
   init() {
-    this.directives = [];
-    _.each(this.el, el => {
-      this.directives.push.apply(this.directives, this.parse(el));
-    });
+    this.directives = this.parse(this.el);
     this.directives.forEach(directive => {
       this.bind = directive.bind();
     });
   }
-  parse(el) {
+
+  parse(els) {
+    if (!els.jquery && !(els instanceof Array)) {
+      return this.parseEl(els);
+    } else {
+      let directives = [];
+      _.each(els, el => {
+        directives.push.apply(directives, this.parseEl(el));
+      });
+      return directives;
+    }
+  }
+
+  parseEl(el) {
     switch (el.nodeType) {
       case 1: // Element
         return this.parseElement(el);
       case 3: // Text
         return this.parseText(el);
     }
-    return [];
+  }
+
+  parseChildNodes(el) {
+    return this.parse(_.slice(el.childNodes, 0));
   }
 
   parseDirectiveName(name) {
@@ -89,9 +102,7 @@ class TemplateInstance {
       });
     }
     if (!block) {
-      _.each(el.childNodes, el => {
-        directives.push.apply(directives, this.parse(el));
-      });
+      directives.push.apply(directives, this.parseChildNodes(el));
     }
     return directives;
   }

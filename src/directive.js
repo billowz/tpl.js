@@ -14,15 +14,19 @@ class AbstractDirective {
       this.directiveName = this.constructor.name;
     }
   }
+
   getDirectiveClassName() {
     return this.constructor.name ? this.constructor.name : (_.capitalize(this.directiveName) + 'Directive');
   }
+
   bind() {
     throw 'Abstract Method [' + this.getDirectiveClassName() + '.bind]';
   }
+
   unbind() {
     throw 'Abstract Method [' + this.getDirectiveClassName() + '.unbind]';
   }
+
   isBlock() {
     return false;
   }
@@ -89,9 +93,7 @@ function register(name, option) {
     throw TypeError('Invalid Directive Object ' + option);
   } else {
     directive = option;
-    if (!directive.prototype.directiveName) {
-      directive.prototype.directiveName = name;
-    }
+    directive.prototype.directiveName = name;
   }
   directives[name] = directive;
   return directive;
