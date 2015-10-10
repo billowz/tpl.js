@@ -1,9 +1,10 @@
 const _ = require('lodash'),
   $ = require('jquery'),
-  Directives = require('./directives'),
+  Text = require('./text'),
   Directive = require('./directive'),
+  DirectiveGroup = require('./directive-group'),
+  Directives = require('./directives'),
   Expression = require('./expression'),
-  {TextNodeDirective} = Directives,
   PRIMITIVE = 0,
   KEYPATH = 1,
   TEXT = 0,
@@ -32,20 +33,18 @@ class Template {
 }
 
 class TemplateInstance {
-  constructor(template, bind) {
-    if (!(template instanceof Template)) {
-      throw TypeError('Invalid Template ' + template);
-    }
-    this.template = template;
+  constructor(tpl, bind) {
+    this.tpl = tpl;
     this.bind = bind;
-    this.el = this.template.template.clone();
+    this.el = this.tpl.template.clone();
     this.init();
   }
 
   init() {
-    this.directives = this.parse(this.el);
-    this.directives.forEach(directive => {
-      this.bind = directive.bind();
+    this.bindings = this.parse(this.el);
+    this.bindings.forEach(directive => {
+      directive.bind();
+      this.bind = directive.getScope();
     });
   }
 
@@ -53,11 +52,11 @@ class TemplateInstance {
     if (!els.jquery && !(els instanceof Array)) {
       return this.parseEl(els);
     } else {
-      let directives = [];
+      let bindings = [];
       _.each(els, el => {
-        directives.push.apply(directives, this.parseEl(el));
+        bindings.push.apply(bindings, this.parseEl(el));
       });
-      return directives;
+      return bindings;
     }
   }
 
@@ -70,29 +69,54 @@ class TemplateInstance {
     }
   }
 
-  parseChildNodes(el) {
-    return this.parse(_.slice(el.childNodes, 0));
+  parseText(el) {
+    let text = el.data,
+      token,
+      lastIndex = 0,
+      reg = this.tpl.delimiterReg,
+      bindings = [];
+
+    while ((token = reg.exec(text))) {
+
+      this.createTextNode(text.substring(lastIndex, reg.lastIndex - token[0].length), el);
+
+      if (token[1]) {
+        bindings.push(new Text(this.createTextNode('binding', el), this, token[1]));
+      }
+
+      lastIndex = reg.lastIndex;
+    }
+
+    this.createTextNode(text.substr(lastIndex), el);
+
+    $(el).remove();
+
+    return bindings;
   }
 
-  parseDirectiveName(name) {
-    let reg = this.template.attrDirectiveTestReg;
-    if (reg.test(name)) {
-      return name.replace(reg, '');
+  createTextNode(content, before) {
+    content = _.trim(content);
+    if (content) {
+      let el = document.createTextNode(content);
+      $(el).insertBefore(before);
+      return el;
     }
     return undefined;
   }
 
+
   parseElement(el) {
     let block = false,
       $el = $(el),
-      directives = [];
+      directives = [],
+      directiveItems = [];
     if (el.attributes) {
       _.each(el.attributes, attr => {
         let name = attr.name,
           val = attr.value, directiveConst, directive;
         if ((name = this.parseDirectiveName(name)) && (directiveConst = Directive.getDirective(name))) {
           directive = new directiveConst(el, this, val);
-          directives.push(directive);
+          directiveItems.push(directive);
           if (directive.isBlock()) {
             block = true;
           }
@@ -100,6 +124,11 @@ class TemplateInstance {
           console.warn('Directive is undefined ' + attr.name);
         }
       });
+      if (directiveItems.length > 1) {
+        directives.push(new DirectiveGroup(el, this, directiveItems));
+      } else if (directiveItems.length == 1) {
+        directives.push(directiveItems[0]);
+      }
     }
     if (!block) {
       directives.push.apply(directives, this.parseChildNodes(el));
@@ -107,33 +136,14 @@ class TemplateInstance {
     return directives;
   }
 
-  parseText(el) {
-    let text = el.data,
-      token,
-      lastIndex = 0,
-      reg = this.template.delimiterReg,
-      directives = [];
-    while ((token = reg.exec(text))) {
-      this.createTextNode(text.substr(lastIndex, reg.lastIndex - token[0].length), el);
-      directives.push(new TextNodeDirective(this.createTextNode('binding', el), this, token[1]));
-      lastIndex = reg.lastIndex;
-    }
-    this.createTextNode(text.substr(lastIndex), el);
-    $(el).remove();
-    return directives;
+  parseChildNodes(el) {
+    return this.parse(_.slice(el.childNodes, 0));
   }
 
-  createComment(content, before) {
-    let el = document.createComment(content);
-    $(el).insertBefore(before);
-    return el;
-  }
-
-  createTextNode(content, before) {
-    if (content) {
-      let el = document.createTextNode(content);
-      $(el).insertBefore(before);
-      return el;
+  parseDirectiveName(name) {
+    let reg = this.tpl.attrDirectiveTestReg;
+    if (reg.test(name)) {
+      return name.replace(reg, '');
     }
     return undefined;
   }

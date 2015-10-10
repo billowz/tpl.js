@@ -1,89 +1,109 @@
 const _ = require('lodash'),
   Directive = require('./directive'),
-  Expression = require('./expression'),
-  {AbstractDirective} = Directive;
+  {SimpleObserveExpression, ObserveExpression, EventExpression, EachExpression} = require('./expression'),
+  {YieId} = require('./util');
 
-export class ExprDirective extends AbstractDirective {
-  constructor(el, templateInst, expression) {
-    super(el, templateInst, expression);
-    this.expression = new Expression(this.target, expression);
-    this.update = this.update.bind(this);
-    this.$el = $(el);
+export class AbstractExpressionDirective extends Directive {
+  constructor(el, tpl, expr) {
+    super(el, tpl, expr);
+    this.expression = this.buildExpression();
   }
 
-  bind() {
-    this.template.createComment(' Directive:' + this.directiveName + ' [' + this.expr + '] ', this.$el);
-    let ret = this.expression.observe(this.update);
-    this.update();
-    return ret;
-  }
-
-  unbind() {
-    return this.expression.unobserve(this.update);
+  buildExpression() {
+    throw 'Abstract Method [' + this.className + '.buildExpression]';
   }
 
   getValue() {
     return this.expression.getValue();
   }
+
+  getBlankValue() {
+    let val = this.getValue();
+    if (val === undefined || val == null) {
+      return '';
+    }
+    return val;
+  }
+}
+
+export class EventDirective extends AbstractExpressionDirective {
+
+  buildExpression() {
+    return new EventExpression(this.scope, this.expr);
+  }
+
+  getEventType() {
+    if (!this.eventType) {
+      throw TypeError('EventType[' + this.className + '] is undefined');
+    }
+    return this.eventType;
+  }
+
+  bind() {
+    super();
+    if (!this.handler) {
+      this.handler = this.getValue();
+    }
+    this.$el.on(this.getEventType(), this.handler);
+  }
+
+  unbind() {
+    super();
+    if (this.handler) {
+      this.$el.un(this.getEventType(), this.handler);
+    }
+  }
+}
+
+export class AbstractObserveExpressionDirective extends AbstractExpressionDirective {
+  constructor(el, tpl, expr) {
+    super(el, tpl, expr);
+    this.update = this.update.bind(this);
+  }
+
+  bind() {
+    super();
+    this.scope = this.expression.observe(this.update);
+    this.update();
+  }
+
+  unbind() {
+    this.scope = this.expression.unobserve(this.update);
+  }
+
+  update() {
+    throw 'Abstract Method [' + this.className + '.update]';
+  }
+}
+
+export class SimpleObserveExpressionDirective extends AbstractObserveExpressionDirective {
+
+  buildExpression() {
+    return new SimpleObserveExpression(this.scope, this.expr);
+  }
+
   setValue(val) {
     this.expression.setValue(val);
   }
-  update() {
-    throw 'Abstract Method [' + this.getDirectiveClassName() + '.unbind]';
+}
+
+export class ObserveExpressionDirective extends AbstractObserveExpressionDirective {
+
+  buildExpression() {
+    return new ObserveExpression(this.scope, this.expr);
   }
 }
 
-export class TextNodeDirective extends ExprDirective {
-  update() {
-    this.el.data = this.getValue();
-  }
-  isBlock() {
-    return true;
-  }
-}
+export class EachDirective extends AbstractObserveExpressionDirective {
 
-export class TextDirective extends ExprDirective {
-  update() {
-    this.$el.text(this.getValue() || '');
+  buildExpression() {
+    return new EachExpression(this.scope, this.expr);
   }
-  isBlock() {
-    return true;
-  }
+  bind() {}
 }
+EachDirective.prototype.priority = 10;
 
-export class HtmlDirective extends ExprDirective {
-  update() {
-    this.$el.html(this.getValue() || '');
-  }
-  isBlock() {
-    return true;
-  }
-}
-
-export class ClassDirective extends ExprDirective {
-  update() {
-    let cls = this.getValue();
-    this.$el.addClass(cls);
-  }
-}
-
-export class ShowDirective extends ExprDirective {
-  update() {
-    this.$el.css('display', this.getValue() ? '' : 'none');
-  }
-}
-
-export class HideDirective extends ExprDirective {
-  update() {
-    this.$el.css('display', this.getValue() ? 'none' : '');
-  }
-}
-
-export class ValueDirective extends ExprDirective {
-  update() {
-    this.$el.val(this.getValue());
-  }
-}
+Directive.register('each', EachDirective);
 
 const EVENT_CHANGE = 'change',
   EVENT_INPUT = 'input propertychange',
@@ -92,195 +112,201 @@ const EVENT_CHANGE = 'change',
   TAG_INPUT = 'INPUT',
   TAG_TEXTAREA = 'TEXTAREA',
   RADIO = 'radio',
-  CHECKBOX = 'checkbox';
+  CHECKBOX = 'checkbox',
+  simpleExprDirectives = {
+    input: {
+      constructor(el, tpl, expr) {
+        SimpleObserveExpressionDirective.call(this, el, tpl, expr);
 
-export class InputDirective extends ValueDirective {
-  constructor(el, templateInst, expression) {
-    super(el, templateInst, expression);
+        this.onChange = this.onChange.bind(this);
 
-    this.onChange = this.onChange.bind(this);
-
-    this.event = EVENT_INPUT;
-    let tag = this.tag = el.tagName, type;
-    if (this.isSelect()) {
-      this.event = EVENT_CHANGE;
-    } else if (this.isInput()) {
-      type = this.type = el.type;
-      if (this.isRadio() || this.isCheckBox()) {
-        this.event = EVENT_CLICK;
-      }
-    } else if (!this.isTextArea()) {
-      throw TypeError('Directive[input] not support ' + el.tagName);
-    }
-    this.$el.on(this.event, this.onChange);
-  }
-
-  onChange() {
-    let val = this.elVal();
-    if (val != this.val) {
-      this.setValue(val);
-    }
-  }
-
-  update() {
-    this.val = this.getValue();
-    if (this.val != this.elVal())
-      this.elVal(this.val);
-  }
-
-  elVal(val) {
-    let isGet = arguments.length == 0;
-    if (this.isSelect()) {
-
-    } else if (this.isInput()) {
-      if (this.isRadio() || this.isCheckBox()) {
-        if (isGet) {
-          return this.$el.prop('checked') ? this.$el.val() : undefined;
-        } else {
-          this.$el.prop('checked', _.isString(val) ? val == this.$el.val() : !!val);
+        this.event = EVENT_INPUT;
+        let tag = this.tag = el.tagName, type;
+        if (this.isSelect()) {
+          this.event = EVENT_CHANGE;
+        } else if (this.isInput()) {
+          type = this.type = el.type;
+          if (this.isRadio() || this.isCheckBox()) {
+            this.event = EVENT_CLICK;
+          }
+        } else if (!this.isTextArea()) {
+          throw TypeError('Directive[input] not support ' + el.tagName);
         }
-      } else {
-        return this.$el.val.apply(this.$el, arguments);
+      },
+
+      bind() {
+        SimpleObserveExpressionDirective.prototype.bind.call(this);
+        this.$el.on(this.event, this.onChange);
+      },
+
+      unbind() {
+        SimpleObserveExpressionDirective.prototype.unbind.call(this);
+        this.$el.un(this.event, this.onChange);
+      },
+
+      onChange() {
+        let val = this.elVal();
+        if (val != this.val) {
+          this.setValue(val);
+        }
+      },
+
+      update() {
+        this.val = this.getBlankValue();
+        if (this.val != this.elVal())
+          this.elVal(this.val);
+      },
+
+      elVal(val) {
+        let isGet = arguments.length == 0;
+        if (this.isSelect()) {
+
+        } else if (this.isInput()) {
+          if (this.isRadio() || this.isCheckBox()) {
+            if (isGet) {
+              return this.$el.prop('checked') ? this.$el.val() : undefined;
+            } else {
+              this.$el.prop('checked', _.isString(val) ? val == this.$el.val() : !!val);
+            }
+          } else {
+            return this.$el.val.apply(this.$el, arguments);
+          }
+        } else if (this.isTextArea()) {
+        }
+      },
+
+      isInput() {
+        return this.tag == TAG_INPUT;
+      },
+
+      isSelect() {
+        return this.tag == TAG_SELECT;
+      },
+
+      isTextArea() {
+        return this.tag == TAG_TEXTAREA;
+      },
+
+      isRadio() {
+        return this.type == RADIO;
+      },
+
+      isCheckBox() {
+        return this.type == CHECKBOX;
       }
-    } else if (this.isTextArea()) {
     }
-  }
-
-  isInput() {
-    return this.tag == TAG_INPUT;
-  }
-
-  isSelect() {
-    return this.tag == TAG_SELECT;
-  }
-
-  isTextArea() {
-    return this.tag == TAG_TEXTAREA;
-  }
-
-  isRadio() {
-    return this.type == RADIO;
-  }
-
-  isCheckBox() {
-    return this.type == CHECKBOX;
-  }
-}
-
-export class RadioGroupDirective extends ExprDirective {
-  bind() {
-    super();
-  }
-  isBlock() {
-    return true;
-  }
-}
-
-export class IfDirective extends ExprDirective {
-  update() {
-    if (!this.getValue()) {
-      this.$el.css('display', 'none');
-    } else {
-      if (!this.directives) {
-        this.directives = this.template.parseChildNodes(this.el);
-        this.directives.forEach(directive => {
-          directive.bind();
-        });
+  },
+  exprDirectives = {
+    text: {
+      update() {
+        this.$el.text(this.getBlankValue());
+      },
+      block: true
+    },
+    html: {
+      update() {
+        this.$el.html(this.getBlankValue());
+      },
+      block: true
+    },
+    'class': {
+      update() {
+        let cls = this.getBlankValue();
+        if (this.oldCls) {
+          this.$el.removeClass(this.oldCls);
+        }
+        this.$el.addClass(cls);
+        this.oldCls = cls;
       }
-      this.$el.css('display', '');
-    }
-  }
-  unbind() {
-    super();
-    if (this.directives) {
-      this.directives.forEach(directive => {
-        directive.unbind();
-      });
-    }
-  }
-  isBlock() {
-    return true;
-  }
-}
-
-export class EventDirective extends AbstractDirective {
-  constructor(el, templateInst, expression) {
-    super(el, templateInst, expression);
-    this.$el = $(el);
-  }
-  getEventType() {
-    throw 'Abstract Method [getEventType]';
-  }
-  getHandler() {
-    if (!this.handler) {
-      let handler = _.get(this.template.bind, this.expr);
-      if (!_.isFunction(handler)) {
-        throw TypeError('Invalid Event Handler ' + handler)
+    },
+    show: {
+      update() {
+        this.$el.css('display', this.getValue() ? '' : 'none');
       }
-      this.handler = handler.bind(this.template.bind);
+    },
+    hide: {
+      update() {
+        this.$el.css('display', this.getValue() ? 'none' : '');
+      }
+    },
+    value: {
+      update() {
+        this.$el.val(this.getBlankValue());
+      }
+    },
+    'if': {
+      bind() {
+        ObserveExpressionDirective.prototype.bind.call(this);
+        if (!this.directives) {
+          this.yieId = new YieId();
+          return this.yieId;
+        }
+      },
+      update() {
+        if (!this.getValue()) {
+          this.$el.css('display', 'none');
+        } else {
+          if (!this.directives) {
+            this.directives = this.tpl.parseChildNodes(this.el);
+            this.directives.forEach(directive => {
+              directive.bind();
+              this.scope = directive.getScope();
+            });
+            if (this.yieId) {
+              this.yieId.done();
+              delete this.yieId;
+            }
+          }
+          this.$el.css('display', '');
+        }
+      },
+      unbind() {
+        ObserveExpressionDirective.prototype.unbind.call(this);
+        if (this.directives) {
+          this.directives.forEach(directive => {
+            directive.unbind();
+            this.scope = directive.getScope();
+          });
+        }
+      },
+      priority: 9,
+      block: true
     }
-    return this.handler;
-  }
-  bind() {
-    this.$el.on(this.getEventType(), this.getHandler());
-  }
+  },
+  eventDirectives = ['blur', 'change', 'click', 'dblclick', 'error', 'focus', 'keydown', 'keypress', 'keyup', 'load',
+    'mousedown', 'mousemove', 'mouseout', 'mouseover', 'mouseup', 'resize', 'scroll', 'select', 'submit', 'unload', {
+      name: 'oninput',
+      eventType: 'input propertychange'
+    }];
 
-  unbind() {
-    this.$el.un(this.getEventType(), this.getHandler());
-  }
+function registerDirective(name, opt) {
+  let cls = Directive.register(name, opt);;
+  module.exports[cls.prototype.className] = cls;
 }
-function createEventDirective(name, eventType) {
 
-}
-createEventDirective('click')
+// register Simple Expression Directive
+_.each(simpleExprDirectives, (opt, name) => {
+  opt.extend = SimpleObserveExpressionDirective;
+  registerDirective(name, opt);
+});
 
-export class OnclickDirective extends EventDirective {
-  getEventType() {
-    return 'click';
+// register Expression Directive
+_.each(exprDirectives, (opt, name) => {
+  opt.extend = ObserveExpressionDirective;
+  registerDirective(name, opt);
+});
+
+// register eventDirectives
+_.each(eventDirectives, (opt) => {
+  let name;
+  if (_.isString(opt)) {
+    name = 'on' + opt;
+    opt = {
+      eventType: opt
+    }
+  } else {
+    name = opt.name;
   }
-}
-export class OndbclickDirective extends EventDirective {
-  getEventType() {
-    return 'ondblclick';
-  }
-}
-export class OnchangeDirective extends EventDirective {
-  getEventType() {
-    return 'onchange';
-  }
-}
-export class OnchangeDirective extends EventDirective {
-  getEventType() {
-    return 'onchange';
-  }
-}
-export class KeyupDirective extends EventDirective {
-  getEventType() {
-    return 'keyup';
-  }
-}
-export class KeyupDirective extends EventDirective {
-  getEventType() {
-    return 'onkeydown';
-  }
-}
-export class KeyupDirective extends EventDirective {
-  getEventType() {
-    return 'onkeypress';
-  }
-}
-export class KeyupDirective extends EventDirective {
-  getEventType() {
-    return 'onmousedown';
-  }
-}
-export class KeyupDirective extends EventDirective {
-  getEventType() {
-    return 'onmousemove';
-  }
-}
-_.each(module.exports, (cls, name) => {
-  if (Directive.isDirective(cls) && cls !== ExprDirective && cls !== TextNodeDirective) {
-    Directive.register(_.kebabCase(name.replace(/Directive$/, '')), cls);
-  }
-})
+  opt.extend = EventDirective;
+  registerDirective(name, opt);
+});
