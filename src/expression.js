@@ -12,7 +12,7 @@ export class AbstractExpression {
 
 export class EventExpression extends AbstractExpression {
   getValue() {
-    return _.get(this.bind, this.expr).bind(this.bind);
+    return _.get(this.bind, this.expr);
   }
 }
 
@@ -25,7 +25,7 @@ export class AbstractObserveExpression extends AbstractExpression {
   }
 }
 
-export class SimpleObserveExpression extends AbstractObserveExpression {
+export class ObserveExpression extends AbstractObserveExpression {
   getValue() {
     return _.get(this.bind, this.expr);
   }
@@ -33,25 +33,11 @@ export class SimpleObserveExpression extends AbstractObserveExpression {
     _.set(this.bind, this.expr, val);
   }
   observe(callback) {
-    this.bind = observer.observe(this.bind, this.expr, callback);
+    this.bind = observer.on(this.bind, this.expr, callback);
     return this.bind;
   }
   unobserve(callback) {
-    this.bind = observer.unobserve(this.bind, this.expr, callback);
-    return this.bind;
-  }
-}
-
-export class ObserveExpression extends AbstractObserveExpression {
-  getValue() {
-    return _.get(this.bind, this.expr);
-  }
-  observe(callback) {
-    this.bind = observer.observe(this.bind, this.expr, callback);
-    return this.bind;
-  }
-  unobserve(callback) {
-    this.bind = observer.unobserve(this.bind, this.expr, callback);
+    this.bind = observer.un(this.bind, this.expr, callback);
     return this.bind;
   }
 }
@@ -64,11 +50,11 @@ export class EachExpression extends AbstractObserveExpression {
     return _.get(this.bind, this.expr);
   }
   observe(callback) {
-    this.bind = observer.observe(this.bind, this.expr, callback);
+    this.bind = observer.on(this.bind, this.expr, callback);
     return this.bind;
   }
   unobserve(callback) {
-    this.bind = observer.unobserve(this.bind, this.expr, callback);
+    this.bind = observer.un(this.bind, this.expr, callback);
     return this.bind;
   }
 }

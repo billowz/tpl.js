@@ -1,6 +1,6 @@
 const _ = require('lodash'),
   Directive = require('./directive'),
-  {SimpleObserveExpression, ObserveExpression, EventExpression, EachExpression} = require('./expression'),
+  {ObserveExpression, EventExpression, EachExpression} = require('./expression'),
   {YieId} = require('./util');
 
 export class AbstractExpressionDirective extends Directive {
@@ -27,6 +27,10 @@ export class AbstractExpressionDirective extends Directive {
 }
 
 export class EventDirective extends AbstractExpressionDirective {
+  constructor(el, tpl, expr) {
+    super(el, tpl, expr);
+    this.handler = this.handler.bind(this);
+  }
 
   buildExpression() {
     return new EventExpression(this.scope, this.expr);
@@ -39,19 +43,18 @@ export class EventDirective extends AbstractExpressionDirective {
     return this.eventType;
   }
 
+  handler(e) {
+    this.getValue().call(this.scope, e, e.target, this.scope);
+  }
+
   bind() {
-    super();
-    if (!this.handler) {
-      this.handler = this.getValue();
-    }
+    super.bind();
     this.$el.on(this.getEventType(), this.handler);
   }
 
   unbind() {
-    super();
-    if (this.handler) {
-      this.$el.un(this.getEventType(), this.handler);
-    }
+    super.unbind();
+    this.$el.un(this.getEventType(), this.handler);
   }
 }
 
@@ -62,7 +65,7 @@ export class AbstractObserveExpressionDirective extends AbstractExpressionDirect
   }
 
   bind() {
-    super();
+    super.bind();
     this.scope = this.expression.observe(this.update);
     this.update();
   }
@@ -79,7 +82,7 @@ export class AbstractObserveExpressionDirective extends AbstractExpressionDirect
 export class SimpleObserveExpressionDirective extends AbstractObserveExpressionDirective {
 
   buildExpression() {
-    return new SimpleObserveExpression(this.scope, this.expr);
+    return new ObserveExpression(this.scope, this.expr);
   }
 
   setValue(val) {
@@ -212,6 +215,7 @@ const EVENT_CHANGE = 'change',
     'class': {
       update() {
         let cls = this.getBlankValue();
+        console.log('class', cls);
         if (this.oldCls) {
           this.$el.removeClass(this.oldCls);
         }

@@ -1,6 +1,6 @@
 const _ = require('lodash');
 
-export class YieId {
+class YieId {
   constructor() {
     this._doned = false;
     this._thens = [];
@@ -20,7 +20,7 @@ export class YieId {
     return this._doned;
   }
 }
-export class ArrayIterator {
+class ArrayIterator {
   constructor(array, point) {
     this.array = array;
     this.index = point || 0;
@@ -31,4 +31,8 @@ export class ArrayIterator {
   next() {
     return this.array[this.index++];
   }
+}
+module.exports = {
+  YieId: YieId,
+  ArrayIterator: ArrayIterator
 }

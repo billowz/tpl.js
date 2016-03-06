@@ -9,29 +9,27 @@
     <style>
 
     </style>
-    <!--[if lt IE 9]>
-      <script src="../dependency/html5shiv/dist/html5shiv.js"></script>
-      <script src="../dependency/respond/dest/respond.src.js"></script>
-      <script src="../dependency/console-polyfill/index.js"></script>
-    <![endif]-->
-    <script type="text/javascript" src="../dependency/observer.js/dist/shim.js"></script>
-    <script type="text/javascript" src="../dependency/lodash/lodash.js"></script>
-    <script type="text/javascript" src="../dependency/observer.js/dist/observer.js"></script>
-    <script type="text/javascript" src="../dependency/jQuery/dist/jquery.js"></script>
-    <script type="text/javascript" src="../dist/tpl.js"></script>
-    <!--<script src="../node_modules/todomvc-common/base.js"></script>
-    <script src="../node_modules/director/build/director.js"></script>-->
+
+    <script src="../node_modules/lodash/lodash.js"></script>
+    <script src="../node_modules/jQuery/dist/jquery.js"></script>
+    <script src="../node_modules/observer.js/dist/observer.js"></script>
+    <script src="../dist/tpl.js"></script>
+
+
     <script type="text/javascript">
     $(document).ready(function() {
         window.template = new tpl($(document.getElementById('tpl/todo.html')).html());
         window.templ = template.complie({
-            addTodo: function() {
-
+            addTodo: function(e, el, scope) {
+              if (e.which === 13) {
+                el = $(el);
+                this.todos.push({
+                  title: el.val()
+                })
+                el.val('')
+              }
             },
-            todos: [{
-                completed: true,
-                title: 'Test'
-            }],
+            todos: [],
             allDone: true,
             title: 'Todo MVC'
         });
@@ -40,13 +38,13 @@
     </script>
     <script id="tpl/todo.html" type="text/template">
         <div class="header">
-            <h1 tpl-text="title"></h1>
-            <input class="new-todo" autofocus autocomplete="off" placeholder="What needs to be done?" tpl-on="keyup:addTodo | key 'enter'">
+            <h1>{title}</h1>
+            <input class="new-todo" autofocus autocomplete="off" placeholder="What needs to be done?" tpl-onkeyup="addTodo">
         </div>
         <div class="main" tpl-show="todos.length">
             <input class="toggle-all" type="checkbox" tpl-checked="allDone">
             <ul class="todo-list">
-                <li class="todo" tpl-repeat="todo: filteredTodos" tpl-class="completed: todo.completed, editing: todo == editedTodo">
+                <li class="todo" tpl-repeat="todo: filteredTodos" tpl-class="{completed: todo.completed, editing: todo == editedTodo}">
                     <div class="view">
                         <input class="toggle" type="checkbox" tpl-model="todo.completed">
                         <label tpl-on="dblclick: editTodo(todo)">{{todo.title}}</label>
@@ -73,13 +71,12 @@
 </head>
 
 <body>
-    <a href="../index.html">Back</a>
     <div class="todoapp">
     </div>
     <div class="info">
         <p>Double-click to edit a todo</p>
-        <p>Written by <a href="http://evanyou.me">Evan You</a></p>
         <p>Part of <a href="http://todomvc.com">TodoMVC</a></p>
+        <p><a href="../index.html">Back</a></p>
     </div>
 </body>
 

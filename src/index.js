@@ -4,8 +4,10 @@ const _ = require('lodash'),
   Directive = require('./directive'),
   DirectiveGroup = require('./directive-group'),
   Directives = require('./directives'),
-  Expression = require('./expression'),
-  PRIMITIVE = 0,
+  Expression = require('./expression');
+
+
+const PRIMITIVE = 0,
   KEYPATH = 1,
   TEXT = 0,
   BINDING = 1,
@@ -23,7 +25,9 @@ class Template {
     let s = this.cfg.delimiter[0],
       e = this.cfg.delimiter[1];
     this.delimiterReg = new RegExp(s + '([^' + s + e + ']*)' + e, 'g');
+    console.log(this.delimiterReg)
     this.attrDirectiveTestReg = new RegExp('^' + this.cfg.directivePrefix);
+    console.log(this.attrDirectiveTestReg)
   }
 
   complie(bind) {

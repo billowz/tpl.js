@@ -4,16 +4,11 @@
 <head>
     <meta charset="utf-8">
     <title>tpl.js • TodoMVC </title>
-    <!--[if lt IE 9]>
-      <script src="../dependency/html5shiv/dist/html5shiv.js"></script>
-      <script src="../dependency/respond/dest/respond.src.js"></script>
-      <script src="../dependency/console-polyfill/index.js"></script>
-    <![endif]-->
-    <script type="text/javascript" src="../dependency/observer.js/dist/shim.js"></script>
-    <script type="text/javascript" src="../dependency/lodash/lodash.js"></script>
-    <script type="text/javascript" src="../dependency/observer.js/dist/observer.js"></script>
-    <script type="text/javascript" src="../dependency/jQuery/dist/jquery.js"></script>
-    <script type="text/javascript" src="../dist/tpl.js"></script>
+    <script src="../node_modules/lodash/lodash.js"></script>
+    <script src="../node_modules/jQuery/dist/jquery.js"></script>
+    <script src="../node_modules/observer.js/dist/observer.js"></script>
+    <script src="../dist/tpl.js"></script>
+
     <script type="text/javascript">
     $(document).ready(function() {
         var data = {
@@ -27,6 +22,7 @@
             array: ['aaaa', 'bbbb']
         }
         var docTpl = new tpl($(document.getElementById('tpl/code.html')).html());
+
         function renderTempl(id, renderTo){
             var tmpl = $(document.getElementById(id)).html();
             var t = docTpl.complie({

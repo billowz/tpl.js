@@ -12,7 +12,7 @@ var fs = require('fs'),
     entry: 'index.js',
     library: 'tpl',
     output: 'tpl.js',
-    moduleDirectories: ['dependency'],
+    moduleDirectories: ['node_modules'],
     externals: [{
       path: 'lodash',
       root: '_',
@@ -39,7 +39,7 @@ function _buildCompontent(config, rebuild) {
   }
   var cfg = Object.create(config),
     miniCfg = Object.create(config);
-  cfg.entry = miniCfg.entry = config.src + '/' + config.entry;
+  cfg.entry = miniCfg.entry = path.join(__dirname, config.src, config.entry); //config.src + '/' + config.entry;
   cfg.output = miniCfg.output = output;
   cfg.devtool = 'source-map';
   miniCfg.output = miniCfg.output.replace(/js$/, 'min.js');
@@ -72,6 +72,20 @@ gulp.task('watch', function(event) {
   gulp.watch([main.src + '/**/*.js'], function(event) {
     gulp.start('build');
   });
+});
+
+gulp.task('test', function(done) {
+  new karma({
+    configFile: __dirname + '/karma.conf.js',
+    singleRun: true
+  }).start();
+});
+
+gulp.task('tdd', function(done) {
+  new karma({
+    configFile: __dirname + '/karma.conf.js',
+    singleRun: false
+  }).start();
 });
 
 gulp.task('server', ['build'], function() {
