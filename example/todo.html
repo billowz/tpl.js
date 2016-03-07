@@ -23,14 +23,15 @@
             addTodo: function(e, el, scope) {
               if (e.which === 13) {
                 el = $(el);
+                console.log('push todo:', el.val(), this);
                 this.todos.push({
                   title: el.val()
-                })
-                el.val('')
+                });
+                el.val('');
               }
             },
             todos: [],
-            allDone: true,
+            allDone: false,
             title: 'Todo MVC'
         });
         $('.todoapp').append(templ.el);
@@ -44,7 +45,7 @@
         <div class="main" tpl-show="todos.length">
             <input class="toggle-all" type="checkbox" tpl-checked="allDone">
             <ul class="todo-list">
-                <li class="todo" tpl-repeat="todo: filteredTodos" tpl-class="{completed: todo.completed, editing: todo == editedTodo}">
+                <li class="todo" tpl-each="todo in filteredTodos" tpl-class="{completed: todo.completed, editing: todo == editedTodo}">
                     <div class="view">
                         <input class="toggle" type="checkbox" tpl-model="todo.completed">
                         <label tpl-on="dblclick: editTodo(todo)">{{todo.title}}</label>
@@ -56,7 +57,7 @@
         </div>
         <div class="footer" tpl-show="todos.length">
             <span class="todo-count">
-                  <strong tpl-text="remaining"></strong> {{remaining | pluralize 'item'}} left
+                  <strong tpl-text="remaining"></strong> {remaining | pluralize 'item'} left
               </span>
             <ul class="filters">
                 <li><a href="#/all" tpl-class="selected: visibility == 'all'">All</a></li>

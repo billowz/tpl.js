@@ -1,15 +1,15 @@
 const _ = require('lodash'),
   $ = require('jquery'),
   Binding = require('./binding'),
-  {ObserveExpression} = require('./expression');
+  {Expression} = require('./expression');
 
 class Text extends Binding {
   constructor(el, tpl, expr) {
     super(tpl);
     this.el = el;
     this.expr = expr;
-    this.expression = new ObserveExpression(this.scope, expr);
     this.update = this.update.bind(this);
+    this.expression = new Expression(this.scope, expr, this.update);
   }
 
   bind() {
@@ -18,15 +18,14 @@ class Text extends Binding {
       this.comment.insertBefore(this.el);
     }
     this.scope = this.expression.observe(this.update);
-    this.update();
+    this.update(this.expression.value());
   }
 
   unbind() {
-    this.scope = this.expression.unobserve(this.update);
+    this.scope = this.expression.unobserve();
   }
 
-  update() {
-    let val = this.expression.getValue();
+  update(val) {
     if (val === undefined || val === null) {
       val = '';
     }

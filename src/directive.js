@@ -65,7 +65,7 @@ const directives = {},
 
         let constructor = _.isFunction(opt.constructor) ? opt.constructor : undefined,
           Directive = (function() {
-            return function() {
+            let fn = function() {
               if (!(this instanceof SuperClass)) {
                 throw new TypeError('Cannot call a class as a function');
               }
@@ -74,6 +74,7 @@ const directives = {},
                 constructor.apply(this, arguments);
               }
             }
+            return fn;
           })();
 
         Directive.prototype = Object.create(SuperClass.prototype, {

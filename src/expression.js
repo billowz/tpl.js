@@ -1,60 +1,52 @@
-const _ = require('lodash');
+const _ = require('lodash'),
+  observer = require('observer');
 
-export class AbstractExpression {
-  constructor(bind, expr) {
-    this.bind = bind;
+export class Expression {
+  constructor(scope, expr, handler) {
+    this.scope = scope;
     this.expr = expr;
+    this.filters = [];
+    this.handler = handler;
+    this.__listen = this.__listen.bind(this);
   }
-  getValue() {
-    throw 'Abstract Method[' + this.constructor.name + '.getValue]';
-  }
-}
 
-export class EventExpression extends AbstractExpression {
-  getValue() {
-    return _.get(this.bind, this.expr);
+  realValue() {
+    return _.get(this.scope, this.expr);
   }
-}
 
-export class AbstractObserveExpression extends AbstractExpression {
-  observe(callback) {
-    throw 'Abstract Method[' + this.constructor.name + '.observe]';
+  setRealValue(val) {
+    _.set(this.scope, this.expr, val);
   }
-  unobserve(callback) {
-    throw 'Abstract Method[' + this.constructor.name + '.unobserve]';
-  }
-}
 
-export class ObserveExpression extends AbstractObserveExpression {
-  getValue() {
-    return _.get(this.bind, this.expr);
+  value() {
+    let val = _.get(this.scope, this.expr);
+    for (let i = 0; i < this.filters.length; i++) {
+      val = this.filters[i].apply(val);
+    }
+    return val;
   }
+
   setValue(val) {
-    _.set(this.bind, this.expr, val);
+    for (let i = 0; i < this.filters.length; i++) {
+      val = this.filters[i].unapply(val);
+    }
+    _.set(this.scope, this.expr, val);
   }
-  observe(callback) {
-    this.bind = observer.on(this.bind, this.expr, callback);
-    return this.bind;
-  }
-  unobserve(callback) {
-    this.bind = observer.un(this.bind, this.expr, callback);
-    return this.bind;
-  }
-}
 
-export class EachExpression extends AbstractObserveExpression {
-  constructor(bind, expr) {
-    super(bind, expr)
+  observe() {
+    this.scope = observer.on(this.scope, this.expr, this.__listen);
+    return this.scope;
   }
-  getValue() {
-    return _.get(this.bind, this.expr);
+
+  unobserve() {
+    this.scope = observer.un(this.scope, this.expr, this.__listen);
+    return this.scope;
   }
-  observe(callback) {
-    this.bind = observer.on(this.bind, this.expr, callback);
-    return this.bind;
-  }
-  unobserve(callback) {
-    this.bind = observer.un(this.bind, this.expr, callback);
-    return this.bind;
+
+  __listen(expr, val) {
+    for (let i = 0; i < this.filters.length; i++) {
+      val = this.filters[i].apply(val);
+    }
+    this.handler(val);
   }
 }
