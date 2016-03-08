@@ -32,7 +32,7 @@
     "jquery": "^2.2.1",
     "lodash": "^4.6.1",
     "observer.js": "^0.0.2",
-    "todomvc-common": "2.2.1",
+    "todomvc-common": "",
     "todomvc-app-css": "^2.0.4"
   },
   "devDependencies": {

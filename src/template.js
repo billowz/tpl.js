@@ -1,8 +1,7 @@
 const _ = require('lodash'),
   $ = require('jquery'),
   Text = require('./text'),
-  Directive = require('./directive'),
-  DirectiveGroup = require('./directive-group');
+  {Directive, DirectiveGroup} = require('./directive');
 
 
 const PRIMITIVE = 0,
@@ -54,7 +53,7 @@ class TemplateInstance {
     this.bindings = this.parse(this.el);
     this.bindings.forEach(directive => {
       directive.bind();
-      this.scope = directive.getScope();
+      this.scope = directive.scope;
     });
   }
 
@@ -119,41 +118,37 @@ class TemplateInstance {
     let block = false,
       $el = $(el),
       directives = [],
-      consts = [],
-      instances = [];
+      consts = [];
     if (el.attributes) {
       _.each(el.attributes, attr => {
         let name = attr.name,
           val = attr.value,
-          directiveConst,
-          directive;
+          dc, directive;
 
-        if ((name = this.parseDirectiveName(name)) && (directiveConst = Directive.getDirective(name))) {
-          if (directiveConst.prototype.abstract) {
+        if ((name = this.parseDirectiveName(name)) && (dc = Directive.getDirective(name))) {
+          if (dc.prototype.abstract) {
             consts = [{
-              const: directiveConst,
+              const: dc,
               val: val
             }];
             block = true;
             return false;
           }
           consts.push({
-            const: directiveConst,
+            const: dc,
             val: val
           });
-          if (directiveConst.prototype.block)
+          if (dc.prototype.block)
             block = true;
         } else if (name) {
           console.warn('Directive is undefined ' + attr.name);
         }
       });
-      for (let i = 0; i < consts.length; i++) {
-        instances.push(new consts[i].const(el, this, consts[i].val));
-      }
-      if (instances.length > 1) {
-        directives.push(new DirectiveGroup(el, this, instances));
-      } else if (instances.length == 1) {
-        directives.push(instances[0]);
+
+      if (consts.length > 1) {
+        directives.push(new DirectiveGroup(el, this, consts));
+      } else if (consts.length == 1) {
+        directives.push(new consts[0].const(el, this, consts[0].val));
       }
     }
     if (!block) {

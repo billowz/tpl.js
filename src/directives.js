@@ -1,7 +1,6 @@
 const _ = require('lodash'),
-  Directive = require('./directive'),
+  {Directive} = require('./directive'),
   Template = require('./template'),
-  {Expression} = require('./expression'),
   {YieId} = require('./util');
 
 function registerDirective(name, opt) {
@@ -16,7 +15,7 @@ export class AbstractEventDirective extends Directive {
   }
 
   handler(e) {
-    let fn = _.get(this.scope, this.expr);
+    let fn = this.value(this.expr);
     if (typeof fn != 'function') {
       throw TypeError("Invalid Event Handler ");
     }
@@ -24,12 +23,10 @@ export class AbstractEventDirective extends Directive {
   }
 
   bind() {
-    super.bind();
     this.$el.on(this.eventType, this.handler);
   }
 
   unbind() {
-    super.unbind();
     this.$el.un(this.eventType, this.handler);
   }
 }
@@ -59,44 +56,30 @@ _.each(events, (opt) => {
 export class AbstractExpressionDirective extends Directive {
   constructor(el, tpl, expr) {
     super(el, tpl, expr);
-    this.update = this.update.bind(this);
-    this.expression = new Expression(this.scope, this.expr, this.update);
+    this.observeHandler = this.observeHandler.bind(this);
   }
 
   bind() {
-    super.bind();
-    this.scope = this.expression.observe();
+    this.observe(this.expr, this.observeHandler);
     this.update(this.value());
   }
 
   unbind() {
-    this.scope = this.expression.unobserve();
-  }
-
-  setRealValue(val) {
-    return this.expression.setRealValue(val);
-  }
-
-  setValue(val) {
-    return this.expression.setValue(val);
-  }
-
-  realValue() {
-    return this.expression.realValue();
-  }
-
-  value() {
-    return this.expression.value();
+    this.unobserve(this.expr, this.observeHandler);
   }
 
   blankValue(val) {
     if (arguments.length == 0) {
-      val = this.expression.value();
+      val = this.value();
     }
     if (val === undefined || val == null) {
       return '';
     }
     return val;
+  }
+
+  observeHandler(attr, val) {
+    this.update(val);
   }
 
   update(val) {
@@ -151,6 +134,11 @@ const EVENT_CHANGE = 'change',
         this.$el.val(this.blankValue(val));
       }
     },
+    checked: {
+      update(val) {
+        this.$el.prop('checked', !!val);
+      }
+    },
     'if': {
       bind() {
         AbstractExpressionDirective.prototype.bind.call(this);
@@ -167,7 +155,7 @@ const EVENT_CHANGE = 'change',
             this.directives = this.tpl.parseChildNodes(this.el);
             this.directives.forEach(directive => {
               directive.bind();
-              this.scope = directive.getScope();
+              this.scope = directive.scope;
             });
             if (this.yieId) {
               this.yieId.done();
@@ -182,7 +170,7 @@ const EVENT_CHANGE = 'change',
         if (this.directives) {
           this.directives.forEach(directive => {
             directive.unbind();
-            this.scope = directive.getScope();
+            this.scope = directive.scope;
           });
         }
       },
@@ -225,7 +213,7 @@ const EVENT_CHANGE = 'change',
         let val = this.elVal();
 
         if (val != this.val)
-          this.setValue(val);
+          this.value(val);
       },
 
       update(val) {
@@ -309,8 +297,8 @@ const eachReg = /^\s*([\S][\s\S]+[\S])\s+in\s+([\S]+)(\s+track\s+by\s+([\S]+))?\
 export class EachDirective extends Directive {
   constructor(el, tpl, expr) {
     super(el, tpl, expr);
-    this.__listen = this.__listen.bind(this);
-    this.__lenListen = this.__lenListen.bind(this);
+    this.observeHandler = this.observeHandler.bind(this);
+    this.lengthObserveHandler = this.lengthObserveHandler.bind(this);
 
     let token = expr.match(eachReg);
     if (!token)
@@ -343,10 +331,17 @@ export class EachDirective extends Directive {
   }
 
   bind() {
-    super.bind();
-    this.scope = observer.on(this.scope, this.scopeExpr, this.__listen);
-    this.scope = observer.on(this.scope, this.scopeExpr + '.length', this.__lenListen);
+    this.observe(this.scopeExpr, this.observeHandler);
+
+    this.scope = observer.on(this.scope, this.scopeExpr, this.observeHandler);
+    this.scope = observer.on(this.scope, this.scopeExpr + '.length', this.lengthObserveHandler);
     this.update(_.get(this.scope, this.scopeExpr));
+  }
+
+  unbind() {
+    super.unbind();
+    this.scope = observer.un(this.scope, this.scopeExpr, this.observeHandler);
+    this.scope = observer.un(this.scope, this.scopeExpr + '.length', this.lengthObserveHandler);
   }
 
   update(scope) {
@@ -359,16 +354,10 @@ export class EachDirective extends Directive {
     }
   }
 
-  unbind() {
-    super.unbind();
-    this.scope = observer.un(this.scope, this.scopeExpr, this.__listen);
-    this.scope = observer.un(this.scope, this.scopeExpr + '.length', this.__lenListen);
-  }
-
-  __listen(expr, val) {
+  observeHandler(expr, val) {
     this.update(val);
   }
-  __lenListen(expr, val) {
+  lengthObserveHandler(expr, val) {
     this.update(_.get(this.scope, this.scopeExpr));
   }
 }

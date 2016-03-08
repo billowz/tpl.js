@@ -86,6 +86,8 @@ return /******/ (function(modules) { // webpackBootstrap
 	  directivePrefix: 'tpl-'
 	};
 	
+	var __tmp_id__ = 0;
+	
 	var Template = function () {
 	  function Template(templ, cfg) {
 	    _classCallCheck(this, Template);
@@ -96,27 +98,35 @@ return /******/ (function(modules) { // webpackBootstrap
 	    var s = this.cfg.delimiter[0],
 	        e = this.cfg.delimiter[1];
 	    this.delimiterReg = new RegExp(s + '([^' + s + e + ']*)' + e, 'g');
-	    console.log(this.delimiterReg);
 	    this.attrDirectiveTestReg = new RegExp('^' + this.cfg.directivePrefix);
-	    console.log(this.attrDirectiveTestReg);
+	    this.__instance_nr__ = 0;
+	    this.__id__ = __tmp_id__++;
 	  }
 	
-	  Template.prototype.complie = function complie(bind) {
-	    return new TemplateInstance(this, bind);
+	  Template.prototype.complie = function complie(scope, parent) {
+	    return new TemplateInstance(this, scope, parent);
 	  };
 	
 	  return Template;
 	}();
 	
 	var TemplateInstance = function () {
-	  function TemplateInstance(tpl, bind) {
+	  function TemplateInstance(tpl, scope, parent) {
 	    _classCallCheck(this, TemplateInstance);
 	
 	    this.tpl = tpl;
-	    this.bind = bind;
+	    this.scope = scope;
 	    this.el = this.tpl.template.clone();
+	    this.cfg = tpl.cfg;
+	    this.parent = parent;
+	    this.__id__ = tpl.__id__ + '-' + tpl.__instance_nr__++;
 	    this.init();
 	  }
+	
+	  TemplateInstance.prototype.renderTo = function renderTo(el) {
+	    $(el).append(this.el);
+	    return this;
+	  };
 	
 	  TemplateInstance.prototype.init = function init() {
 	    var _this = this;
@@ -124,7 +134,7 @@ return /******/ (function(modules) { // webpackBootstrap
 	    this.bindings = this.parse(this.el);
 	    this.bindings.forEach(function (directive) {
 	      directive.bind();
-	      _this.bind = directive.getScope();
+	      _this.scope = directive.getScope();
 	    });
 	  };
 	
@@ -200,27 +210,40 @@ return /******/ (function(modules) { // webpackBootstrap
 	    var block = false,
 	        $el = $(el),
 	        directives = [],
-	        directiveItems = [];
+	        consts = [],
+	        instances = [];
 	    if (el.attributes) {
 	      _.each(el.attributes, function (attr) {
 	        var name = attr.name,
 	            val = attr.value,
 	            directiveConst = void 0,
 	            directive = void 0;
+	
 	        if ((name = _this3.parseDirectiveName(name)) && (directiveConst = Directive.getDirective(name))) {
-	          directive = new directiveConst(el, _this3, val);
-	          directiveItems.push(directive);
-	          if (directive.isBlock()) {
+	          if (directiveConst.prototype.abstract) {
+	            consts = [{
+	              'const': directiveConst,
+	              val: val
+	            }];
 	            block = true;
+	            return false;
 	          }
+	          consts.push({
+	            'const': directiveConst,
+	            val: val
+	          });
+	          if (directiveConst.prototype.block) block = true;
 	        } else if (name) {
 	          console.warn('Directive is undefined ' + attr.name);
 	        }
 	      });
-	      if (directiveItems.length > 1) {
-	        directives.push(new DirectiveGroup(el, this, directiveItems));
-	      } else if (directiveItems.length == 1) {
-	        directives.push(directiveItems[0]);
+	      for (var i = 0; i < consts.length; i++) {
+	        instances.push(new consts[i]['const'](el, this, consts[i].val));
+	      }
+	      if (instances.length > 1) {
+	        directives.push(new DirectiveGroup(el, this, instances));
+	      } else if (instances.length == 1) {
+	        directives.push(instances[0]);
 	      }
 	    }
 	    if (!block) {
@@ -333,7 +356,7 @@ return /******/ (function(modules) { // webpackBootstrap
 	    _classCallCheck(this, Binding);
 	
 	    this.tpl = tpl;
-	    this.scope = tpl.bind;
+	    this.scope = tpl.scope;
 	  }
 	
 	  Binding.prototype.bind = function bind() {
@@ -458,6 +481,7 @@ return /******/ (function(modules) { // webpackBootstrap
 	    _this.el = el;
 	    _this.$el = $(el);
 	    _this.expr = expr;
+	    _this.attr = tpl.cfg.directivePrefix + _this.name;
 	    return _this;
 	  }
 	
@@ -481,9 +505,10 @@ return /******/ (function(modules) { // webpackBootstrap
 	  return Directive;
 	}(Binding);
 	
-	Directive.prototype.name = null;
-	Directive.prototype.priority = 0;
+	Directive.prototype.abstract = false;
+	Directive.prototype.name = 'Unkown';
 	Directive.prototype.block = false;
+	Directive.prototype.priority = 0;
 	
 	var directives = {},
 	    isDirective = Directive.isDirective = function isDirective(object) {
@@ -547,15 +572,16 @@ return /******/ (function(modules) { // webpackBootstrap
 	      Object.setPrototypeOf(Directive, SuperClass);
 	      return Directive;
 	    }(option, Directive);
+	
+	    directive.prototype.className = _.capitalize(name) + 'Directive';
 	  } else if (isDirective(option)) {
 	    directive = option;
+	    directive.prototype.className = directive.prototype.constructor.name;
 	  } else {
 	    throw TypeError('Invalid Directive Object ' + option);
 	  }
 	
 	  directive.prototype.name = name;
-	  var clsName = directive.prototype.constructor.name;
-	  directive.prototype.className = clsName ? clsName : _.capitalize(name) + 'Directive';
 	
 	  directives[name] = directive;
 	  return directive;
@@ -714,6 +740,7 @@ return /******/ (function(modules) { // webpackBootstrap
 	
 	var _ = __webpack_require__(2);
 	var Directive = __webpack_require__(8);
+	var Template = __webpack_require__(1);
 	
 	var _require = __webpack_require__(6);
 	
@@ -742,7 +769,11 @@ return /******/ (function(modules) { // webpackBootstrap
 	  }
 	
 	  AbstractEventDirective.prototype.handler = function handler(e) {
-	    _.get(this.scope, this.expr).call(this.scope, e, e.target, this.scope);
+	    var fn = _.get(this.scope, this.expr);
+	    if (typeof fn != 'function') {
+	      throw TypeError("Invalid Event Handler ");
+	    }
+	    fn.call(this.scope, e, e.target, this.scope);
 	  };
 	
 	  AbstractEventDirective.prototype.bind = function bind() {
@@ -860,7 +891,6 @@ return /******/ (function(modules) { // webpackBootstrap
 	  'class': {
 	    update: function update(val) {
 	      var cls = this.blankValue(val);
-	      console.log('class', cls);
 	      if (this.oldCls) {
 	        this.$el.removeClass(this.oldCls);
 	      }
@@ -947,7 +977,6 @@ return /******/ (function(modules) { // webpackBootstrap
 	        default:
 	          throw TypeError('Directive[input] not support ' + tag);
 	      }
-	      console.log('input', tag, el);
 	    },
 	    bind: function bind() {
 	      AbstractExpressionDirective.prototype.bind.call(this);
@@ -1034,7 +1063,8 @@ return /******/ (function(modules) { // webpackBootstrap
 	  whitespace = [ \t\n\r]
 	*/
 	
-	var eachReg = /^\s*([\s\S]+?)\s+in\s+([\s\S]+?)(?:\s+track\s+by\s+([\s\S]+?))?\s*$/;
+	var eachReg = /^\s*([\S][\s\S]+[\S])\s+in\s+([\S]+)(\s+track\s+by\s+([\S]+))?\s*$/,
+	    eachAliasReg = /^(\(\s*([\S]+)(\s*,\s*([\S]+))?\s*\))|([\S]+)(\s*,\s*([\S]+))$/;
 	
 	var EachDirective = exports.EachDirective = function (_Directive3) {
 	  _inherits(EachDirective, _Directive3);
@@ -1044,28 +1074,75 @@ return /******/ (function(modules) { // webpackBootstrap
 	
 	    var _this5 = _possibleConstructorReturn(this, _Directive3.call(this, el, tpl, expr));
 	
-	    var token = expr.match(eachReg);
-	    if (!token) throw Error('Invalid Expression on Each Directive');
-	    var alias = token[1],
-	        scope = token[2],
-	        index = token[3];
+	    _this5.__listen = _this5.__listen.bind(_this5);
+	    _this5.__lenListen = _this5.__lenListen.bind(_this5);
 	
-	    console.log('each directive: alias = ' + alias + ', obj = ' + scope + ', index = ' + index);
+	    var token = expr.match(eachReg);
+	    if (!token) throw Error('Invalid Expression[' + expr + '] on Each Directive');
+	
+	    _this5.scopeExpr = token[2];
+	    _this5.indexExpr = token[4];
+	
+	    var aliasToken = token[1].match(eachAliasReg);
+	    if (!aliasToken) throw Error('Invalid Expression[' + token[1] + '] on Each Directive');
+	
+	    _this5.valueAlias = aliasToken[2] || aliasToken[5];
+	    _this5.keyAlias = aliasToken[4] || aliasToken[7];
+	
+	    _this5.$parentEl = _this5.$el.parent();
+	    _this5.$el.remove().removeAttr(_this5.attr);
+	    _this5.childTpl = new Template(_this5.$el);
 	    return _this5;
 	  }
 	
+	  EachDirective.prototype.bindChild = function bindChild(idx, data) {
+	    var scope = {};
+	
+	    if (this.keyAlias) scope[this.keyAlias] = idx;
+	    scope[this.valueAlias] = data;
+	
+	    console.log('bindChild', idx, scope, this.el);
+	    var tpl = this.childTpl.complie(scope).renderTo(this.$parentEl);
+	  };
+	
 	  EachDirective.prototype.bind = function bind() {
 	    _Directive3.prototype.bind.call(this);
+	    this.scope = observer.on(this.scope, this.scopeExpr, this.__listen);
+	    this.scope = observer.on(this.scope, this.scopeExpr + '.length', this.__lenListen);
+	    this.update(_.get(this.scope, this.scopeExpr));
+	  };
+	
+	  EachDirective.prototype.update = function update(scope) {
+	    if (scope instanceof Array) {
+	      for (var i = 0; i < scope.length; i++) {
+	        this.bindChild(i, scope[i]);
+	      }
+	    } else {
+	      throw Error('Invalid Each Scope[' + this.scopeExpr + ']');
+	    }
 	  };
 	
 	  EachDirective.prototype.unbind = function unbind() {
 	    _Directive3.prototype.unbind.call(this);
+	    this.scope = observer.un(this.scope, this.scopeExpr, this.__listen);
+	    this.scope = observer.un(this.scope, this.scopeExpr + '.length', this.__lenListen);
+	  };
+	
+	  EachDirective.prototype.__listen = function __listen(expr, val) {
+	    this.update(val);
+	  };
+	
+	  EachDirective.prototype.__lenListen = function __lenListen(expr, val) {
+	    this.update(_.get(this.scope, this.scopeExpr));
 	  };
 	
 	  return EachDirective;
 	}(Directive);
 	
+	EachDirective.prototype.abstract = true;
+	EachDirective.prototype.block = true;
 	EachDirective.prototype.priority = 10;
+	
 	Directive.register('each', EachDirective);
 
 /***/ }

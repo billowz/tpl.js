@@ -1,28 +1,29 @@
 const _ = require('lodash'),
   $ = require('jquery'),
-  Binding = require('./binding'),
-  {Expression} = require('./expression');
+  {Binding} = require('./binding');
 
 class Text extends Binding {
   constructor(el, tpl, expr) {
-    super(tpl);
+    super(tpl, expr);
     this.el = el;
-    this.expr = expr;
-    this.update = this.update.bind(this);
-    this.expression = new Expression(this.scope, expr, this.update);
+    this.observeHandler = this.observeHandler.bind(this);
   }
 
   bind() {
-    if (Binding.genComment && !this.comment) {
+    if (Binding.generateComments && !this.comment) {
       this.comment = $(document.createComment('Text Binding ' + this.expr));
       this.comment.insertBefore(this.el);
     }
-    this.scope = this.expression.observe(this.update);
-    this.update(this.expression.value());
+    this.observe(this.expr, this.observeHandler);
+    this.update(this.value(this.expr));
   }
 
   unbind() {
-    this.scope = this.expression.unobserve();
+    this.unobserve(this.expr, this.observeHandler);
+  }
+
+  observeHandler(attr, val) {
+    this.update(val);
   }
 
   update(val) {

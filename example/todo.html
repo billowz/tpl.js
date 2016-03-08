@@ -38,14 +38,14 @@
 
             },
             todoDone(){
-
+              console.log(this)
             },
             doneAll(){
-              this.allDone = true;
+              this.allDone = !this.allDone;
               _.each(this.todos, function(todo){
-                todo.completed = true;
-              })
-            }
+                todo.completed = this.allDone;
+              }.bind(this));
+            },
             todos: [{
               title:'abc',
               completed: false
@@ -63,11 +63,11 @@
                 tpl-onkeyup="addTodo">
         </div>
         <div class="main" tpl-show="todos.length">
-            <input class="toggle-all" type="checkbox" tpl-checked="allDone">
+            <input class="toggle-all" type="checkbox" tpl-checked="allDone" tpl-onclick="doneAll">
             <ul class="todo-list">
                 <li class="todo" tpl-each="todo, idx in todos track by id" tpl-class="title">
                     <div class="view">
-                        <input class="toggle" type="checkbox" tpl-checked="todo.completed">
+                        <input class="toggle" type="checkbox" tpl-checked="todo.completed" tpl-onclick="todoDone">
                         <label tpl-ondblclick="editTodo">{idx}:{todo.title}</label>
                         <button class="destroy" tpl-onclick="removeTodo"></button>
                     </div>
