@@ -1,5 +1,6 @@
 const _ = require('lodash'),
   Directive = require('./directive'),
+  Template = require('./template'),
   {Expression} = require('./expression'),
   {YieId} = require('./util');
 
@@ -15,7 +16,11 @@ export class AbstractEventDirective extends Directive {
   }
 
   handler(e) {
-    _.get(this.scope, this.expr).call(this.scope, e, e.target, this.scope);
+    let fn = _.get(this.scope, this.expr);
+    if (typeof fn != 'function') {
+      throw TypeError("Invalid Event Handler ");
+    }
+    fn.call(this.scope, e, e.target, this.scope);
   }
 
   bind() {
@@ -124,7 +129,6 @@ const EVENT_CHANGE = 'change',
     'class': {
       update(val) {
         let cls = this.blankValue(val);
-        console.log('class', cls);
         if (this.oldCls) {
           this.$el.removeClass(this.oldCls);
         }
@@ -205,7 +209,6 @@ const EVENT_CHANGE = 'change',
             break;
           default: throw TypeError('Directive[input] not support ' + tag);
         }
-        console.log('input', tag, el);
       },
 
       bind() {
@@ -272,26 +275,105 @@ _.each(expressions, (opt, name) => {
   registerDirective(name, opt);
 });
 
-const eachReg = /([^\s]+)\s+in\s+([^\s]+)(\s+by\s+([^\s]+))?$/;
+
+/*
+  start = whitespace* a:alias in v:variable idx:(by identifier)? whitespace*{
+    return {
+        key: a[0],
+          value: a[1],
+          scope: v,
+          idx: idx ? idx[1]:undefined
+      }
+  }
+
+  alias = '(' a:_alias ')'{ return a; } / _alias
+
+  _alias = whitespace* key:identifier val:(whitespace* ',' whitespace* identifier)? whitespace*{
+    return [key, val[3]];
+  }
+
+  in = whitespace+ [iI][nN] whitespace+
+
+  by = whitespace+ [bB][yY] whitespace+
+
+  variable = $(identifier ('.' identifier / '[' ([\"] (identifier / [0-9]+) [\"] / [\'] (identifier / [0-9]+) [\'] / [0-9]+) ']')*)
+
+  identifier = $([a-zA-Z_][a-zA-Z0-9_]*)
+
+  whitespace = [ \t\n\r]
+*/
+
+const eachReg = /^\s*([\S][\s\S]+[\S])\s+in\s+([\S]+)(\s+track\s+by\s+([\S]+))?\s*$/,
+  eachAliasReg = /^(\(\s*([\S]+)(\s*,\s*([\S]+))?\s*\))|([\S]+)(\s*,\s*([\S]+))$/;
+
 export class EachDirective extends Directive {
   constructor(el, tpl, expr) {
     super(el, tpl, expr);
-    let token = eachReg.exec(expr);
+    this.__listen = this.__listen.bind(this);
+    this.__lenListen = this.__lenListen.bind(this);
+
+    let token = expr.match(eachReg);
     if (!token)
-      throw Error('Invalid Expression on Each Directive');
-    this.alias = token[1];
-    this.obj = token[2];
-    this.index = token[4];
-    console.log(`each directive: alias = ${this.alias}, obj = ${this.obj}, index = ${this.index}`)
+      throw Error(`Invalid Expression[${expr}] on Each Directive`);
+
+    this.scopeExpr = token[2];
+    this.indexExpr = token[4];
+
+    let aliasToken = token[1].match(eachAliasReg);
+    if (!aliasToken)
+      throw Error(`Invalid Expression[${token[1]}] on Each Directive`);
+
+    this.valueAlias = aliasToken[2] || aliasToken[5];
+    this.keyAlias = aliasToken[4] || aliasToken[7];
+
+    this.$parentEl = this.$el.parent();
+    this.$el.remove().removeAttr(this.attr);
+    this.childTpl = new Template(this.$el);
+  }
+
+  bindChild(idx, data) {
+    let scope = {};
+
+    if (this.keyAlias)
+      scope[this.keyAlias] = idx;
+    scope[this.valueAlias] = data;
+
+    console.log('bindChild', idx, scope, this.el);
+    let tpl = this.childTpl.complie(scope).renderTo(this.$parentEl);
   }
 
   bind() {
     super.bind();
+    this.scope = observer.on(this.scope, this.scopeExpr, this.__listen);
+    this.scope = observer.on(this.scope, this.scopeExpr + '.length', this.__lenListen);
+    this.update(_.get(this.scope, this.scopeExpr));
+  }
+
+  update(scope) {
+    if (scope instanceof Array) {
+      for (let i = 0; i < scope.length; i++) {
+        this.bindChild(i, scope[i]);
+      }
+    } else {
+      throw Error(`Invalid Each Scope[${this.scopeExpr}]`);
+    }
   }
 
   unbind() {
     super.unbind();
+    this.scope = observer.un(this.scope, this.scopeExpr, this.__listen);
+    this.scope = observer.un(this.scope, this.scopeExpr + '.length', this.__lenListen);
+  }
+
+  __listen(expr, val) {
+    this.update(val);
+  }
+  __lenListen(expr, val) {
+    this.update(_.get(this.scope, this.scopeExpr));
   }
 }
+EachDirective.prototype.abstract = true;
+EachDirective.prototype.block = true;
 EachDirective.prototype.priority = 10;
+
 Directive.register('each', EachDirective);

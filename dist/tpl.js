@@ -1,13 +1,13 @@
 (function webpackUniversalModuleDefinition(root, factory) {
 	if(typeof exports === 'object' && typeof module === 'object')
-		module.exports = factory(require("_"), require("jquery"));
+		module.exports = factory(require("_"), require("jquery"), require("observer"));
 	else if(typeof define === 'function' && define.amd)
-		define(["_", "jquery"], factory);
+		define(["_", "jquery", "observer"], factory);
 	else if(typeof exports === 'object')
-		exports["tpl"] = factory(require("_"), require("jquery"));
+		exports["tpl"] = factory(require("_"), require("jquery"), require("observer"));
 	else
-		root["tpl"] = factory(root["_"], root["jQuery"]);
-})(this, function(__WEBPACK_EXTERNAL_MODULE_1__, __WEBPACK_EXTERNAL_MODULE_2__) {
+		root["tpl"] = factory(root["_"], root["jQuery"], root["observer"]);
+})(this, function(__WEBPACK_EXTERNAL_MODULE_2__, __WEBPACK_EXTERNAL_MODULE_3__, __WEBPACK_EXTERNAL_MODULE_7__) {
 return /******/ (function(modules) { // webpackBootstrap
 /******/ 	// The module cache
 /******/ 	var installedModules = {};
@@ -56,17 +56,25 @@ return /******/ (function(modules) { // webpackBootstrap
 
 	'use strict';
 	
+	var tpl = __webpack_require__(1);
+	tpl.Directives = __webpack_require__(11);
+	module.exports = tpl;
+
+/***/ },
+/* 1 */
+/***/ function(module, exports, __webpack_require__) {
+
+	'use strict';
+	
 	var _typeof = typeof Symbol === "function" && typeof Symbol.iterator === "symbol" ? function (obj) { return typeof obj; } : function (obj) { return obj && typeof Symbol === "function" && obj.constructor === Symbol ? "symbol" : typeof obj; };
 	
 	function _classCallCheck(instance, Constructor) { if (!(instance instanceof Constructor)) { throw new TypeError("Cannot call a class as a function"); } }
 	
-	var _ = __webpack_require__(1),
-	    $ = __webpack_require__(2),
-	    Text = __webpack_require__(3),
-	    Directive = __webpack_require__(6),
-	    DirectiveGroup = __webpack_require__(7),
-	    Directives = __webpack_require__(9),
-	    Expression = __webpack_require__(5);
+	var _ = __webpack_require__(2),
+	    $ = __webpack_require__(3),
+	    Text = __webpack_require__(4),
+	    Directive = __webpack_require__(8),
+	    DirectiveGroup = __webpack_require__(9);
 	
 	var PRIMITIVE = 0,
 	    KEYPATH = 1,
@@ -88,7 +96,9 @@ return /******/ (function(modules) { // webpackBootstrap
 	    var s = this.cfg.delimiter[0],
 	        e = this.cfg.delimiter[1];
 	    this.delimiterReg = new RegExp(s + '([^' + s + e + ']*)' + e, 'g');
+	    console.log(this.delimiterReg);
 	    this.attrDirectiveTestReg = new RegExp('^' + this.cfg.directivePrefix);
+	    console.log(this.attrDirectiveTestReg);
 	  }
 	
 	  Template.prototype.complie = function complie(bind) {
@@ -234,17 +244,7 @@ return /******/ (function(modules) { // webpackBootstrap
 	  return TemplateInstance;
 	}();
 	
-	Template.Directive = Directive;
-	Template.Directives = Directives;
-	Template.Expression = Expression;
-	
 	module.exports = Template;
-
-/***/ },
-/* 1 */
-/***/ function(module, exports) {
-
-	module.exports = __WEBPACK_EXTERNAL_MODULE_1__;
 
 /***/ },
 /* 2 */
@@ -254,6 +254,12 @@ return /******/ (function(modules) { // webpackBootstrap
 
 /***/ },
 /* 3 */
+/***/ function(module, exports) {
+
+	module.exports = __WEBPACK_EXTERNAL_MODULE_3__;
+
+/***/ },
+/* 4 */
 /***/ function(module, exports, __webpack_require__) {
 
 	'use strict';
@@ -264,13 +270,13 @@ return /******/ (function(modules) { // webpackBootstrap
 	
 	function _inherits(subClass, superClass) { if (typeof superClass !== "function" && superClass !== null) { throw new TypeError("Super expression must either be null or a function, not " + typeof superClass); } subClass.prototype = Object.create(superClass && superClass.prototype, { constructor: { value: subClass, enumerable: false, writable: true, configurable: true } }); if (superClass) Object.setPrototypeOf ? Object.setPrototypeOf(subClass, superClass) : subClass.__proto__ = superClass; }
 	
-	var _ = __webpack_require__(1);
-	var $ = __webpack_require__(2);
-	var Binding = __webpack_require__(4);
+	var _ = __webpack_require__(2);
+	var $ = __webpack_require__(3);
+	var Binding = __webpack_require__(5);
 	
-	var _require = __webpack_require__(5);
+	var _require = __webpack_require__(6);
 	
-	var ObserveExpression = _require.ObserveExpression;
+	var Expression = _require.Expression;
 	
 	var Text = function (_Binding) {
 	  _inherits(Text, _Binding);
@@ -282,8 +288,8 @@ return /******/ (function(modules) { // webpackBootstrap
 	
 	    _this.el = el;
 	    _this.expr = expr;
-	    _this.expression = new ObserveExpression(_this.scope, expr);
 	    _this.update = _this.update.bind(_this);
+	    _this.expression = new Expression(_this.scope, expr, _this.update);
 	    return _this;
 	  }
 	
@@ -293,15 +299,14 @@ return /******/ (function(modules) { // webpackBootstrap
 	      this.comment.insertBefore(this.el);
 	    }
 	    this.scope = this.expression.observe(this.update);
-	    this.update();
+	    this.update(this.expression.value());
 	  };
 	
 	  Text.prototype.unbind = function unbind() {
-	    this.scope = this.expression.unobserve(this.update);
+	    this.scope = this.expression.unobserve();
 	  };
 	
-	  Text.prototype.update = function update() {
-	    var val = this.expression.getValue();
+	  Text.prototype.update = function update(val) {
 	    if (val === undefined || val === null) {
 	      val = '';
 	    }
@@ -314,14 +319,14 @@ return /******/ (function(modules) { // webpackBootstrap
 	module.exports = Text;
 
 /***/ },
-/* 4 */
+/* 5 */
 /***/ function(module, exports, __webpack_require__) {
 
 	'use strict';
 	
 	function _classCallCheck(instance, Constructor) { if (!(instance instanceof Constructor)) { throw new TypeError("Cannot call a class as a function"); } }
 	
-	var _ = __webpack_require__(1);
+	var _ = __webpack_require__(2);
 	
 	var Binding = function () {
 	  function Binding(tpl) {
@@ -351,156 +356,80 @@ return /******/ (function(modules) { // webpackBootstrap
 	module.exports = Binding;
 
 /***/ },
-/* 5 */
+/* 6 */
 /***/ function(module, exports, __webpack_require__) {
 
 	'use strict';
 	
 	exports.__esModule = true;
 	
-	function _possibleConstructorReturn(self, call) { if (!self) { throw new ReferenceError("this hasn't been initialised - super() hasn't been called"); } return call && (typeof call === "object" || typeof call === "function") ? call : self; }
-	
-	function _inherits(subClass, superClass) { if (typeof superClass !== "function" && superClass !== null) { throw new TypeError("Super expression must either be null or a function, not " + typeof superClass); } subClass.prototype = Object.create(superClass && superClass.prototype, { constructor: { value: subClass, enumerable: false, writable: true, configurable: true } }); if (superClass) Object.setPrototypeOf ? Object.setPrototypeOf(subClass, superClass) : subClass.__proto__ = superClass; }
-	
 	function _classCallCheck(instance, Constructor) { if (!(instance instanceof Constructor)) { throw new TypeError("Cannot call a class as a function"); } }
 	
-	var _ = __webpack_require__(1);
+	var _ = __webpack_require__(2),
+	    observer = __webpack_require__(7);
 	
-	var AbstractExpression = exports.AbstractExpression = function () {
-	  function AbstractExpression(bind, expr) {
-	    _classCallCheck(this, AbstractExpression);
+	var Expression = exports.Expression = function () {
+	  function Expression(scope, expr, handler) {
+	    _classCallCheck(this, Expression);
 	
-	    this.bind = bind;
+	    this.scope = scope;
 	    this.expr = expr;
+	    this.filters = [];
+	    this.handler = handler;
+	    this.__listen = this.__listen.bind(this);
 	  }
 	
-	  AbstractExpression.prototype.getValue = function getValue() {
-	    throw 'Abstract Method[' + this.constructor.name + '.getValue]';
+	  Expression.prototype.realValue = function realValue() {
+	    return _.get(this.scope, this.expr);
 	  };
 	
-	  return AbstractExpression;
+	  Expression.prototype.setRealValue = function setRealValue(val) {
+	    _.set(this.scope, this.expr, val);
+	  };
+	
+	  Expression.prototype.value = function value() {
+	    var val = _.get(this.scope, this.expr);
+	    for (var i = 0; i < this.filters.length; i++) {
+	      val = this.filters[i].apply(val);
+	    }
+	    return val;
+	  };
+	
+	  Expression.prototype.setValue = function setValue(val) {
+	    for (var i = 0; i < this.filters.length; i++) {
+	      val = this.filters[i].unapply(val);
+	    }
+	    _.set(this.scope, this.expr, val);
+	  };
+	
+	  Expression.prototype.observe = function observe() {
+	    this.scope = observer.on(this.scope, this.expr, this.__listen);
+	    return this.scope;
+	  };
+	
+	  Expression.prototype.unobserve = function unobserve() {
+	    this.scope = observer.un(this.scope, this.expr, this.__listen);
+	    return this.scope;
+	  };
+	
+	  Expression.prototype.__listen = function __listen(expr, val) {
+	    for (var i = 0; i < this.filters.length; i++) {
+	      val = this.filters[i].apply(val);
+	    }
+	    this.handler(val);
+	  };
+	
+	  return Expression;
 	}();
-	
-	var EventExpression = exports.EventExpression = function (_AbstractExpression) {
-	  _inherits(EventExpression, _AbstractExpression);
-	
-	  function EventExpression() {
-	    _classCallCheck(this, EventExpression);
-	
-	    return _possibleConstructorReturn(this, _AbstractExpression.apply(this, arguments));
-	  }
-	
-	  EventExpression.prototype.getValue = function getValue() {
-	    return _.get(this.bind, this.expr).bind(this.bind);
-	  };
-	
-	  return EventExpression;
-	}(AbstractExpression);
-	
-	var AbstractObserveExpression = exports.AbstractObserveExpression = function (_AbstractExpression2) {
-	  _inherits(AbstractObserveExpression, _AbstractExpression2);
-	
-	  function AbstractObserveExpression() {
-	    _classCallCheck(this, AbstractObserveExpression);
-	
-	    return _possibleConstructorReturn(this, _AbstractExpression2.apply(this, arguments));
-	  }
-	
-	  AbstractObserveExpression.prototype.observe = function observe(callback) {
-	    throw 'Abstract Method[' + this.constructor.name + '.observe]';
-	  };
-	
-	  AbstractObserveExpression.prototype.unobserve = function unobserve(callback) {
-	    throw 'Abstract Method[' + this.constructor.name + '.unobserve]';
-	  };
-	
-	  return AbstractObserveExpression;
-	}(AbstractExpression);
-	
-	var SimpleObserveExpression = exports.SimpleObserveExpression = function (_AbstractObserveExpre) {
-	  _inherits(SimpleObserveExpression, _AbstractObserveExpre);
-	
-	  function SimpleObserveExpression() {
-	    _classCallCheck(this, SimpleObserveExpression);
-	
-	    return _possibleConstructorReturn(this, _AbstractObserveExpre.apply(this, arguments));
-	  }
-	
-	  SimpleObserveExpression.prototype.getValue = function getValue() {
-	    return _.get(this.bind, this.expr);
-	  };
-	
-	  SimpleObserveExpression.prototype.setValue = function setValue(val) {
-	    _.set(this.bind, this.expr, val);
-	  };
-	
-	  SimpleObserveExpression.prototype.observe = function observe(callback) {
-	    this.bind = observer.observe(this.bind, this.expr, callback);
-	    return this.bind;
-	  };
-	
-	  SimpleObserveExpression.prototype.unobserve = function unobserve(callback) {
-	    this.bind = observer.unobserve(this.bind, this.expr, callback);
-	    return this.bind;
-	  };
-	
-	  return SimpleObserveExpression;
-	}(AbstractObserveExpression);
-	
-	var ObserveExpression = exports.ObserveExpression = function (_AbstractObserveExpre2) {
-	  _inherits(ObserveExpression, _AbstractObserveExpre2);
-	
-	  function ObserveExpression() {
-	    _classCallCheck(this, ObserveExpression);
-	
-	    return _possibleConstructorReturn(this, _AbstractObserveExpre2.apply(this, arguments));
-	  }
-	
-	  ObserveExpression.prototype.getValue = function getValue() {
-	    return _.get(this.bind, this.expr);
-	  };
-	
-	  ObserveExpression.prototype.observe = function observe(callback) {
-	    this.bind = observer.observe(this.bind, this.expr, callback);
-	    return this.bind;
-	  };
-	
-	  ObserveExpression.prototype.unobserve = function unobserve(callback) {
-	    this.bind = observer.unobserve(this.bind, this.expr, callback);
-	    return this.bind;
-	  };
-	
-	  return ObserveExpression;
-	}(AbstractObserveExpression);
-	
-	var EachExpression = exports.EachExpression = function (_AbstractObserveExpre3) {
-	  _inherits(EachExpression, _AbstractObserveExpre3);
-	
-	  function EachExpression(bind, expr) {
-	    _classCallCheck(this, EachExpression);
-	
-	    return _possibleConstructorReturn(this, _AbstractObserveExpre3.call(this, bind, expr));
-	  }
-	
-	  EachExpression.prototype.getValue = function getValue() {
-	    return _.get(this.bind, this.expr);
-	  };
-	
-	  EachExpression.prototype.observe = function observe(callback) {
-	    this.bind = observer.observe(this.bind, this.expr, callback);
-	    return this.bind;
-	  };
-	
-	  EachExpression.prototype.unobserve = function unobserve(callback) {
-	    this.bind = observer.unobserve(this.bind, this.expr, callback);
-	    return this.bind;
-	  };
-	
-	  return EachExpression;
-	}(AbstractObserveExpression);
 
 /***/ },
-/* 6 */
+/* 7 */
+/***/ function(module, exports) {
+
+	module.exports = __WEBPACK_EXTERNAL_MODULE_7__;
+
+/***/ },
+/* 8 */
 /***/ function(module, exports, __webpack_require__) {
 
 	'use strict';
@@ -513,9 +442,9 @@ return /******/ (function(modules) { // webpackBootstrap
 	
 	function _inherits(subClass, superClass) { if (typeof superClass !== "function" && superClass !== null) { throw new TypeError("Super expression must either be null or a function, not " + typeof superClass); } subClass.prototype = Object.create(superClass && superClass.prototype, { constructor: { value: subClass, enumerable: false, writable: true, configurable: true } }); if (superClass) Object.setPrototypeOf ? Object.setPrototypeOf(subClass, superClass) : subClass.__proto__ = superClass; }
 	
-	var _ = __webpack_require__(1),
-	    $ = __webpack_require__(2),
-	    Binding = __webpack_require__(4),
+	var _ = __webpack_require__(2),
+	    $ = __webpack_require__(3),
+	    Binding = __webpack_require__(5),
 	    SUPER_CLASS_OPTION = 'extend';
 	
 	var Directive = function (_Binding) {
@@ -587,7 +516,7 @@ return /******/ (function(modules) { // webpackBootstrap
 	
 	      var constructor = _.isFunction(opt.constructor) ? opt.constructor : undefined,
 	          Directive = function () {
-	        return function () {
+	        var fn = function fn() {
 	          if (!(this instanceof SuperClass)) {
 	            throw new TypeError('Cannot call a class as a function');
 	          }
@@ -596,6 +525,7 @@ return /******/ (function(modules) { // webpackBootstrap
 	            constructor.apply(this, arguments);
 	          }
 	        };
+	        return fn;
 	      }();
 	
 	      Directive.prototype = Object.create(SuperClass.prototype, {
@@ -637,7 +567,7 @@ return /******/ (function(modules) { // webpackBootstrap
 	module.exports = Directive;
 
 /***/ },
-/* 7 */
+/* 9 */
 /***/ function(module, exports, __webpack_require__) {
 
 	'use strict';
@@ -648,9 +578,9 @@ return /******/ (function(modules) { // webpackBootstrap
 	
 	function _inherits(subClass, superClass) { if (typeof superClass !== "function" && superClass !== null) { throw new TypeError("Super expression must either be null or a function, not " + typeof superClass); } subClass.prototype = Object.create(superClass && superClass.prototype, { constructor: { value: subClass, enumerable: false, writable: true, configurable: true } }); if (superClass) Object.setPrototypeOf ? Object.setPrototypeOf(subClass, superClass) : subClass.__proto__ = superClass; }
 	
-	var Binding = __webpack_require__(4);
+	var Binding = __webpack_require__(5);
 	
-	var _require = __webpack_require__(8);
+	var _require = __webpack_require__(10);
 	
 	var ArrayIterator = _require.ArrayIterator;
 	var YieId = _require.YieId;
@@ -705,14 +635,14 @@ return /******/ (function(modules) { // webpackBootstrap
 	module.exports = DirectiveGroup;
 
 /***/ },
-/* 8 */
+/* 10 */
 /***/ function(module, exports, __webpack_require__) {
 
 	'use strict';
 	
 	function _classCallCheck(instance, Constructor) { if (!(instance instanceof Constructor)) { throw new TypeError("Cannot call a class as a function"); } }
 	
-	var _ = __webpack_require__(1);
+	var _ = __webpack_require__(2);
 	
 	var YieId = function () {
 	  function YieId() {
@@ -769,7 +699,7 @@ return /******/ (function(modules) { // webpackBootstrap
 	};
 
 /***/ },
-/* 9 */
+/* 11 */
 /***/ function(module, exports, __webpack_require__) {
 
 	'use strict';
@@ -782,175 +712,127 @@ return /******/ (function(modules) { // webpackBootstrap
 	
 	function _inherits(subClass, superClass) { if (typeof superClass !== "function" && superClass !== null) { throw new TypeError("Super expression must either be null or a function, not " + typeof superClass); } subClass.prototype = Object.create(superClass && superClass.prototype, { constructor: { value: subClass, enumerable: false, writable: true, configurable: true } }); if (superClass) Object.setPrototypeOf ? Object.setPrototypeOf(subClass, superClass) : subClass.__proto__ = superClass; }
 	
-	var _ = __webpack_require__(1);
-	var Directive = __webpack_require__(6);
+	var _ = __webpack_require__(2);
+	var Directive = __webpack_require__(8);
 	
-	var _require = __webpack_require__(5);
+	var _require = __webpack_require__(6);
 	
-	var SimpleObserveExpression = _require.SimpleObserveExpression;
-	var ObserveExpression = _require.ObserveExpression;
-	var EventExpression = _require.EventExpression;
-	var EachExpression = _require.EachExpression;
+	var Expression = _require.Expression;
 	
-	var _require2 = __webpack_require__(8);
+	var _require2 = __webpack_require__(10);
 	
 	var YieId = _require2.YieId;
 	
-	var AbstractExpressionDirective = exports.AbstractExpressionDirective = function (_Directive) {
-	  _inherits(AbstractExpressionDirective, _Directive);
+	
+	function registerDirective(name, opt) {
+	  var cls = Directive.register(name, opt);;
+	  module.exports[cls.prototype.className] = cls;
+	}
+	
+	var AbstractEventDirective = exports.AbstractEventDirective = function (_Directive) {
+	  _inherits(AbstractEventDirective, _Directive);
+	
+	  function AbstractEventDirective(el, tpl, expr) {
+	    _classCallCheck(this, AbstractEventDirective);
+	
+	    var _this = _possibleConstructorReturn(this, _Directive.call(this, el, tpl, expr));
+	
+	    _this.handler = _this.handler.bind(_this);
+	    return _this;
+	  }
+	
+	  AbstractEventDirective.prototype.handler = function handler(e) {
+	    _.get(this.scope, this.expr).call(this.scope, e, e.target, this.scope);
+	  };
+	
+	  AbstractEventDirective.prototype.bind = function bind() {
+	    _Directive.prototype.bind.call(this);
+	    this.$el.on(this.eventType, this.handler);
+	  };
+	
+	  AbstractEventDirective.prototype.unbind = function unbind() {
+	    _Directive.prototype.unbind.call(this);
+	    this.$el.un(this.eventType, this.handler);
+	  };
+	
+	  return AbstractEventDirective;
+	}(Directive);
+	
+	var events = ['blur', 'change', 'click', 'dblclick', 'error', 'focus', 'keydown', 'keypress', 'keyup', 'load', 'mousedown', 'mousemove', 'mouseout', 'mouseover', 'mouseup', 'resize', 'scroll', 'select', 'submit', 'unload', {
+	  name: 'oninput',
+	  eventType: 'input propertychange'
+	}];
+	
+	// register events
+	_.each(events, function (opt) {
+	  var name = void 0;
+	  if (_.isString(opt)) {
+	    name = 'on' + opt;
+	    opt = {
+	      eventType: opt
+	    };
+	  } else {
+	    name = opt.name;
+	  }
+	  opt.extend = AbstractEventDirective;
+	  registerDirective(name, opt);
+	});
+	
+	var AbstractExpressionDirective = exports.AbstractExpressionDirective = function (_Directive2) {
+	  _inherits(AbstractExpressionDirective, _Directive2);
 	
 	  function AbstractExpressionDirective(el, tpl, expr) {
 	    _classCallCheck(this, AbstractExpressionDirective);
 	
-	    var _this = _possibleConstructorReturn(this, _Directive.call(this, el, tpl, expr));
+	    var _this2 = _possibleConstructorReturn(this, _Directive2.call(this, el, tpl, expr));
 	
-	    _this.expression = _this.buildExpression();
-	    return _this;
+	    _this2.update = _this2.update.bind(_this2);
+	    _this2.expression = new Expression(_this2.scope, _this2.expr, _this2.update);
+	    return _this2;
 	  }
 	
-	  AbstractExpressionDirective.prototype.buildExpression = function buildExpression() {
-	    throw 'Abstract Method [' + this.className + '.buildExpression]';
+	  AbstractExpressionDirective.prototype.bind = function bind() {
+	    _Directive2.prototype.bind.call(this);
+	    this.scope = this.expression.observe();
+	    this.update(this.value());
 	  };
 	
-	  AbstractExpressionDirective.prototype.getValue = function getValue() {
-	    return this.expression.getValue();
+	  AbstractExpressionDirective.prototype.unbind = function unbind() {
+	    this.scope = this.expression.unobserve();
 	  };
 	
-	  AbstractExpressionDirective.prototype.getBlankValue = function getBlankValue() {
-	    var val = this.getValue();
+	  AbstractExpressionDirective.prototype.setRealValue = function setRealValue(val) {
+	    return this.expression.setRealValue(val);
+	  };
+	
+	  AbstractExpressionDirective.prototype.setValue = function setValue(val) {
+	    return this.expression.setValue(val);
+	  };
+	
+	  AbstractExpressionDirective.prototype.realValue = function realValue() {
+	    return this.expression.realValue();
+	  };
+	
+	  AbstractExpressionDirective.prototype.value = function value() {
+	    return this.expression.value();
+	  };
+	
+	  AbstractExpressionDirective.prototype.blankValue = function blankValue(val) {
+	    if (arguments.length == 0) {
+	      val = this.expression.value();
+	    }
 	    if (val === undefined || val == null) {
 	      return '';
 	    }
 	    return val;
 	  };
 	
-	  return AbstractExpressionDirective;
-	}(Directive);
-	
-	var EventDirective = exports.EventDirective = function (_AbstractExpressionDi) {
-	  _inherits(EventDirective, _AbstractExpressionDi);
-	
-	  function EventDirective() {
-	    _classCallCheck(this, EventDirective);
-	
-	    return _possibleConstructorReturn(this, _AbstractExpressionDi.apply(this, arguments));
-	  }
-	
-	  EventDirective.prototype.buildExpression = function buildExpression() {
-	    return new EventExpression(this.scope, this.expr);
-	  };
-	
-	  EventDirective.prototype.getEventType = function getEventType() {
-	    if (!this.eventType) {
-	      throw TypeError('EventType[' + this.className + '] is undefined');
-	    }
-	    return this.eventType;
-	  };
-	
-	  EventDirective.prototype.bind = function bind() {
-	    //super();
-	    if (!this.handler) {
-	      this.handler = this.getValue();
-	    }
-	    this.$el.on(this.getEventType(), this.handler);
-	  };
-	
-	  EventDirective.prototype.unbind = function unbind() {
-	    //super();
-	    if (this.handler) {
-	      this.$el.un(this.getEventType(), this.handler);
-	    }
-	  };
-	
-	  return EventDirective;
-	}(AbstractExpressionDirective);
-	
-	var AbstractObserveExpressionDirective = exports.AbstractObserveExpressionDirective = function (_AbstractExpressionDi2) {
-	  _inherits(AbstractObserveExpressionDirective, _AbstractExpressionDi2);
-	
-	  function AbstractObserveExpressionDirective(el, tpl, expr) {
-	    _classCallCheck(this, AbstractObserveExpressionDirective);
-	
-	    var _this3 = _possibleConstructorReturn(this, _AbstractExpressionDi2.call(this, el, tpl, expr));
-	
-	    _this3.update = _this3.update.bind(_this3);
-	    return _this3;
-	  }
-	
-	  AbstractObserveExpressionDirective.prototype.bind = function bind() {
-	    //super();
-	    this.scope = this.expression.observe(this.update);
-	    this.update();
-	  };
-	
-	  AbstractObserveExpressionDirective.prototype.unbind = function unbind() {
-	    this.scope = this.expression.unobserve(this.update);
-	  };
-	
-	  AbstractObserveExpressionDirective.prototype.update = function update() {
+	  AbstractExpressionDirective.prototype.update = function update(val) {
 	    throw 'Abstract Method [' + this.className + '.update]';
 	  };
 	
-	  return AbstractObserveExpressionDirective;
-	}(AbstractExpressionDirective);
-	
-	var SimpleObserveExpressionDirective = exports.SimpleObserveExpressionDirective = function (_AbstractObserveExpre) {
-	  _inherits(SimpleObserveExpressionDirective, _AbstractObserveExpre);
-	
-	  function SimpleObserveExpressionDirective() {
-	    _classCallCheck(this, SimpleObserveExpressionDirective);
-	
-	    return _possibleConstructorReturn(this, _AbstractObserveExpre.apply(this, arguments));
-	  }
-	
-	  SimpleObserveExpressionDirective.prototype.buildExpression = function buildExpression() {
-	    return new SimpleObserveExpression(this.scope, this.expr);
-	  };
-	
-	  SimpleObserveExpressionDirective.prototype.setValue = function setValue(val) {
-	    this.expression.setValue(val);
-	  };
-	
-	  return SimpleObserveExpressionDirective;
-	}(AbstractObserveExpressionDirective);
-	
-	var ObserveExpressionDirective = exports.ObserveExpressionDirective = function (_AbstractObserveExpre2) {
-	  _inherits(ObserveExpressionDirective, _AbstractObserveExpre2);
-	
-	  function ObserveExpressionDirective() {
-	    _classCallCheck(this, ObserveExpressionDirective);
-	
-	    return _possibleConstructorReturn(this, _AbstractObserveExpre2.apply(this, arguments));
-	  }
-	
-	  ObserveExpressionDirective.prototype.buildExpression = function buildExpression() {
-	    return new ObserveExpression(this.scope, this.expr);
-	  };
-	
-	  return ObserveExpressionDirective;
-	}(AbstractObserveExpressionDirective);
-	
-	var EachDirective = exports.EachDirective = function (_AbstractObserveExpre3) {
-	  _inherits(EachDirective, _AbstractObserveExpre3);
-	
-	  function EachDirective() {
-	    _classCallCheck(this, EachDirective);
-	
-	    return _possibleConstructorReturn(this, _AbstractObserveExpre3.apply(this, arguments));
-	  }
-	
-	  EachDirective.prototype.buildExpression = function buildExpression() {
-	    return new EachExpression(this.scope, this.expr);
-	  };
-	
-	  EachDirective.prototype.bind = function bind() {};
-	
-	  return EachDirective;
-	}(AbstractObserveExpressionDirective);
-	
-	EachDirective.prototype.priority = 10;
-	
-	Directive.register('each', EachDirective);
+	  return AbstractExpressionDirective;
+	}(Directive);
 	
 	var EVENT_CHANGE = 'change',
 	    EVENT_INPUT = 'input propertychange',
@@ -960,94 +842,25 @@ return /******/ (function(modules) { // webpackBootstrap
 	    TAG_TEXTAREA = 'TEXTAREA',
 	    RADIO = 'radio',
 	    CHECKBOX = 'checkbox',
-	    simpleExprDirectives = {
-	  input: {
-	    constructor: function constructor(el, tpl, expr) {
-	      SimpleObserveExpressionDirective.call(this, el, tpl, expr);
-	
-	      this.onChange = this.onChange.bind(this);
-	
-	      this.event = EVENT_INPUT;
-	      var tag = this.tag = el.tagName,
-	          type = void 0;
-	      if (this.isSelect()) {
-	        this.event = EVENT_CHANGE;
-	      } else if (this.isInput()) {
-	        type = this.type = el.type;
-	        if (this.isRadio() || this.isCheckBox()) {
-	          this.event = EVENT_CLICK;
-	        }
-	      } else if (!this.isTextArea()) {
-	        throw TypeError('Directive[input] not support ' + el.tagName);
-	      }
-	    },
-	    bind: function bind() {
-	      SimpleObserveExpressionDirective.prototype.bind.call(this);
-	      this.$el.on(this.event, this.onChange);
-	    },
-	    unbind: function unbind() {
-	      SimpleObserveExpressionDirective.prototype.unbind.call(this);
-	      this.$el.un(this.event, this.onChange);
-	    },
-	    onChange: function onChange() {
-	      var val = this.elVal();
-	      if (val != this.val) {
-	        this.setValue(val);
-	      }
-	    },
-	    update: function update() {
-	      this.val = this.getBlankValue();
-	      if (this.val != this.elVal()) this.elVal(this.val);
-	    },
-	    elVal: function elVal(val) {
-	      var isGet = arguments.length == 0;
-	      if (this.isSelect()) {} else if (this.isInput()) {
-	        if (this.isRadio() || this.isCheckBox()) {
-	          if (isGet) {
-	            return this.$el.prop('checked') ? this.$el.val() : undefined;
-	          } else {
-	            this.$el.prop('checked', _.isString(val) ? val == this.$el.val() : !!val);
-	          }
-	        } else {
-	          return this.$el.val.apply(this.$el, arguments);
-	        }
-	      } else if (this.isTextArea()) {}
-	    },
-	    isInput: function isInput() {
-	      return this.tag == TAG_INPUT;
-	    },
-	    isSelect: function isSelect() {
-	      return this.tag == TAG_SELECT;
-	    },
-	    isTextArea: function isTextArea() {
-	      return this.tag == TAG_TEXTAREA;
-	    },
-	    isRadio: function isRadio() {
-	      return this.type == RADIO;
-	    },
-	    isCheckBox: function isCheckBox() {
-	      return this.type == CHECKBOX;
-	    }
-	  }
-	},
-	    exprDirectives = {
+	    expressions = {
 	  text: {
-	    update: function update() {
-	      this.$el.text(this.getBlankValue());
+	    update: function update(val) {
+	      this.$el.text(this.blankValue(val));
 	    },
 	
 	    block: true
 	  },
 	  html: {
-	    update: function update() {
-	      this.$el.html(this.getBlankValue());
+	    update: function update(val) {
+	      this.$el.html(this.blankValue(val));
 	    },
 	
 	    block: true
 	  },
 	  'class': {
-	    update: function update() {
-	      var cls = this.getBlankValue();
+	    update: function update(val) {
+	      var cls = this.blankValue(val);
+	      console.log('class', cls);
 	      if (this.oldCls) {
 	        this.$el.removeClass(this.oldCls);
 	      }
@@ -1056,39 +869,39 @@ return /******/ (function(modules) { // webpackBootstrap
 	    }
 	  },
 	  show: {
-	    update: function update() {
-	      this.$el.css('display', this.getValue() ? '' : 'none');
+	    update: function update(val) {
+	      this.$el.css('display', val ? '' : 'none');
 	    }
 	  },
 	  hide: {
-	    update: function update() {
-	      this.$el.css('display', this.getValue() ? 'none' : '');
+	    update: function update(val) {
+	      this.$el.css('display', val ? 'none' : '');
 	    }
 	  },
 	  value: {
-	    update: function update() {
-	      this.$el.val(this.getBlankValue());
+	    update: function update(val) {
+	      this.$el.val(this.blankValue(val));
 	    }
 	  },
 	  'if': {
 	    bind: function bind() {
-	      ObserveExpressionDirective.prototype.bind.call(this);
+	      AbstractExpressionDirective.prototype.bind.call(this);
 	      if (!this.directives) {
 	        this.yieId = new YieId();
 	        return this.yieId;
 	      }
 	    },
-	    update: function update() {
-	      var _this7 = this;
+	    update: function update(val) {
+	      var _this3 = this;
 	
-	      if (!this.getValue()) {
+	      if (!val) {
 	        this.$el.css('display', 'none');
 	      } else {
 	        if (!this.directives) {
 	          this.directives = this.tpl.parseChildNodes(this.el);
 	          this.directives.forEach(function (directive) {
 	            directive.bind();
-	            _this7.scope = directive.getScope();
+	            _this3.scope = directive.getScope();
 	          });
 	          if (this.yieId) {
 	            this.yieId.done();
@@ -1099,57 +912,161 @@ return /******/ (function(modules) { // webpackBootstrap
 	      }
 	    },
 	    unbind: function unbind() {
-	      var _this8 = this;
+	      var _this4 = this;
 	
-	      ObserveExpressionDirective.prototype.unbind.call(this);
+	      AbstractExpressionDirective.prototype.unbind.call(this);
 	      if (this.directives) {
 	        this.directives.forEach(function (directive) {
 	          directive.unbind();
-	          _this8.scope = directive.getScope();
+	          _this4.scope = directive.getScope();
 	        });
 	      }
 	    },
 	
 	    priority: 9,
 	    block: true
+	  },
+	  input: {
+	    constructor: function constructor(el, tpl, expr) {
+	      AbstractExpressionDirective.call(this, el, tpl, expr);
+	
+	      this.onChange = this.onChange.bind(this);
+	
+	      var tag = this.tag = el.tagName;
+	      switch (tag) {
+	        case TAG_SELECT:
+	          this.event = EVENT_CHANGE;
+	          break;
+	        case TAG_INPUT:
+	          var type = this.type = el.type;
+	          this.event = type == RADIO || type == CHECKBOX ? EVENT_CLICK : EVENT_INPUT;
+	          break;
+	        case TAG_TEXTAREA:
+	          throw TypeError('Directive[input] not support ' + tag);
+	          break;
+	        default:
+	          throw TypeError('Directive[input] not support ' + tag);
+	      }
+	      console.log('input', tag, el);
+	    },
+	    bind: function bind() {
+	      AbstractExpressionDirective.prototype.bind.call(this);
+	      this.$el.on(this.event, this.onChange);
+	    },
+	    unbind: function unbind() {
+	      AbstractExpressionDirective.prototype.unbind.call(this);
+	      this.$el.un(this.event, this.onChange);
+	    },
+	    onChange: function onChange() {
+	      var val = this.elVal();
+	
+	      if (val != this.val) this.setValue(val);
+	    },
+	    update: function update(val) {
+	      this.val = this.blankValue(val);
+	
+	      this.elVal(this.val);
+	    },
+	    elVal: function elVal(val) {
+	      var tag = this.tag;
+	
+	      switch (tag) {
+	        case TAG_SELECT:
+	          break;
+	        case TAG_INPUT:
+	          var type = this.type;
+	
+	          if (type == RADIO || type == CHECKBOX) {
+	            if (arguments.length == 0) {
+	              return this.$el.prop('checked') ? this.$el.val() : undefined;
+	            } else {
+	              var checked = _.isString(val) ? val == this.$el.val() : !!val;
+	              if (this.$el.prop('checked') != checked) this.$el.prop('checked', checked);
+	            }
+	          } else {
+	            if (arguments.length == 0) {
+	              return this.$el.val();
+	            } else if (val != this.$el.val()) {
+	              this.$el.val(val);
+	            }
+	          }
+	          break;
+	        case TAG_TEXTAREA:
+	          throw TypeError('Directive[input] not support ' + tag);
+	          break;
+	        default:
+	          throw TypeError('Directive[input] not support ' + tag);
+	      }
+	    }
 	  }
-	},
-	    eventDirectives = ['blur', 'change', 'click', 'dblclick', 'error', 'focus', 'keydown', 'keypress', 'keyup', 'load', 'mousedown', 'mousemove', 'mouseout', 'mouseover', 'mouseup', 'resize', 'scroll', 'select', 'submit', 'unload', {
-	  name: 'oninput',
-	  eventType: 'input propertychange'
-	}];
-	
-	function registerDirective(name, opt) {
-	  var cls = Directive.register(name, opt);;
-	  module.exports[cls.prototype.className] = cls;
-	}
-	
-	// register Simple Expression Directive
-	_.each(simpleExprDirectives, function (opt, name) {
-	  opt.extend = SimpleObserveExpressionDirective;
-	  registerDirective(name, opt);
-	});
+	};
 	
 	// register Expression Directive
-	_.each(exprDirectives, function (opt, name) {
-	  opt.extend = ObserveExpressionDirective;
+	_.each(expressions, function (opt, name) {
+	  opt.extend = AbstractExpressionDirective;
 	  registerDirective(name, opt);
 	});
 	
-	// register eventDirectives
-	_.each(eventDirectives, function (opt) {
-	  var name = void 0;
-	  if (_.isString(opt)) {
-	    name = 'on' + opt;
-	    opt = {
-	      eventType: opt
-	    };
-	  } else {
-	    name = opt.name;
+	/*
+	  start = whitespace* a:alias in v:variable idx:(by identifier)? whitespace*{
+	    return {
+	        key: a[0],
+	          value: a[1],
+	          scope: v,
+	          idx: idx ? idx[1]:undefined
+	      }
 	  }
-	  opt.extend = EventDirective;
-	  registerDirective(name, opt);
-	});
+	
+	  alias = '(' a:_alias ')'{ return a; } / _alias
+	
+	  _alias = whitespace* key:identifier val:(whitespace* ',' whitespace* identifier)? whitespace*{
+	    return [key, val[3]];
+	  }
+	
+	  in = whitespace+ [iI][nN] whitespace+
+	
+	  by = whitespace+ [bB][yY] whitespace+
+	
+	  variable = $(identifier ('.' identifier / '[' ([\"] (identifier / [0-9]+) [\"] / [\'] (identifier / [0-9]+) [\'] / [0-9]+) ']')*)
+	
+	  identifier = $([a-zA-Z_][a-zA-Z0-9_]*)
+	
+	  whitespace = [ \t\n\r]
+	*/
+	
+	var eachReg = /^\s*([\s\S]+?)\s+in\s+([\s\S]+?)(?:\s+track\s+by\s+([\s\S]+?))?\s*$/;
+	
+	var EachDirective = exports.EachDirective = function (_Directive3) {
+	  _inherits(EachDirective, _Directive3);
+	
+	  function EachDirective(el, tpl, expr) {
+	    _classCallCheck(this, EachDirective);
+	
+	    var _this5 = _possibleConstructorReturn(this, _Directive3.call(this, el, tpl, expr));
+	
+	    var token = expr.match(eachReg);
+	    if (!token) throw Error('Invalid Expression on Each Directive');
+	    var alias = token[1],
+	        scope = token[2],
+	        index = token[3];
+	
+	    console.log('each directive: alias = ' + alias + ', obj = ' + scope + ', index = ' + index);
+	    return _this5;
+	  }
+	
+	  EachDirective.prototype.bind = function bind() {
+	    _Directive3.prototype.bind.call(this);
+	  };
+	
+	  EachDirective.prototype.unbind = function unbind() {
+	    _Directive3.prototype.unbind.call(this);
+	  };
+	
+	  return EachDirective;
+	}(Directive);
+	
+	EachDirective.prototype.priority = 10;
+	Directive.register('each', EachDirective);
 
 /***/ }
 /******/ ])

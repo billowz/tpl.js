@@ -2,7 +2,7 @@ const _ = require('lodash');
 class Binding {
   constructor(tpl) {
     this.tpl = tpl;
-    this.scope = tpl.bind;
+    this.scope = tpl.scope;
   }
 
   bind() {

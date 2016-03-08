@@ -25,33 +25,56 @@
                 el = $(el);
                 console.log('push todo:', el.val(), this);
                 this.todos.push({
-                  title: el.val()
+                  title: el.val(),
+                  completed: false
                 });
                 el.val('');
               }
             },
-            todos: [],
+            editTodo: function(){
+
+            },
+            removeTodo: function(){
+
+            },
+            todoDone(){
+
+            },
+            doneAll(){
+              this.allDone = true;
+              _.each(this.todos, function(todo){
+                todo.completed = true;
+              })
+            }
+            todos: [{
+              title:'abc',
+              completed: false
+            }],
             allDone: false,
-            title: 'Todo MVC'
-        });
-        $('.todoapp').append(templ.el);
+            title: 'Todo MVC',
+            remaining:0
+        }).renderTo('.todoapp');
     })
     </script>
     <script id="tpl/todo.html" type="text/template">
         <div class="header">
-            <h1>{title}</h1>
-            <input class="new-todo" autofocus autocomplete="off" placeholder="What needs to be done?" tpl-onkeyup="addTodo">
+            <h1></h1>
+            <input class="new-todo" autofocus autocomplete="off" placeholder="What needs to be done?"
+                tpl-onkeyup="addTodo">
         </div>
         <div class="main" tpl-show="todos.length">
             <input class="toggle-all" type="checkbox" tpl-checked="allDone">
             <ul class="todo-list">
-                <li class="todo" tpl-each="todo in filteredTodos" tpl-class="{completed: todo.completed, editing: todo == editedTodo}">
+                <li class="todo" tpl-each="todo, idx in todos track by id" tpl-class="title">
                     <div class="view">
-                        <input class="toggle" type="checkbox" tpl-model="todo.completed">
-                        <label tpl-on="dblclick: editTodo(todo)">{{todo.title}}</label>
-                        <button class="destroy" tpl-on="click: removeTodo(todo)"></button>
+                        <input class="toggle" type="checkbox" tpl-checked="todo.completed">
+                        <label tpl-ondblclick="editTodo">{idx}:{todo.title}</label>
+                        <button class="destroy" tpl-onclick="removeTodo"></button>
                     </div>
-                    <input class="edit" type="text" tpl-model="todo.title" tpl-todo-focus="todo == editedTodo" tpl-on="blur: doneEdit(todo), keyup: doneEdit(todo) | key 'enter', keyup: cancelEdit(todo) | key 'esc'">
+                    <input class="edit" type="text" tpl-input="todo.title"
+                      tpl-focus ="todo.editing"
+                      tpl-onblur = "doneEdit"
+                      tpl-keyup = "doneEdit">
                 </li>
             </ul>
         </div>

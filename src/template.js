@@ -15,6 +15,7 @@ const PRIMITIVE = 0,
     directivePrefix: 'tpl-'
   };
 
+let __tmp_id__ = 0;
 class Template {
   constructor(templ, cfg) {
     this.template = $(templ);
@@ -23,29 +24,37 @@ class Template {
     let s = this.cfg.delimiter[0],
       e = this.cfg.delimiter[1];
     this.delimiterReg = new RegExp(s + '([^' + s + e + ']*)' + e, 'g');
-    console.log(this.delimiterReg)
     this.attrDirectiveTestReg = new RegExp('^' + this.cfg.directivePrefix);
-    console.log(this.attrDirectiveTestReg)
+    this.__instance_nr__ = 0;
+    this.__id__ = __tmp_id__++;
   }
 
-  complie(bind) {
-    return new TemplateInstance(this, bind);
+  complie(scope, parent) {
+    return new TemplateInstance(this, scope, parent);
   }
 }
 
 class TemplateInstance {
-  constructor(tpl, bind) {
+  constructor(tpl, scope, parent) {
     this.tpl = tpl;
-    this.bind = bind;
+    this.scope = scope;
     this.el = this.tpl.template.clone();
+    this.cfg = tpl.cfg;
+    this.parent = parent;
+    this.__id__ = tpl.__id__ + '-' + tpl.__instance_nr__++;
     this.init();
+  }
+
+  renderTo(el) {
+    $(el).append(this.el);
+    return this;
   }
 
   init() {
     this.bindings = this.parse(this.el);
     this.bindings.forEach(directive => {
       directive.bind();
-      this.bind = directive.getScope();
+      this.scope = directive.getScope();
     });
   }
 
@@ -110,25 +119,41 @@ class TemplateInstance {
     let block = false,
       $el = $(el),
       directives = [],
-      directiveItems = [];
+      consts = [],
+      instances = [];
     if (el.attributes) {
       _.each(el.attributes, attr => {
         let name = attr.name,
-          val = attr.value, directiveConst, directive;
+          val = attr.value,
+          directiveConst,
+          directive;
+
         if ((name = this.parseDirectiveName(name)) && (directiveConst = Directive.getDirective(name))) {
-          directive = new directiveConst(el, this, val);
-          directiveItems.push(directive);
-          if (directive.isBlock()) {
+          if (directiveConst.prototype.abstract) {
+            consts = [{
+              const: directiveConst,
+              val: val
+            }];
             block = true;
+            return false;
           }
+          consts.push({
+            const: directiveConst,
+            val: val
+          });
+          if (directiveConst.prototype.block)
+            block = true;
         } else if (name) {
           console.warn('Directive is undefined ' + attr.name);
         }
       });
-      if (directiveItems.length > 1) {
-        directives.push(new DirectiveGroup(el, this, directiveItems));
-      } else if (directiveItems.length == 1) {
-        directives.push(directiveItems[0]);
+      for (let i = 0; i < consts.length; i++) {
+        instances.push(new consts[i].const(el, this, consts[i].val));
+      }
+      if (instances.length > 1) {
+        directives.push(new DirectiveGroup(el, this, instances));
+      } else if (instances.length == 1) {
+        directives.push(instances[0]);
       }
     }
     if (!block) {

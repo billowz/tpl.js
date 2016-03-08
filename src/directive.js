@@ -9,6 +9,7 @@ class Directive extends Binding {
     this.el = el;
     this.$el = $(el);
     this.expr = expr;
+    this.attr = tpl.cfg.directivePrefix + this.name;
   }
 
   getPriority() {
@@ -29,10 +30,10 @@ class Directive extends Binding {
   unbind() {}
 
 }
-
-Directive.prototype.name = null;
-Directive.prototype.priority = 0;
+Directive.prototype.abstract = false;
+Directive.prototype.name = 'Unkown';
 Directive.prototype.block = false;
+Directive.prototype.priority = 0;
 
 const directives = {},
   isDirective = Directive.isDirective = function isDirective(object) {
@@ -98,15 +99,15 @@ const directives = {},
 
       })(option, Directive);
 
+      directive.prototype.className = (_.capitalize(name) + 'Directive');
     } else if (isDirective(option)) {
       directive = option;
+      directive.prototype.className = directive.prototype.constructor.name;
     } else {
       throw TypeError('Invalid Directive Object ' + option);
     }
 
     directive.prototype.name = name;
-    let clsName = directive.prototype.constructor.name;
-    directive.prototype.className = clsName ? clsName : (_.capitalize(name) + 'Directive');
 
     directives[name] = directive;
     return directive;

@@ -6,6 +6,7 @@ var fs = require('fs'),
   gulpWebpack = require('gulp-webpack'),
   WebpackDevServer = require('webpack-dev-server'),
   mkcfg = require('./tool/make.webpack.js'),
+  karma = require('karma').Server,
   main = {
     src: './src',
     dist: './dist',
