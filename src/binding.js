@@ -1,6 +1,5 @@
 const _ = require('lodash'),
-  observer = require('observer'),
-  expression = require('./expression');
+  observer = require('observer');
 
 export class AbstractBinding {
   constructor(tpl) {
@@ -24,36 +23,13 @@ export class Binding extends AbstractBinding {
   constructor(tpl, expr) {
     super(tpl);
 
-    this.expr = expr;
+    this.fullExpr = expr;
     let pipes = expr.match(exprReg);
-    this.expression = expression.parse(pipes.shift());
+    this.expr = pipes.shift();
 
     this.filterExprs = pipes;
-    console.log(`${this.className}: "${this.expr}" | ${pipes.join(' & ')}`, this.expression);
+    console.log(`${this.className}: "${this.expr}" | ${pipes.join(' & ')}`);
     this.filters = [];
-  }
-
-  realValue(expr, val) {
-    if (arguments.length == 2) {
-      return _.set(this.scope, expr, val);
-    } else {
-      let scope = this.scope,
-        tpl = this.tpl;
-      while (!_.has(scope, expr)) {
-        tpl = tpl.parent;
-        if (!tpl) return undefined;
-        scope = tpl.scope;
-      }
-      return _.get(scope, expr);
-    }
-  }
-
-  value(expr, val) {
-    if (arguments.length == 2) {
-      return this.realValue(expr, this.unapplyFilter(val));
-    } else {
-      return this.applyFilter(this.realValue(expr));
-    }
   }
 
   applyFilter(val) {

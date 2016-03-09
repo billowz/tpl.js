@@ -57,8 +57,8 @@ return /******/ (function(modules) { // webpackBootstrap
 	'use strict';
 	
 	var tpl = __webpack_require__(1);
-	tpl.Directives = __webpack_require__(9);
-	tpl.expression = __webpack_require__(10);
+	tpl.Directives = __webpack_require__(10);
+	tpl.expression = __webpack_require__(7);
 	module.exports = tpl;
 
 /***/ },
@@ -75,7 +75,7 @@ return /******/ (function(modules) { // webpackBootstrap
 	var $ = __webpack_require__(3);
 	var Text = __webpack_require__(4);
 	
-	var _require = __webpack_require__(7);
+	var _require = __webpack_require__(8);
 	
 	var Directive = _require.Directive;
 	var DirectiveGroup = _require.DirectiveGroup;
@@ -365,7 +365,8 @@ return /******/ (function(modules) { // webpackBootstrap
 	function _classCallCheck(instance, Constructor) { if (!(instance instanceof Constructor)) { throw new TypeError("Cannot call a class as a function"); } }
 	
 	var _ = __webpack_require__(2),
-	    observer = __webpack_require__(6);
+	    observer = __webpack_require__(6),
+	    expression = __webpack_require__(7);
 	
 	var AbstractBinding = exports.AbstractBinding = function () {
 	  function AbstractBinding(tpl) {
@@ -397,23 +398,13 @@ return /******/ (function(modules) { // webpackBootstrap
 	
 	    var _this = _possibleConstructorReturn(this, _AbstractBinding.call(this, tpl));
 	
-	    _this.fullExpr = expr;
+	    _this.expr = expr;
 	    var pipes = expr.match(exprReg);
-	    _this.expr = pipes.shift();
+	    _this.expression = expression.parse(pipes.shift());
+	
 	    _this.filterExprs = pipes;
-	    console.log(_this.className + ': "' + _this.expr + '" | ' + pipes.join(' & '));
-	    _this.filters = _this.filterExprs.map(function (exp) {
-	      var pp = exp.match(filterReg);
-	      if (!pp) {
-	        return null;
-	      }
-	      return {
-	        name: pp.shift(),
-	        args: pp
-	      };
-	    }).filter(function (f) {
-	      return f;
-	    });
+	    console.log(_this.className + ': "' + _this.expr + '" | ' + pipes.join(' & '), _this.expression);
+	    _this.filters = [];
 	    return _this;
 	  }
 	
@@ -480,6 +471,98 @@ return /******/ (function(modules) { // webpackBootstrap
 	'use strict';
 	
 	exports.__esModule = true;
+	exports.isSimplePath = isSimplePath;
+	exports.parse = parse;
+	var _ = __webpack_require__(2);
+	
+	var allowedKeywords = 'Math,Date,this,true,false,null,undefined,Infinity,NaN,' + 'isNaN,isFinite,decodeURI,decodeURIComponent,encodeURI,' + 'encodeURIComponent,parseInt,parseFloat';
+	var allowedKeywordsReg = new RegExp('^(' + allowedKeywords.replace(/,/g, '\\b|') + '\\b)');
+	
+	// keywords that don't make sense inside expressions
+	var improperKeywords = 'break,case,class,catch,const,continue,debugger,default,' + 'delete,do,else,export,extends,finally,for,function,if,' + 'import,in,instanceof,let,return,super,switch,throw,try,' + 'var,while,with,yield,enum,await,implements,package,' + 'proctected,static,interface,private,public';
+	var improperKeywordsReg = new RegExp('^(' + improperKeywords.replace(/,/g, '\\b|') + '\\b)');
+	
+	var wsReg = /\s/g;
+	var newlineReg = /\n/g;
+	var translationReg = /[\{,]\s*[\w\$_]+\s*:|('(?:[^'\\]|\\.)*'|"(?:[^"\\]|\\.)*"|`(?:[^`\\]|\\.)*\$\{|\}(?:[^`\\]|\\.)*`|`(?:[^`\\]|\\.)*`)|new |typeof |void /g;
+	var translationRestoreReg = /"(\d+)"/g;
+	var pathTestReg = /^[A-Za-z_$][\w$]*(?:\.[A-Za-z_$][\w$]*|\['.*?'\]|\[".*?"\]|\[\d+\]|\[[A-Za-z_$][\w$]*\])*$/;
+	var identityReg = /[^\w$\.][A-Za-z_$][\w$]*(?:\.[A-Za-z_$][\w$]*|\['.*?'\]|\[".*?"\]|\[\d+\]|\[[A-Za-z_$][\w$]*\])*/g;
+	var booleanLiteralReg = /^(?:true|false)$/;
+	
+	var translations = [];
+	function translationProcessor(str, isString) {
+	  var i = translations.length;
+	  translations[i] = isString ? str.replace(newlineReg, '\\n') : str;
+	  return '"' + i + '"';
+	}
+	
+	function translationRestoreProcessor(str, i) {
+	  return translations[i];
+	}
+	
+	var identities;
+	function identityProcessor(raw) {
+	  var c = raw.charAt(0);
+	  raw = raw.slice(1);
+	  console.log(raw, c);
+	  if (allowedKeywordsReg.test(raw) || c == '{') {
+	    return raw;
+	  } else {
+	    if (raw.indexOf('"') > -1) raw = raw.replace(translationRestoreReg, translationRestoreProcessor);
+	    identities[raw] = 1;
+	    return c + '_.get(scope, \'' + raw + '\')';
+	  }
+	}
+	
+	function compileGetter(exp) {
+	  if (improperKeywordsReg.test(exp)) {
+	    throw Error('Invalid expression. Generated function body: ' + exp);
+	  }
+	  var body = exp.replace(translationReg, translationProcessor).replace(wsReg, '').replace(identityReg, identityProcessor).replace(translationRestoreReg, translationRestoreProcessor);
+	  translations.length = 0;
+	  return makeGetter(body);
+	}
+	
+	function makeGetter(body) {
+	  console.log('body: return ' + body + ';');
+	  try {
+	    return new Function('scope', 'body: return ' + body + ';');
+	  } catch (e) {
+	    throw Error('Invalid expression. Generated function body: ' + body);
+	  }
+	}
+	
+	function isSimplePath(exp) {
+	  return pathTestReg.test(exp) && !booleanLiteralReg.test(exp);
+	}
+	
+	function parse(exp) {
+	  exp = exp.trim();
+	  var res = {
+	    exp: exp
+	  };
+	  if (isSimplePath(exp)) {
+	    res.identities = [exp];
+	    res.get = function (scope) {
+	      return _.get(scope, exp);
+	    };
+	  } else {
+	    identities = {};
+	    res.get = compileGetter(exp);
+	    res.identities = Object.keys(identities);
+	    identities = undefined;
+	  }
+	  return res;
+	}
+
+/***/ },
+/* 8 */
+/***/ function(module, exports, __webpack_require__) {
+
+	'use strict';
+	
+	exports.__esModule = true;
 	
 	var _typeof = typeof Symbol === "function" && typeof Symbol.iterator === "symbol" ? function (obj) { return typeof obj; } : function (obj) { return obj && typeof Symbol === "function" && obj.constructor === Symbol ? "symbol" : typeof obj; };
 	
@@ -497,7 +580,7 @@ return /******/ (function(modules) { // webpackBootstrap
 	var Binding = _require.Binding;
 	var AbstractBinding = _require.AbstractBinding;
 	
-	var _require2 = __webpack_require__(8);
+	var _require2 = __webpack_require__(9);
 	
 	var ArrayIterator = _require2.ArrayIterator;
 	var YieId = _require2.YieId;
@@ -664,7 +747,7 @@ return /******/ (function(modules) { // webpackBootstrap
 	};
 
 /***/ },
-/* 8 */
+/* 9 */
 /***/ function(module, exports, __webpack_require__) {
 
 	'use strict';
@@ -725,7 +808,7 @@ return /******/ (function(modules) { // webpackBootstrap
 	}();
 
 /***/ },
-/* 9 */
+/* 10 */
 /***/ function(module, exports, __webpack_require__) {
 
 	'use strict';
@@ -740,12 +823,12 @@ return /******/ (function(modules) { // webpackBootstrap
 	
 	var _ = __webpack_require__(2);
 	
-	var _require = __webpack_require__(7);
+	var _require = __webpack_require__(8);
 	
 	var Directive = _require.Directive;
 	var Template = __webpack_require__(1);
 	
-	var _require2 = __webpack_require__(8);
+	var _require2 = __webpack_require__(9);
 	
 	var YieId = _require2.YieId;
 	
@@ -1107,94 +1190,6 @@ return /******/ (function(modules) { // webpackBootstrap
 	EachDirective.prototype.priority = 10;
 	
 	Directive.register('each', EachDirective);
-
-/***/ },
-/* 10 */
-/***/ function(module, exports) {
-
-	'use strict';
-	
-	exports.__esModule = true;
-	exports.isSimplePath = isSimplePath;
-	exports.parse = parse;
-	var allowedKeywords = 'Math,Date,this,true,false,null,undefined,Infinity,NaN,' + 'isNaN,isFinite,decodeURI,decodeURIComponent,encodeURI,' + 'encodeURIComponent,parseInt,parseFloat';
-	var allowedKeywordsRE = new RegExp('^(' + allowedKeywords.replace(/,/g, '\\b|') + '\\b)');
-	
-	// keywords that don't make sense inside expressions
-	var improperKeywords = 'break,case,class,catch,const,continue,debugger,default,' + 'delete,do,else,export,extends,finally,for,function,if,' + 'import,in,instanceof,let,return,super,switch,throw,try,' + 'var,while,with,yield,enum,await,implements,package,' + 'proctected,static,interface,private,public';
-	var improperKeywordsRE = new RegExp('^(' + improperKeywords.replace(/,/g, '\\b|') + '\\b)');
-	
-	var wsRE = /\s/g;
-	var newlineRE = /\n/g;
-	var saveRE = /[\{,]\s*[\w\$_]+\s*:|('(?:[^'\\]|\\.)*'|"(?:[^"\\]|\\.)*"|`(?:[^`\\]|\\.)*\$\{|\}(?:[^`\\]|\\.)*`|`(?:[^`\\]|\\.)*`)|new |typeof |void /g;
-	var restoreRE = /"(\d+)"/g;
-	var pathTestRE = /^[A-Za-z_$][\w$]*(?:\.[A-Za-z_$][\w$]*|\['.*?'\]|\[".*?"\]|\[\d+\]|\[[A-Za-z_$][\w$]*\])*$/;
-	var identRE = /[^\w$\.](?:[A-Za-z_$][\w$]*)/g;
-	var booleanLiteralRE = /^(?:true|false)$/;
-	
-	var saved = [];
-	function save(str, isString) {
-	  var i = saved.length;
-	  saved[i] = isString ? str.replace(newlineRE, '\\n') : str;
-	  return '"' + i + '"';
-	}
-	
-	function rewrite(raw) {
-	  var c = raw.charAt(0);
-	  var path = raw.slice(1);
-	  if (allowedKeywordsRE.test(path)) {
-	    return raw;
-	  } else {
-	    path = path.indexOf('"') > -1 ? path.replace(restoreRE, restore) : path;
-	    return c + 'scope.' + path;
-	  }
-	}
-	
-	function restore(str, i) {
-	  return saved[i];
-	}
-	
-	function makeGetter(body) {
-	  try {
-	    return new Function('binding', 'return ' + body + ';');
-	  } catch (e) {
-	    throw Error('Invalid expression. Generated function body: ' + body);
-	  }
-	}
-	
-	function compileGetter(exp) {
-	  if (improperKeywordsRE.test(exp)) {
-	    throw Error('Invalid expression. Generated function body: ' + exp);
-	  }
-	  saved.length = 0;
-	  var body = exp.replace(saveRE, save).replace(wsRE, '');
-	
-	  body = (' ' + body).replace(identRE, rewrite).replace(restoreRE, restore);
-	  return makeGetter(body);
-	}
-	
-	function compileSetter(exp) {}
-	
-	function isSimplePath(exp) {
-	  return pathTestRE.test(exp) && !booleanLiteralRE.test(exp) && exp.slice(0, 5) !== 'Math.';
-	}
-	
-	function parse(exp, needSet) {
-	  exp = exp.trim();
-	
-	  var res = {
-	    exp: exp
-	  };
-	  res.get = isSimplePath(exp) && exp.indexOf('[') < 0
-	  // optimized super simple getter
-	  ? makeGetter('binding.value(' + exp + ')')
-	  // dynamic getter
-	  : compileGetter(exp);
-	  if (needSet) {
-	    res.set = compileSetter(exp);
-	  }
-	  return res;
-	}
 
 /***/ }
 /******/ ])

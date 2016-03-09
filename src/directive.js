@@ -51,12 +51,14 @@ export class Directive extends Binding {
     this.attr = tpl.tpl.directivePrefix + this.name;
   }
 
-  bindComments() {
+  bind() {
     if (Binding.generateComments && !this.comment) {
       this.comment = $(document.createComment(' Directive:' + this.name + ' [' + this.expr + '] '));
       this.comment.insertBefore(this.el);
     }
   }
+
+  unbind() {}
 }
 Directive.prototype.abstract = false;
 Directive.prototype.name = 'Unkown';

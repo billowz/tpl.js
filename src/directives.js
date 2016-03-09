@@ -1,7 +1,10 @@
 const _ = require('lodash'),
   {Directive} = require('./directive'),
   Template = require('./template'),
-  {YieId} = require('./util');
+  expression = require('./expression'),
+  {YieId} = require('./util'),
+  expressionArgs = ['$scope', '$el'],
+  eventExpressionArgs = ['$scope', '$el', '$event'];
 
 function registerDirective(name, opt) {
   let cls = Directive.register(name, opt);;
@@ -12,22 +15,23 @@ export class AbstractEventDirective extends Directive {
   constructor(el, tpl, expr) {
     super(el, tpl, expr);
     this.handler = this.handler.bind(this);
-
+    this.expression = expression.parse(this.expr, eventExpressionArgs);
   }
 
   handler(e) {
-    let fn = this.value(this.expr);
-    if (typeof fn != 'function') {
-      throw TypeError("Invalid Event Handler ");
+    let ret = this.expression.execute.call(this.scope, this.scope, this.el, e);
+    if (typeof ret == 'function') {
+      ret.call(this.scope, this.scope, this.el, e);
     }
-    fn.call(this.scope, e, e.target, this.scope);
   }
 
   bind() {
+    super.bind();
     this.$el.on(this.eventType, this.handler);
   }
 
   unbind() {
+    super.unbind();
     this.$el.un(this.eventType, this.handler);
   }
 }
@@ -58,20 +62,43 @@ export class AbstractExpressionDirective extends Directive {
   constructor(el, tpl, expr) {
     super(el, tpl, expr);
     this.observeHandler = this.observeHandler.bind(this);
+    this.expression = expression.parse(this.expr, expressionArgs);
+  }
+
+  setRealValue(val) {
+    _.set(this.scope, this.expr, val);
+  }
+
+  realValue() {
+    return this.expression.execute.call(this.scope, this.scope, this.el);
+  }
+
+  setValue(val) {
+    return this.setRealValue(this.unapplyFilter(val));
+  }
+
+  value() {
+    return this.applyFilter(this.realValue());
   }
 
   bind() {
-    this.observe(this.expr, this.observeHandler);
-    this.update(this.value(this.expr));
+    super.bind();
+    this.expression.identities.forEach((ident) => {
+      this.observe(ident, this.observeHandler);
+    });
+    this.update(this.value());
   }
 
   unbind() {
-    this.unobserve(this.expr, this.observeHandler);
+    super.unbind();
+    this.expression.identities.forEach((ident) => {
+      this.unobserve(ident, this.observeHandler);
+    });
   }
 
   blankValue(val) {
     if (arguments.length == 0) {
-      val = this.value(this.expr);
+      val = this.value();
     }
     if (val === undefined || val == null) {
       return '';
@@ -80,7 +107,11 @@ export class AbstractExpressionDirective extends Directive {
   }
 
   observeHandler(expr, val) {
-    this.update(this.applyFilter(val));
+    if (this.expression.simplePath) {
+      this.update(this.applyFilter(val));
+    } else {
+      this.update(this.value());
+    }
   }
 
   update(val) {
@@ -99,7 +130,6 @@ const EVENT_CHANGE = 'change',
   expressions = {
     text: {
       update(val) {
-        console.log(this.className, val);
         this.$el.text(this.blankValue(val));
       },
       block: true
@@ -212,14 +242,12 @@ const EVENT_CHANGE = 'change',
 
       onChange() {
         let val = this.elVal();
-
         if (val != this.val)
-          this.value(this.expr, val);
+          this.setValue(val);
       },
 
       update(val) {
         this.val = this.blankValue(val);
-
         this.elVal(this.val);
       },
 
@@ -305,9 +333,10 @@ export class EachDirective extends Directive {
   }
 
   bind() {
+    super.bind();
     this.observe(this.scopeExpr, this.observeHandler);
     this.observe(this.scopeExpr + '.length', this.lengthObserveHandler);
-    this.update(this.realValue(this.scopeExpr));
+    this.update(this.target());
   }
 
   unbind() {
@@ -326,11 +355,16 @@ export class EachDirective extends Directive {
     }
   }
 
-  observeHandler(expr, val) {
-    this.update(val);
+  target() {
+    return _.get(this.scope, this.scopeExpr);
   }
+
+  observeHandler(expr, target) {
+    this.update(target);
+  }
+
   lengthObserveHandler() {
-    this.update(this.realValue(this.scopeExpr));
+    this.update(this.target());
   }
 }
 EachDirective.prototype.abstract = true;

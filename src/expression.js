@@ -18,17 +18,15 @@ const newlineReg = /\n/g
 const translationReg = /[\{,]\s*[\w\$_]+\s*:|('(?:[^'\\]|\\.)*'|"(?:[^"\\]|\\.)*"|`(?:[^`\\]|\\.)*\$\{|\}(?:[^`\\]|\\.)*`|`(?:[^`\\]|\\.)*`)|new |typeof |void /g
 const translationRestoreReg = /"(\d+)"/g
 const pathTestReg = /^[A-Za-z_$][\w$]*(?:\.[A-Za-z_$][\w$]*|\['.*?'\]|\[".*?"\]|\[\d+\]|\[[A-Za-z_$][\w$]*\])*$/
-const identityReg = /[^\w$\.][A-Za-z_$][\w$]*(?:\.[A-Za-z_$][\w$]*|\['.*?'\]|\[".*?"\]|\[\d+\]|\[[A-Za-z_$][\w$]*\])*/g
+const identityReg = /[^\w$\.:][A-Za-z_$][\w$]*(?:\.[A-Za-z_$][\w$]*|\['.*?'\]|\[".*?"\]|\[\d+\]|\[[A-Za-z_$][\w$]*\])*/g
 const booleanLiteralReg = /^(?:true|false)$/
-
+const varReg = /^[A-Za-z_$][\w$]*/
 
 var translations = [];
 function translationProcessor(str, isString) {
   var i = translations.length
-  translations[i] = isString
-    ? str.replace(newlineReg, '\\n')
-    : str
-  return '"' + i + '"'
+  translations[i] = isString ? str.replace(newlineReg, '\\n') : str
+  return `"${i}"`;
 }
 
 function translationRestoreProcessor(str, i) {
@@ -36,36 +34,46 @@ function translationRestoreProcessor(str, i) {
 }
 
 var identities;
+var currentArgs;
+
 function identityProcessor(raw) {
   var c = raw.charAt(0);
   raw = raw.slice(1);
-  console.log(raw, c)
-  if (allowedKeywordsReg.test(raw) || c == '{') {
-    return raw
-  } else {
-    if (raw.indexOf('"') > -1)
-      raw = raw.replace(translationRestoreReg, translationRestoreProcessor);
-    identities[raw] = 1;
-    return `${c}_.get(scope, '${raw}')`;
+
+  if (allowedKeywordsReg.test(raw)) {
+    return raw;
+  } else if (currentArgs) {
+    let f = raw.match(varReg);
+    if (f && currentArgs.indexOf(f) != -1) {
+      return raw;
+    }
   }
+  raw = raw.replace(translationRestoreReg, translationRestoreProcessor);
+  identities[raw] = 1;
+  return `${c}_.get(this, '${raw}')`;
 }
 
-function compileGetter(exp) {
+function compileExecuter(exp, args) {
   if (improperKeywordsReg.test(exp)) {
     throw Error(`Invalid expression. Generated function body: ${exp}`);
   }
-  var body = exp.replace(translationReg, translationProcessor)
-    .replace(wsReg, '')
-    .replace(identityReg, identityProcessor)
+  currentArgs = args;
+  var body = exp.replace(translationReg, translationProcessor).replace(wsReg, '');
+  body = (' ' + body).replace(identityReg, identityProcessor)
     .replace(translationRestoreReg, translationRestoreProcessor);
   translations.length = 0;
-  return makeGetter(body);
+  currentArgs = undefined;
+  return makeExecuter(body, args);
 }
 
-function makeGetter(body) {
-  console.log(`body: return ${body};`)
+function makeExecuter(body, args) {
+  body = `body: return ${body};`;
+  if (!args)
+    args = [body];
+  else
+    args = args.concat(body);
   try {
-    return new Function('scope', `body: return ${body};`);
+    return Function.apply(Function, args);
   } catch (e) {
     throw Error(`Invalid expression. Generated function body: ${body}`);
   }
@@ -76,19 +84,21 @@ export function isSimplePath(exp) {
     !booleanLiteralReg.test(exp)
 }
 
-export function parse(exp) {
+export function parse(exp, args) {
   exp = exp.trim();
-  var res = {
+  let res = {
     exp: exp
   }
   if (isSimplePath(exp)) {
+    res.simplePath = true;
     res.identities = [exp];
-    res.get = function(scope) {
-      return _.get(scope, exp);
+    res.execute = function() {
+      return _.get(this, exp);
     }
   } else {
+    res.simplePath = false;
     identities = {};
-    res.get = compileGetter(exp);
+    res.execute = compileExecuter(exp, args);
     res.identities = Object.keys(identities);
     identities = undefined;
   }

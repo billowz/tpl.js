@@ -1,12 +1,19 @@
 const _ = require('lodash'),
   $ = require('jquery'),
-  {Binding} = require('./binding');
+  {Binding} = require('./binding'),
+  expression = require('./expression'),
+  expressionArgs = ['$scope', '$el'];
 
 class Text extends Binding {
   constructor(el, tpl, expr) {
     super(tpl, expr);
     this.el = el;
     this.observeHandler = this.observeHandler.bind(this);
+    this.expression = expression.parse(this.expr, expressionArgs);
+  }
+
+  value() {
+    return this.applyFilter(this.expression.execute.call(this.scope, this.scope, this.el));
   }
 
   bind() {
@@ -14,16 +21,24 @@ class Text extends Binding {
       this.comment = $(document.createComment('Text Binding ' + this.expr));
       this.comment.insertBefore(this.el);
     }
-    this.observe(this.expr, this.observeHandler);
-    this.update(this.value(this.expr));
+    this.expression.identities.forEach((ident) => {
+      this.observe(ident, this.observeHandler);
+    });
+    this.update(this.value());
   }
 
   unbind() {
-    this.unobserve(this.expr, this.observeHandler);
+    this.expression.identities.forEach((ident) => {
+      this.unobserve(ident, this.observeHandler);
+    });
   }
 
   observeHandler(attr, val) {
-    this.update(val);
+    if (this.expression.simplePath) {
+      this.update(this.applyFilter(val));
+    } else {
+      this.update(this.value());
+    }
   }
 
   update(val) {
