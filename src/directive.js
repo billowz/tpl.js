@@ -4,13 +4,51 @@ const _ = require('lodash'),
   {ArrayIterator, YieId} = require('./util'),
   SUPER_CLASS_OPTION = 'extend';
 
+export class DirectiveGroup extends AbstractBinding {
+  constructor(el, tpl, directiveConsts) {
+    super(tpl);
+
+    this.el = el;
+    directiveConsts.sort((a, b) => {
+      return (b.const.prototype.priority - a.const.prototype.priority) || 0;
+    });
+    this.directives = directiveConsts.map((dir) => {
+      return new dir.const(el, tpl, dir.val);
+    });
+  }
+
+  bind() {
+    let iter = new ArrayIterator(this.directives),
+      _self = this;
+    function parse() {
+      let directive, ret;
+      while (iter.hasNext()) {
+        directive = iter.next();
+        ret = directive.bind();
+        _self.scope = directive.scope;
+        if (iter.hasNext() && ret && ret instanceof YieId) {
+          ret.then(parse);
+          break;
+        }
+      }
+    }
+    parse();
+  }
+
+  unbind() {
+    this.directives.forEach(directive => {
+      directive.unbind();
+      this.scope = directive.scope;
+    });
+  }
+}
 
 export class Directive extends Binding {
   constructor(el, tpl, expr) {
     super(tpl, expr);
     this.el = el;
     this.$el = $(el);
-    this.attr = tpl.cfg.directivePrefix + this.name;
+    this.attr = tpl.tpl.directivePrefix + this.name;
   }
 
   bindComments() {
@@ -19,7 +57,6 @@ export class Directive extends Binding {
       this.comment.insertBefore(this.el);
     }
   }
-
 }
 Directive.prototype.abstract = false;
 Directive.prototype.name = 'Unkown';
@@ -27,10 +64,6 @@ Directive.prototype.block = false;
 Directive.prototype.priority = 0;
 
 const directives = {};
-
-let getDirective = Directive.getDirective = function getDirective(name) {
-  return directives[name];
-};
 
 let isDirective = Directive.isDirective = function isDirective(object) {
   let type = typeof object;
@@ -47,7 +80,11 @@ let isDirective = Directive.isDirective = function isDirective(object) {
   }
 }
 
-let register = Directive.register = function register(name, option) {
+Directive.getDirective = function getDirective(name) {
+  return directives[name];
+};
+
+Directive.register = function register(name, option) {
   if (name in directives) {
     console.warn('Directive[' + name + '] is defined');
   }
@@ -110,41 +147,3 @@ let register = Directive.register = function register(name, option) {
   return directive;
 };
 
-export class DirectiveGroup extends AbstractBinding {
-  constructor(el, tpl, directiveConsts) {
-    super(tpl);
-
-    this.el = el;
-    directiveConsts.sort((a, b) => {
-      return (b.const.prototype.priority - a.const.prototype.priority) || 0;
-    });
-    this.directives = directiveConsts.map((dir) => {
-      return new dir.const(el, tpl, dir.val);
-    });
-  }
-
-  bind() {
-    let iter = new ArrayIterator(this.directives),
-      _self = this;
-    function parse() {
-      let directive, ret;
-      while (iter.hasNext()) {
-        directive = iter.next();
-        ret = directive.bind();
-        _self.scope = directive.scope;
-        if (iter.hasNext() && ret && ret instanceof YieId) {
-          ret.then(parse);
-          break;
-        }
-      }
-    }
-    parse();
-  }
-
-  unbind() {
-    this.directives.forEach(directive => {
-      directive.unbind();
-      this.scope = directive.scope;
-    });
-  }
-}

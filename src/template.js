@@ -9,21 +9,29 @@ const PRIMITIVE = 0,
   TEXT = 0,
   BINDING = 1,
   templateContentReg = /^[\s\t\r\n]*</,
+  parseDelimiterReg = function(delimiter) {
+    return new RegExp([delimiter[0], '([^', delimiter[0], delimiter[0], ']*)', delimiter[1]].join(''), 'g')
+  },
+  parseDirectiveReg = function(prefix) {
+    return new RegExp('^' + prefix);
+  },
   defaultCfg = {
     delimiter: ['{', '}'],
     directivePrefix: 'tpl-'
   };
 
+
 let __tmp_id__ = 0;
 class Template {
   constructor(templ, cfg) {
     this.template = $(templ);
-    this.cfg = _.assign(_.clone(defaultCfg), cfg || {});
+    cfg = cfg || {};
 
-    let s = this.cfg.delimiter[0],
-      e = this.cfg.delimiter[1];
-    this.delimiterReg = new RegExp(s + '([^' + s + e + ']*)' + e, 'g');
-    this.attrDirectiveTestReg = new RegExp('^' + this.cfg.directivePrefix);
+    this.directivePrefix = cfg.directivePrefix || defaultCfg.directivePrefix;
+    this.delimiter = cfg.delimiter || defaultCfg.delimiter;
+    this.directiveReg = parseDirectiveReg(this.directivePrefix);
+    this.delimiterReg = parseDelimiterReg(this.delimiter);
+
     this.__instance_nr__ = 0;
     this.__id__ = __tmp_id__++;
   }
@@ -38,7 +46,6 @@ class TemplateInstance {
     this.tpl = tpl;
     this.scope = scope;
     this.el = this.tpl.template.clone();
-    this.cfg = tpl.cfg;
     this.parent = parent;
     this.__id__ = tpl.__id__ + '-' + tpl.__instance_nr__++;
     this.init();
@@ -162,7 +169,7 @@ class TemplateInstance {
   }
 
   parseDirectiveName(name) {
-    let reg = this.tpl.attrDirectiveTestReg;
+    let reg = this.tpl.directiveReg;
     if (reg.test(name)) {
       return name.replace(reg, '');
     }

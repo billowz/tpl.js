@@ -38,7 +38,8 @@
 
             },
             todoDone(){
-              console.log(this)
+              console.log(this, arguments);
+              this.allDone = false;
             },
             doneAll(){
               this.allDone = !this.allDone;
@@ -58,16 +59,17 @@
     </script>
     <script id="tpl/todo.html" type="text/template">
         <div class="header">
-            <h1></h1>
+            <h1 tpl-text="title"></h1>
             <input class="new-todo" autofocus autocomplete="off" placeholder="What needs to be done?"
                 tpl-onkeyup="addTodo">
         </div>
-        <div class="main" tpl-show="todos.length">
+        <div class="main" tpl-if="todos.length">
             <input class="toggle-all" type="checkbox" tpl-checked="allDone" tpl-onclick="doneAll">
             <ul class="todo-list">
                 <li class="todo" tpl-each="todo, idx in todos track by id" tpl-class="title">
                     <div class="view">
-                        <input class="toggle" type="checkbox" tpl-checked="todo.completed" tpl-onclick="todoDone">
+                        <input class="toggle" type="checkbox" tpl-checked="todo.completed"
+                          tpl-onclick="todoDone">
                         <label tpl-ondblclick="editTodo">{idx}:{todo.title}</label>
                         <button class="destroy" tpl-onclick="removeTodo"></button>
                     </div>
@@ -78,7 +80,7 @@
                 </li>
             </ul>
         </div>
-        <div class="footer" tpl-show="todos.length">
+        <div class="footer" tpl-if="todos.length">
             <span class="todo-count">
                   <strong tpl-text="remaining"></strong> {remaining | pluralize 'item'} left
               </span>
@@ -87,7 +89,7 @@
                 <li><a href="#/active" tpl-class="selected: visibility == 'active'">Active</a></li>
                 <li><a href="#/completed" tpl-class="selected: visibility == 'completed'">Completed</a></li>
             </ul>
-            <button class="clear-completed" tpl-on="click:removeCompleted" tpl-show="todos.length > remaining">
+            <button class="clear-completed" tpl-on="click:removeCompleted" tpl-if="todos.length > remaining">
                 Clear completed
             </button>
         </div>

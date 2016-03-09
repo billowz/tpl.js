@@ -12,6 +12,7 @@ export class AbstractEventDirective extends Directive {
   constructor(el, tpl, expr) {
     super(el, tpl, expr);
     this.handler = this.handler.bind(this);
+
   }
 
   handler(e) {
@@ -61,7 +62,7 @@ export class AbstractExpressionDirective extends Directive {
 
   bind() {
     this.observe(this.expr, this.observeHandler);
-    this.update(this.value());
+    this.update(this.value(this.expr));
   }
 
   unbind() {
@@ -70,7 +71,7 @@ export class AbstractExpressionDirective extends Directive {
 
   blankValue(val) {
     if (arguments.length == 0) {
-      val = this.value();
+      val = this.value(this.expr);
     }
     if (val === undefined || val == null) {
       return '';
@@ -78,15 +79,14 @@ export class AbstractExpressionDirective extends Directive {
     return val;
   }
 
-  observeHandler(attr, val) {
-    this.update(val);
+  observeHandler(expr, val) {
+    this.update(this.applyFilter(val));
   }
 
   update(val) {
     throw 'Abstract Method [' + this.className + '.update]';
   }
 }
-
 
 const EVENT_CHANGE = 'change',
   EVENT_INPUT = 'input propertychange',
@@ -99,6 +99,7 @@ const EVENT_CHANGE = 'change',
   expressions = {
     text: {
       update(val) {
+        console.log(this.className, val);
         this.$el.text(this.blankValue(val));
       },
       block: true
@@ -213,7 +214,7 @@ const EVENT_CHANGE = 'change',
         let val = this.elVal();
 
         if (val != this.val)
-          this.value(val);
+          this.value(this.expr, val);
       },
 
       update(val) {
@@ -263,34 +264,6 @@ _.each(expressions, (opt, name) => {
   registerDirective(name, opt);
 });
 
-
-/*
-  start = whitespace* a:alias in v:variable idx:(by identifier)? whitespace*{
-    return {
-        key: a[0],
-          value: a[1],
-          scope: v,
-          idx: idx ? idx[1]:undefined
-      }
-  }
-
-  alias = '(' a:_alias ')'{ return a; } / _alias
-
-  _alias = whitespace* key:identifier val:(whitespace* ',' whitespace* identifier)? whitespace*{
-    return [key, val[3]];
-  }
-
-  in = whitespace+ [iI][nN] whitespace+
-
-  by = whitespace+ [bB][yY] whitespace+
-
-  variable = $(identifier ('.' identifier / '[' ([\"] (identifier / [0-9]+) [\"] / [\'] (identifier / [0-9]+) [\'] / [0-9]+) ']')*)
-
-  identifier = $([a-zA-Z_][a-zA-Z0-9_]*)
-
-  whitespace = [ \t\n\r]
-*/
-
 const eachReg = /^\s*([\S][\s\S]+[\S])\s+in\s+([\S]+)(\s+track\s+by\s+([\S]+))?\s*$/,
   eachAliasReg = /^(\(\s*([\S]+)(\s*,\s*([\S]+))?\s*\))|([\S]+)(\s*,\s*([\S]+))$/;
 
@@ -320,28 +293,27 @@ export class EachDirective extends Directive {
   }
 
   bindChild(idx, data) {
-    let scope = {};
+    let scope = {
+      __index__: this.indexExpr ? _.get(data, this.indexExpr) : idx
+    };
 
     if (this.keyAlias)
       scope[this.keyAlias] = idx;
     scope[this.valueAlias] = data;
 
-    console.log('bindChild', idx, scope, this.el);
-    let tpl = this.childTpl.complie(scope).renderTo(this.$parentEl);
+    let tpl = this.childTpl.complie(scope, this.tpl).renderTo(this.$parentEl);
   }
 
   bind() {
     this.observe(this.scopeExpr, this.observeHandler);
-
-    this.scope = observer.on(this.scope, this.scopeExpr, this.observeHandler);
-    this.scope = observer.on(this.scope, this.scopeExpr + '.length', this.lengthObserveHandler);
-    this.update(_.get(this.scope, this.scopeExpr));
+    this.observe(this.scopeExpr + '.length', this.lengthObserveHandler);
+    this.update(this.realValue(this.scopeExpr));
   }
 
   unbind() {
     super.unbind();
-    this.scope = observer.un(this.scope, this.scopeExpr, this.observeHandler);
-    this.scope = observer.un(this.scope, this.scopeExpr + '.length', this.lengthObserveHandler);
+    this.unobserve(this.scopeExpr, this.observeHandler);
+    this.unobserve(this.scopeExpr + '.length', this.lengthObserveHandler);
   }
 
   update(scope) {
@@ -357,8 +329,8 @@ export class EachDirective extends Directive {
   observeHandler(expr, val) {
     this.update(val);
   }
-  lengthObserveHandler(expr, val) {
-    this.update(_.get(this.scope, this.scopeExpr));
+  lengthObserveHandler() {
+    this.update(this.realValue(this.scopeExpr));
   }
 }
 EachDirective.prototype.abstract = true;

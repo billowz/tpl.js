@@ -7,7 +7,7 @@
 		exports["tpl"] = factory(require("_"), require("jquery"), require("observer"));
 	else
 		root["tpl"] = factory(root["_"], root["jQuery"], root["observer"]);
-})(this, function(__WEBPACK_EXTERNAL_MODULE_2__, __WEBPACK_EXTERNAL_MODULE_3__, __WEBPACK_EXTERNAL_MODULE_7__) {
+})(this, function(__WEBPACK_EXTERNAL_MODULE_2__, __WEBPACK_EXTERNAL_MODULE_3__, __WEBPACK_EXTERNAL_MODULE_6__) {
 return /******/ (function(modules) { // webpackBootstrap
 /******/ 	// The module cache
 /******/ 	var installedModules = {};
@@ -57,7 +57,8 @@ return /******/ (function(modules) { // webpackBootstrap
 	'use strict';
 	
 	var tpl = __webpack_require__(1);
-	tpl.Directives = __webpack_require__(11);
+	tpl.Directives = __webpack_require__(9);
+	tpl.expression = __webpack_require__(10);
 	module.exports = tpl;
 
 /***/ },
@@ -70,17 +71,27 @@ return /******/ (function(modules) { // webpackBootstrap
 	
 	function _classCallCheck(instance, Constructor) { if (!(instance instanceof Constructor)) { throw new TypeError("Cannot call a class as a function"); } }
 	
-	var _ = __webpack_require__(2),
-	    $ = __webpack_require__(3),
-	    Text = __webpack_require__(4),
-	    Directive = __webpack_require__(8),
-	    DirectiveGroup = __webpack_require__(9);
+	var _ = __webpack_require__(2);
+	var $ = __webpack_require__(3);
+	var Text = __webpack_require__(4);
+	
+	var _require = __webpack_require__(7);
+	
+	var Directive = _require.Directive;
+	var DirectiveGroup = _require.DirectiveGroup;
+	
 	
 	var PRIMITIVE = 0,
 	    KEYPATH = 1,
 	    TEXT = 0,
 	    BINDING = 1,
 	    templateContentReg = /^[\s\t\r\n]*</,
+	    parseDelimiterReg = function parseDelimiterReg(delimiter) {
+	  return new RegExp([delimiter[0], '([^', delimiter[0], delimiter[0], ']*)', delimiter[1]].join(''), 'g');
+	},
+	    parseDirectiveReg = function parseDirectiveReg(prefix) {
+	  return new RegExp('^' + prefix);
+	},
 	    defaultCfg = {
 	  delimiter: ['{', '}'],
 	  directivePrefix: 'tpl-'
@@ -93,12 +104,13 @@ return /******/ (function(modules) { // webpackBootstrap
 	    _classCallCheck(this, Template);
 	
 	    this.template = $(templ);
-	    this.cfg = _.assign(_.clone(defaultCfg), cfg || {});
+	    cfg = cfg || {};
 	
-	    var s = this.cfg.delimiter[0],
-	        e = this.cfg.delimiter[1];
-	    this.delimiterReg = new RegExp(s + '([^' + s + e + ']*)' + e, 'g');
-	    this.attrDirectiveTestReg = new RegExp('^' + this.cfg.directivePrefix);
+	    this.directivePrefix = cfg.directivePrefix || defaultCfg.directivePrefix;
+	    this.delimiter = cfg.delimiter || defaultCfg.delimiter;
+	    this.directiveReg = parseDirectiveReg(this.directivePrefix);
+	    this.delimiterReg = parseDelimiterReg(this.delimiter);
+	
 	    this.__instance_nr__ = 0;
 	    this.__id__ = __tmp_id__++;
 	  }
@@ -117,7 +129,6 @@ return /******/ (function(modules) { // webpackBootstrap
 	    this.tpl = tpl;
 	    this.scope = scope;
 	    this.el = this.tpl.template.clone();
-	    this.cfg = tpl.cfg;
 	    this.parent = parent;
 	    this.__id__ = tpl.__id__ + '-' + tpl.__instance_nr__++;
 	    this.init();
@@ -134,7 +145,7 @@ return /******/ (function(modules) { // webpackBootstrap
 	    this.bindings = this.parse(this.el);
 	    this.bindings.forEach(function (directive) {
 	      directive.bind();
-	      _this.scope = directive.getScope();
+	      _this.scope = directive.scope;
 	    });
 	  };
 	
@@ -210,40 +221,37 @@ return /******/ (function(modules) { // webpackBootstrap
 	    var block = false,
 	        $el = $(el),
 	        directives = [],
-	        consts = [],
-	        instances = [];
+	        consts = [];
 	    if (el.attributes) {
 	      _.each(el.attributes, function (attr) {
 	        var name = attr.name,
 	            val = attr.value,
-	            directiveConst = void 0,
+	            dc = void 0,
 	            directive = void 0;
 	
-	        if ((name = _this3.parseDirectiveName(name)) && (directiveConst = Directive.getDirective(name))) {
-	          if (directiveConst.prototype.abstract) {
+	        if ((name = _this3.parseDirectiveName(name)) && (dc = Directive.getDirective(name))) {
+	          if (dc.prototype.abstract) {
 	            consts = [{
-	              'const': directiveConst,
+	              'const': dc,
 	              val: val
 	            }];
 	            block = true;
 	            return false;
 	          }
 	          consts.push({
-	            'const': directiveConst,
+	            'const': dc,
 	            val: val
 	          });
-	          if (directiveConst.prototype.block) block = true;
+	          if (dc.prototype.block) block = true;
 	        } else if (name) {
 	          console.warn('Directive is undefined ' + attr.name);
 	        }
 	      });
-	      for (var i = 0; i < consts.length; i++) {
-	        instances.push(new consts[i]['const'](el, this, consts[i].val));
-	      }
-	      if (instances.length > 1) {
-	        directives.push(new DirectiveGroup(el, this, instances));
-	      } else if (instances.length == 1) {
-	        directives.push(instances[0]);
+	
+	      if (consts.length > 1) {
+	        directives.push(new DirectiveGroup(el, this, consts));
+	      } else if (consts.length == 1) {
+	        directives.push(new consts[0]['const'](el, this, consts[0].val));
 	      }
 	    }
 	    if (!block) {
@@ -257,7 +265,7 @@ return /******/ (function(modules) { // webpackBootstrap
 	  };
 	
 	  TemplateInstance.prototype.parseDirectiveName = function parseDirectiveName(name) {
-	    var reg = this.tpl.attrDirectiveTestReg;
+	    var reg = this.tpl.directiveReg;
 	    if (reg.test(name)) {
 	      return name.replace(reg, '');
 	    }
@@ -295,11 +303,10 @@ return /******/ (function(modules) { // webpackBootstrap
 	
 	var _ = __webpack_require__(2);
 	var $ = __webpack_require__(3);
-	var Binding = __webpack_require__(5);
 	
-	var _require = __webpack_require__(6);
+	var _require = __webpack_require__(5);
 	
-	var Expression = _require.Expression;
+	var Binding = _require.Binding;
 	
 	var Text = function (_Binding) {
 	  _inherits(Text, _Binding);
@@ -307,26 +314,28 @@ return /******/ (function(modules) { // webpackBootstrap
 	  function Text(el, tpl, expr) {
 	    _classCallCheck(this, Text);
 	
-	    var _this = _possibleConstructorReturn(this, _Binding.call(this, tpl));
+	    var _this = _possibleConstructorReturn(this, _Binding.call(this, tpl, expr));
 	
 	    _this.el = el;
-	    _this.expr = expr;
-	    _this.update = _this.update.bind(_this);
-	    _this.expression = new Expression(_this.scope, expr, _this.update);
+	    _this.observeHandler = _this.observeHandler.bind(_this);
 	    return _this;
 	  }
 	
 	  Text.prototype.bind = function bind() {
-	    if (Binding.genComment && !this.comment) {
+	    if (Binding.generateComments && !this.comment) {
 	      this.comment = $(document.createComment('Text Binding ' + this.expr));
 	      this.comment.insertBefore(this.el);
 	    }
-	    this.scope = this.expression.observe(this.update);
-	    this.update(this.expression.value());
+	    this.observe(this.expr, this.observeHandler);
+	    this.update(this.value(this.expr));
 	  };
 	
 	  Text.prototype.unbind = function unbind() {
-	    this.scope = this.expression.unobserve();
+	    this.unobserve(this.expr, this.observeHandler);
+	  };
+	
+	  Text.prototype.observeHandler = function observeHandler(attr, val) {
+	    this.update(val);
 	  };
 	
 	  Text.prototype.update = function update(val) {
@@ -347,115 +356,130 @@ return /******/ (function(modules) { // webpackBootstrap
 
 	'use strict';
 	
+	exports.__esModule = true;
+	
+	function _possibleConstructorReturn(self, call) { if (!self) { throw new ReferenceError("this hasn't been initialised - super() hasn't been called"); } return call && (typeof call === "object" || typeof call === "function") ? call : self; }
+	
+	function _inherits(subClass, superClass) { if (typeof superClass !== "function" && superClass !== null) { throw new TypeError("Super expression must either be null or a function, not " + typeof superClass); } subClass.prototype = Object.create(superClass && superClass.prototype, { constructor: { value: subClass, enumerable: false, writable: true, configurable: true } }); if (superClass) Object.setPrototypeOf ? Object.setPrototypeOf(subClass, superClass) : subClass.__proto__ = superClass; }
+	
 	function _classCallCheck(instance, Constructor) { if (!(instance instanceof Constructor)) { throw new TypeError("Cannot call a class as a function"); } }
 	
-	var _ = __webpack_require__(2);
+	var _ = __webpack_require__(2),
+	    observer = __webpack_require__(6);
 	
-	var Binding = function () {
-	  function Binding(tpl) {
-	    _classCallCheck(this, Binding);
+	var AbstractBinding = exports.AbstractBinding = function () {
+	  function AbstractBinding(tpl) {
+	    _classCallCheck(this, AbstractBinding);
 	
 	    this.tpl = tpl;
 	    this.scope = tpl.scope;
 	  }
 	
-	  Binding.prototype.bind = function bind() {
+	  AbstractBinding.prototype.bind = function bind() {
 	    throw 'Abstract Method [' + this.constructor.name + '.bind]';
 	  };
 	
-	  Binding.prototype.unbind = function unbind() {
+	  AbstractBinding.prototype.unbind = function unbind() {
 	    throw 'Abstract Method [' + this.constructor.name + '.unbind]';
 	  };
 	
-	  Binding.prototype.getScope = function getScope() {
-	    return this.scope;
-	  };
-	
-	  return Binding;
+	  return AbstractBinding;
 	}();
 	
-	Binding.genComment = true;
+	var exprReg = /((?:'[^']*')*(?:(?:[^\|']+(?:'[^']*')*[^\|']*)+|[^\|]+))|^$/g;
+	var filterReg = /^$/g;
 	
-	module.exports = Binding;
-
-/***/ },
-/* 6 */
-/***/ function(module, exports, __webpack_require__) {
-
-	'use strict';
+	var Binding = exports.Binding = function (_AbstractBinding) {
+	  _inherits(Binding, _AbstractBinding);
 	
-	exports.__esModule = true;
+	  function Binding(tpl, expr) {
+	    _classCallCheck(this, Binding);
 	
-	function _classCallCheck(instance, Constructor) { if (!(instance instanceof Constructor)) { throw new TypeError("Cannot call a class as a function"); } }
+	    var _this = _possibleConstructorReturn(this, _AbstractBinding.call(this, tpl));
 	
-	var _ = __webpack_require__(2),
-	    observer = __webpack_require__(7);
-	
-	var Expression = exports.Expression = function () {
-	  function Expression(scope, expr, handler) {
-	    _classCallCheck(this, Expression);
-	
-	    this.scope = scope;
-	    this.expr = expr;
-	    this.filters = [];
-	    this.handler = handler;
-	    this.__listen = this.__listen.bind(this);
+	    _this.fullExpr = expr;
+	    var pipes = expr.match(exprReg);
+	    _this.expr = pipes.shift();
+	    _this.filterExprs = pipes;
+	    console.log(_this.className + ': "' + _this.expr + '" | ' + pipes.join(' & '));
+	    _this.filters = _this.filterExprs.map(function (exp) {
+	      var pp = exp.match(filterReg);
+	      if (!pp) {
+	        return null;
+	      }
+	      return {
+	        name: pp.shift(),
+	        args: pp
+	      };
+	    }).filter(function (f) {
+	      return f;
+	    });
+	    return _this;
 	  }
 	
-	  Expression.prototype.realValue = function realValue() {
-	    return _.get(this.scope, this.expr);
+	  Binding.prototype.realValue = function realValue(expr, val) {
+	    if (arguments.length == 2) {
+	      return _.set(this.scope, expr, val);
+	    } else {
+	      var scope = this.scope,
+	          tpl = this.tpl;
+	      while (!_.has(scope, expr)) {
+	        tpl = tpl.parent;
+	        if (!tpl) return undefined;
+	        scope = tpl.scope;
+	      }
+	      return _.get(scope, expr);
+	    }
 	  };
 	
-	  Expression.prototype.setRealValue = function setRealValue(val) {
-	    _.set(this.scope, this.expr, val);
+	  Binding.prototype.value = function value(expr, val) {
+	    if (arguments.length == 2) {
+	      return this.realValue(expr, this.unapplyFilter(val));
+	    } else {
+	      return this.applyFilter(this.realValue(expr));
+	    }
 	  };
 	
-	  Expression.prototype.value = function value() {
-	    var val = _.get(this.scope, this.expr);
+	  Binding.prototype.applyFilter = function applyFilter(val) {
 	    for (var i = 0; i < this.filters.length; i++) {
 	      val = this.filters[i].apply(val);
 	    }
 	    return val;
 	  };
 	
-	  Expression.prototype.setValue = function setValue(val) {
+	  Binding.prototype.unapplyFilter = function unapplyFilter(val) {
 	    for (var i = 0; i < this.filters.length; i++) {
 	      val = this.filters[i].unapply(val);
 	    }
-	    _.set(this.scope, this.expr, val);
+	    return val;
 	  };
 	
-	  Expression.prototype.observe = function observe() {
-	    this.scope = observer.on(this.scope, this.expr, this.__listen);
-	    return this.scope;
+	  Binding.prototype.observe = function observe(expr, callback) {
+	    return this.scope = observer.on(this.scope, expr, callback);
 	  };
 	
-	  Expression.prototype.unobserve = function unobserve() {
-	    this.scope = observer.un(this.scope, this.expr, this.__listen);
-	    return this.scope;
+	  Binding.prototype.unobserve = function unobserve(expr, callback) {
+	    return this.scope = observer.un(this.scope, expr, callback);
 	  };
 	
-	  Expression.prototype.__listen = function __listen(expr, val) {
-	    for (var i = 0; i < this.filters.length; i++) {
-	      val = this.filters[i].apply(val);
-	    }
-	    this.handler(val);
-	  };
+	  return Binding;
+	}(AbstractBinding);
 	
-	  return Expression;
-	}();
+	Binding.generateComments = true;
+
+/***/ },
+/* 6 */
+/***/ function(module, exports) {
+
+	module.exports = __WEBPACK_EXTERNAL_MODULE_6__;
 
 /***/ },
 /* 7 */
-/***/ function(module, exports) {
-
-	module.exports = __WEBPACK_EXTERNAL_MODULE_7__;
-
-/***/ },
-/* 8 */
 /***/ function(module, exports, __webpack_require__) {
 
 	'use strict';
+	
+	exports.__esModule = true;
 	
 	var _typeof = typeof Symbol === "function" && typeof Symbol.iterator === "symbol" ? function (obj) { return typeof obj; } : function (obj) { return obj && typeof Symbol === "function" && obj.constructor === Symbol ? "symbol" : typeof obj; };
 	
@@ -465,42 +489,88 @@ return /******/ (function(modules) { // webpackBootstrap
 	
 	function _inherits(subClass, superClass) { if (typeof superClass !== "function" && superClass !== null) { throw new TypeError("Super expression must either be null or a function, not " + typeof superClass); } subClass.prototype = Object.create(superClass && superClass.prototype, { constructor: { value: subClass, enumerable: false, writable: true, configurable: true } }); if (superClass) Object.setPrototypeOf ? Object.setPrototypeOf(subClass, superClass) : subClass.__proto__ = superClass; }
 	
-	var _ = __webpack_require__(2),
-	    $ = __webpack_require__(3),
-	    Binding = __webpack_require__(5),
-	    SUPER_CLASS_OPTION = 'extend';
+	var _ = __webpack_require__(2);
+	var $ = __webpack_require__(3);
 	
-	var Directive = function (_Binding) {
+	var _require = __webpack_require__(5);
+	
+	var Binding = _require.Binding;
+	var AbstractBinding = _require.AbstractBinding;
+	
+	var _require2 = __webpack_require__(8);
+	
+	var ArrayIterator = _require2.ArrayIterator;
+	var YieId = _require2.YieId;
+	var SUPER_CLASS_OPTION = 'extend';
+	var DirectiveGroup = exports.DirectiveGroup = function (_AbstractBinding) {
+	  _inherits(DirectiveGroup, _AbstractBinding);
+	
+	  function DirectiveGroup(el, tpl, directiveConsts) {
+	    _classCallCheck(this, DirectiveGroup);
+	
+	    var _this = _possibleConstructorReturn(this, _AbstractBinding.call(this, tpl));
+	
+	    _this.el = el;
+	    directiveConsts.sort(function (a, b) {
+	      return b['const'].prototype.priority - a['const'].prototype.priority || 0;
+	    });
+	    _this.directives = directiveConsts.map(function (dir) {
+	      return new dir['const'](el, tpl, dir.val);
+	    });
+	    return _this;
+	  }
+	
+	  DirectiveGroup.prototype.bind = function bind() {
+	    var iter = new ArrayIterator(this.directives),
+	        _self = this;
+	    function parse() {
+	      var directive = void 0,
+	          ret = void 0;
+	      while (iter.hasNext()) {
+	        directive = iter.next();
+	        ret = directive.bind();
+	        _self.scope = directive.scope;
+	        if (iter.hasNext() && ret && ret instanceof YieId) {
+	          ret.then(parse);
+	          break;
+	        }
+	      }
+	    }
+	    parse();
+	  };
+	
+	  DirectiveGroup.prototype.unbind = function unbind() {
+	    var _this2 = this;
+	
+	    this.directives.forEach(function (directive) {
+	      directive.unbind();
+	      _this2.scope = directive.scope;
+	    });
+	  };
+	
+	  return DirectiveGroup;
+	}(AbstractBinding);
+	
+	var Directive = exports.Directive = function (_Binding) {
 	  _inherits(Directive, _Binding);
 	
 	  function Directive(el, tpl, expr) {
 	    _classCallCheck(this, Directive);
 	
-	    var _this = _possibleConstructorReturn(this, _Binding.call(this, tpl));
+	    var _this3 = _possibleConstructorReturn(this, _Binding.call(this, tpl, expr));
 	
-	    _this.el = el;
-	    _this.$el = $(el);
-	    _this.expr = expr;
-	    _this.attr = tpl.cfg.directivePrefix + _this.name;
-	    return _this;
+	    _this3.el = el;
+	    _this3.$el = $(el);
+	    _this3.attr = tpl.tpl.directivePrefix + _this3.name;
+	    return _this3;
 	  }
 	
-	  Directive.prototype.getPriority = function getPriority() {
-	    return this.priority;
-	  };
-	
-	  Directive.prototype.isBlock = function isBlock() {
-	    return this.block;
-	  };
-	
-	  Directive.prototype.bind = function bind() {
-	    if (Binding.genComment && !this.comment) {
+	  Directive.prototype.bindComments = function bindComments() {
+	    if (Binding.generateComments && !this.comment) {
 	      this.comment = $(document.createComment(' Directive:' + this.name + ' [' + this.expr + '] '));
 	      this.comment.insertBefore(this.el);
 	    }
 	  };
-	
-	  Directive.prototype.unbind = function unbind() {};
 	
 	  return Directive;
 	}(Binding);
@@ -510,8 +580,9 @@ return /******/ (function(modules) { // webpackBootstrap
 	Directive.prototype.block = false;
 	Directive.prototype.priority = 0;
 	
-	var directives = {},
-	    isDirective = Directive.isDirective = function isDirective(object) {
+	var directives = {};
+	
+	var isDirective = Directive.isDirective = function isDirective(object) {
 	  var type = typeof object === 'undefined' ? 'undefined' : _typeof(object);
 	  if (!object || type != 'function' && type != 'object') {
 	    return false;
@@ -524,8 +595,13 @@ return /******/ (function(modules) { // webpackBootstrap
 	    }
 	    return false;
 	  }
-	},
-	    register = Directive.register = function register(name, option) {
+	};
+	
+	Directive.getDirective = function getDirective(name) {
+	  return directives[name];
+	};
+	
+	Directive.register = function register(name, option) {
 	  if (name in directives) {
 	    console.warn('Directive[' + name + '] is defined');
 	  }
@@ -585,92 +661,21 @@ return /******/ (function(modules) { // webpackBootstrap
 	
 	  directives[name] = directive;
 	  return directive;
-	},
-	    getDirective = Directive.getDirective = function getDirective(name) {
-	  return directives[name];
 	};
-	
-	module.exports = Directive;
 
 /***/ },
-/* 9 */
+/* 8 */
 /***/ function(module, exports, __webpack_require__) {
 
 	'use strict';
 	
-	function _classCallCheck(instance, Constructor) { if (!(instance instanceof Constructor)) { throw new TypeError("Cannot call a class as a function"); } }
-	
-	function _possibleConstructorReturn(self, call) { if (!self) { throw new ReferenceError("this hasn't been initialised - super() hasn't been called"); } return call && (typeof call === "object" || typeof call === "function") ? call : self; }
-	
-	function _inherits(subClass, superClass) { if (typeof superClass !== "function" && superClass !== null) { throw new TypeError("Super expression must either be null or a function, not " + typeof superClass); } subClass.prototype = Object.create(superClass && superClass.prototype, { constructor: { value: subClass, enumerable: false, writable: true, configurable: true } }); if (superClass) Object.setPrototypeOf ? Object.setPrototypeOf(subClass, superClass) : subClass.__proto__ = superClass; }
-	
-	var Binding = __webpack_require__(5);
-	
-	var _require = __webpack_require__(10);
-	
-	var ArrayIterator = _require.ArrayIterator;
-	var YieId = _require.YieId;
-	
-	var DirectiveGroup = function (_Binding) {
-	  _inherits(DirectiveGroup, _Binding);
-	
-	  function DirectiveGroup(el, tpl, directives) {
-	    _classCallCheck(this, DirectiveGroup);
-	
-	    var _this = _possibleConstructorReturn(this, _Binding.call(this, tpl));
-	
-	    _this.el = el;
-	    _this.directives = directives;
-	    _this.directives.sort(function (a, b) {
-	      return b.priority - a.priority || 0;
-	    });
-	    return _this;
-	  }
-	
-	  DirectiveGroup.prototype.bind = function bind() {
-	    var iter = new ArrayIterator(this.directives),
-	        _self = this;
-	    function parse() {
-	      var directive = void 0,
-	          ret = void 0;
-	      while (iter.hasNext()) {
-	        directive = iter.next();
-	        ret = directive.bind();
-	        _self.scope = directive.getScope();
-	        if (iter.hasNext() && ret && ret instanceof YieId) {
-	          ret.then(parse);
-	          break;
-	        }
-	      }
-	    }
-	    parse();
-	  };
-	
-	  DirectiveGroup.prototype.unbind = function unbind() {
-	    var _this2 = this;
-	
-	    this.directives.forEach(function (directive) {
-	      directive.unbind();
-	      _this2.scope = directive.getScope();
-	    });
-	  };
-	
-	  return DirectiveGroup;
-	}(Binding);
-	
-	module.exports = DirectiveGroup;
-
-/***/ },
-/* 10 */
-/***/ function(module, exports, __webpack_require__) {
-
-	'use strict';
+	exports.__esModule = true;
 	
 	function _classCallCheck(instance, Constructor) { if (!(instance instanceof Constructor)) { throw new TypeError("Cannot call a class as a function"); } }
 	
 	var _ = __webpack_require__(2);
 	
-	var YieId = function () {
+	var YieId = exports.YieId = function () {
 	  function YieId() {
 	    _classCallCheck(this, YieId);
 	
@@ -700,7 +705,7 @@ return /******/ (function(modules) { // webpackBootstrap
 	  return YieId;
 	}();
 	
-	var ArrayIterator = function () {
+	var ArrayIterator = exports.ArrayIterator = function () {
 	  function ArrayIterator(array, point) {
 	    _classCallCheck(this, ArrayIterator);
 	
@@ -718,14 +723,9 @@ return /******/ (function(modules) { // webpackBootstrap
 	
 	  return ArrayIterator;
 	}();
-	
-	module.exports = {
-	  YieId: YieId,
-	  ArrayIterator: ArrayIterator
-	};
 
 /***/ },
-/* 11 */
+/* 9 */
 /***/ function(module, exports, __webpack_require__) {
 
 	'use strict';
@@ -739,14 +739,13 @@ return /******/ (function(modules) { // webpackBootstrap
 	function _inherits(subClass, superClass) { if (typeof superClass !== "function" && superClass !== null) { throw new TypeError("Super expression must either be null or a function, not " + typeof superClass); } subClass.prototype = Object.create(superClass && superClass.prototype, { constructor: { value: subClass, enumerable: false, writable: true, configurable: true } }); if (superClass) Object.setPrototypeOf ? Object.setPrototypeOf(subClass, superClass) : subClass.__proto__ = superClass; }
 	
 	var _ = __webpack_require__(2);
-	var Directive = __webpack_require__(8);
+	
+	var _require = __webpack_require__(7);
+	
+	var Directive = _require.Directive;
 	var Template = __webpack_require__(1);
 	
-	var _require = __webpack_require__(6);
-	
-	var Expression = _require.Expression;
-	
-	var _require2 = __webpack_require__(10);
+	var _require2 = __webpack_require__(8);
 	
 	var YieId = _require2.YieId;
 	
@@ -765,11 +764,12 @@ return /******/ (function(modules) { // webpackBootstrap
 	    var _this = _possibleConstructorReturn(this, _Directive.call(this, el, tpl, expr));
 	
 	    _this.handler = _this.handler.bind(_this);
+	
 	    return _this;
 	  }
 	
 	  AbstractEventDirective.prototype.handler = function handler(e) {
-	    var fn = _.get(this.scope, this.expr);
+	    var fn = this.value(this.expr);
 	    if (typeof fn != 'function') {
 	      throw TypeError("Invalid Event Handler ");
 	    }
@@ -777,12 +777,10 @@ return /******/ (function(modules) { // webpackBootstrap
 	  };
 	
 	  AbstractEventDirective.prototype.bind = function bind() {
-	    _Directive.prototype.bind.call(this);
 	    this.$el.on(this.eventType, this.handler);
 	  };
 	
 	  AbstractEventDirective.prototype.unbind = function unbind() {
-	    _Directive.prototype.unbind.call(this);
 	    this.$el.un(this.eventType, this.handler);
 	  };
 	
@@ -817,45 +815,31 @@ return /******/ (function(modules) { // webpackBootstrap
 	
 	    var _this2 = _possibleConstructorReturn(this, _Directive2.call(this, el, tpl, expr));
 	
-	    _this2.update = _this2.update.bind(_this2);
-	    _this2.expression = new Expression(_this2.scope, _this2.expr, _this2.update);
+	    _this2.observeHandler = _this2.observeHandler.bind(_this2);
 	    return _this2;
 	  }
 	
 	  AbstractExpressionDirective.prototype.bind = function bind() {
-	    _Directive2.prototype.bind.call(this);
-	    this.scope = this.expression.observe();
-	    this.update(this.value());
+	    this.observe(this.expr, this.observeHandler);
+	    this.update(this.value(this.expr));
 	  };
 	
 	  AbstractExpressionDirective.prototype.unbind = function unbind() {
-	    this.scope = this.expression.unobserve();
-	  };
-	
-	  AbstractExpressionDirective.prototype.setRealValue = function setRealValue(val) {
-	    return this.expression.setRealValue(val);
-	  };
-	
-	  AbstractExpressionDirective.prototype.setValue = function setValue(val) {
-	    return this.expression.setValue(val);
-	  };
-	
-	  AbstractExpressionDirective.prototype.realValue = function realValue() {
-	    return this.expression.realValue();
-	  };
-	
-	  AbstractExpressionDirective.prototype.value = function value() {
-	    return this.expression.value();
+	    this.unobserve(this.expr, this.observeHandler);
 	  };
 	
 	  AbstractExpressionDirective.prototype.blankValue = function blankValue(val) {
 	    if (arguments.length == 0) {
-	      val = this.expression.value();
+	      val = this.value(this.expr);
 	    }
 	    if (val === undefined || val == null) {
 	      return '';
 	    }
 	    return val;
+	  };
+	
+	  AbstractExpressionDirective.prototype.observeHandler = function observeHandler(expr, val) {
+	    this.update(this.applyFilter(val));
 	  };
 	
 	  AbstractExpressionDirective.prototype.update = function update(val) {
@@ -876,6 +860,7 @@ return /******/ (function(modules) { // webpackBootstrap
 	    expressions = {
 	  text: {
 	    update: function update(val) {
+	      console.log(this.className, val);
 	      this.$el.text(this.blankValue(val));
 	    },
 	
@@ -913,6 +898,11 @@ return /******/ (function(modules) { // webpackBootstrap
 	      this.$el.val(this.blankValue(val));
 	    }
 	  },
+	  checked: {
+	    update: function update(val) {
+	      this.$el.prop('checked', !!val);
+	    }
+	  },
 	  'if': {
 	    bind: function bind() {
 	      AbstractExpressionDirective.prototype.bind.call(this);
@@ -931,7 +921,7 @@ return /******/ (function(modules) { // webpackBootstrap
 	          this.directives = this.tpl.parseChildNodes(this.el);
 	          this.directives.forEach(function (directive) {
 	            directive.bind();
-	            _this3.scope = directive.getScope();
+	            _this3.scope = directive.scope;
 	          });
 	          if (this.yieId) {
 	            this.yieId.done();
@@ -948,7 +938,7 @@ return /******/ (function(modules) { // webpackBootstrap
 	      if (this.directives) {
 	        this.directives.forEach(function (directive) {
 	          directive.unbind();
-	          _this4.scope = directive.getScope();
+	          _this4.scope = directive.scope;
 	        });
 	      }
 	    },
@@ -989,7 +979,7 @@ return /******/ (function(modules) { // webpackBootstrap
 	    onChange: function onChange() {
 	      var val = this.elVal();
 	
-	      if (val != this.val) this.setValue(val);
+	      if (val != this.val) this.value(this.expr, val);
 	    },
 	    update: function update(val) {
 	      this.val = this.blankValue(val);
@@ -1036,33 +1026,6 @@ return /******/ (function(modules) { // webpackBootstrap
 	  registerDirective(name, opt);
 	});
 	
-	/*
-	  start = whitespace* a:alias in v:variable idx:(by identifier)? whitespace*{
-	    return {
-	        key: a[0],
-	          value: a[1],
-	          scope: v,
-	          idx: idx ? idx[1]:undefined
-	      }
-	  }
-	
-	  alias = '(' a:_alias ')'{ return a; } / _alias
-	
-	  _alias = whitespace* key:identifier val:(whitespace* ',' whitespace* identifier)? whitespace*{
-	    return [key, val[3]];
-	  }
-	
-	  in = whitespace+ [iI][nN] whitespace+
-	
-	  by = whitespace+ [bB][yY] whitespace+
-	
-	  variable = $(identifier ('.' identifier / '[' ([\"] (identifier / [0-9]+) [\"] / [\'] (identifier / [0-9]+) [\'] / [0-9]+) ']')*)
-	
-	  identifier = $([a-zA-Z_][a-zA-Z0-9_]*)
-	
-	  whitespace = [ \t\n\r]
-	*/
-	
 	var eachReg = /^\s*([\S][\s\S]+[\S])\s+in\s+([\S]+)(\s+track\s+by\s+([\S]+))?\s*$/,
 	    eachAliasReg = /^(\(\s*([\S]+)(\s*,\s*([\S]+))?\s*\))|([\S]+)(\s*,\s*([\S]+))$/;
 	
@@ -1074,8 +1037,8 @@ return /******/ (function(modules) { // webpackBootstrap
 	
 	    var _this5 = _possibleConstructorReturn(this, _Directive3.call(this, el, tpl, expr));
 	
-	    _this5.__listen = _this5.__listen.bind(_this5);
-	    _this5.__lenListen = _this5.__lenListen.bind(_this5);
+	    _this5.observeHandler = _this5.observeHandler.bind(_this5);
+	    _this5.lengthObserveHandler = _this5.lengthObserveHandler.bind(_this5);
 	
 	    var token = expr.match(eachReg);
 	    if (!token) throw Error('Invalid Expression[' + expr + '] on Each Directive');
@@ -1096,20 +1059,26 @@ return /******/ (function(modules) { // webpackBootstrap
 	  }
 	
 	  EachDirective.prototype.bindChild = function bindChild(idx, data) {
-	    var scope = {};
+	    var scope = {
+	      __index__: this.indexExpr ? _.get(data, this.indexExpr) : idx
+	    };
 	
 	    if (this.keyAlias) scope[this.keyAlias] = idx;
 	    scope[this.valueAlias] = data;
 	
-	    console.log('bindChild', idx, scope, this.el);
-	    var tpl = this.childTpl.complie(scope).renderTo(this.$parentEl);
+	    var tpl = this.childTpl.complie(scope, this.tpl).renderTo(this.$parentEl);
 	  };
 	
 	  EachDirective.prototype.bind = function bind() {
-	    _Directive3.prototype.bind.call(this);
-	    this.scope = observer.on(this.scope, this.scopeExpr, this.__listen);
-	    this.scope = observer.on(this.scope, this.scopeExpr + '.length', this.__lenListen);
-	    this.update(_.get(this.scope, this.scopeExpr));
+	    this.observe(this.scopeExpr, this.observeHandler);
+	    this.observe(this.scopeExpr + '.length', this.lengthObserveHandler);
+	    this.update(this.realValue(this.scopeExpr));
+	  };
+	
+	  EachDirective.prototype.unbind = function unbind() {
+	    _Directive3.prototype.unbind.call(this);
+	    this.unobserve(this.scopeExpr, this.observeHandler);
+	    this.unobserve(this.scopeExpr + '.length', this.lengthObserveHandler);
 	  };
 	
 	  EachDirective.prototype.update = function update(scope) {
@@ -1122,18 +1091,12 @@ return /******/ (function(modules) { // webpackBootstrap
 	    }
 	  };
 	
-	  EachDirective.prototype.unbind = function unbind() {
-	    _Directive3.prototype.unbind.call(this);
-	    this.scope = observer.un(this.scope, this.scopeExpr, this.__listen);
-	    this.scope = observer.un(this.scope, this.scopeExpr + '.length', this.__lenListen);
-	  };
-	
-	  EachDirective.prototype.__listen = function __listen(expr, val) {
+	  EachDirective.prototype.observeHandler = function observeHandler(expr, val) {
 	    this.update(val);
 	  };
 	
-	  EachDirective.prototype.__lenListen = function __lenListen(expr, val) {
-	    this.update(_.get(this.scope, this.scopeExpr));
+	  EachDirective.prototype.lengthObserveHandler = function lengthObserveHandler() {
+	    this.update(this.realValue(this.scopeExpr));
 	  };
 	
 	  return EachDirective;
@@ -1144,6 +1107,94 @@ return /******/ (function(modules) { // webpackBootstrap
 	EachDirective.prototype.priority = 10;
 	
 	Directive.register('each', EachDirective);
+
+/***/ },
+/* 10 */
+/***/ function(module, exports) {
+
+	'use strict';
+	
+	exports.__esModule = true;
+	exports.isSimplePath = isSimplePath;
+	exports.parse = parse;
+	var allowedKeywords = 'Math,Date,this,true,false,null,undefined,Infinity,NaN,' + 'isNaN,isFinite,decodeURI,decodeURIComponent,encodeURI,' + 'encodeURIComponent,parseInt,parseFloat';
+	var allowedKeywordsRE = new RegExp('^(' + allowedKeywords.replace(/,/g, '\\b|') + '\\b)');
+	
+	// keywords that don't make sense inside expressions
+	var improperKeywords = 'break,case,class,catch,const,continue,debugger,default,' + 'delete,do,else,export,extends,finally,for,function,if,' + 'import,in,instanceof,let,return,super,switch,throw,try,' + 'var,while,with,yield,enum,await,implements,package,' + 'proctected,static,interface,private,public';
+	var improperKeywordsRE = new RegExp('^(' + improperKeywords.replace(/,/g, '\\b|') + '\\b)');
+	
+	var wsRE = /\s/g;
+	var newlineRE = /\n/g;
+	var saveRE = /[\{,]\s*[\w\$_]+\s*:|('(?:[^'\\]|\\.)*'|"(?:[^"\\]|\\.)*"|`(?:[^`\\]|\\.)*\$\{|\}(?:[^`\\]|\\.)*`|`(?:[^`\\]|\\.)*`)|new |typeof |void /g;
+	var restoreRE = /"(\d+)"/g;
+	var pathTestRE = /^[A-Za-z_$][\w$]*(?:\.[A-Za-z_$][\w$]*|\['.*?'\]|\[".*?"\]|\[\d+\]|\[[A-Za-z_$][\w$]*\])*$/;
+	var identRE = /[^\w$\.](?:[A-Za-z_$][\w$]*)/g;
+	var booleanLiteralRE = /^(?:true|false)$/;
+	
+	var saved = [];
+	function save(str, isString) {
+	  var i = saved.length;
+	  saved[i] = isString ? str.replace(newlineRE, '\\n') : str;
+	  return '"' + i + '"';
+	}
+	
+	function rewrite(raw) {
+	  var c = raw.charAt(0);
+	  var path = raw.slice(1);
+	  if (allowedKeywordsRE.test(path)) {
+	    return raw;
+	  } else {
+	    path = path.indexOf('"') > -1 ? path.replace(restoreRE, restore) : path;
+	    return c + 'scope.' + path;
+	  }
+	}
+	
+	function restore(str, i) {
+	  return saved[i];
+	}
+	
+	function makeGetter(body) {
+	  try {
+	    return new Function('binding', 'return ' + body + ';');
+	  } catch (e) {
+	    throw Error('Invalid expression. Generated function body: ' + body);
+	  }
+	}
+	
+	function compileGetter(exp) {
+	  if (improperKeywordsRE.test(exp)) {
+	    throw Error('Invalid expression. Generated function body: ' + exp);
+	  }
+	  saved.length = 0;
+	  var body = exp.replace(saveRE, save).replace(wsRE, '');
+	
+	  body = (' ' + body).replace(identRE, rewrite).replace(restoreRE, restore);
+	  return makeGetter(body);
+	}
+	
+	function compileSetter(exp) {}
+	
+	function isSimplePath(exp) {
+	  return pathTestRE.test(exp) && !booleanLiteralRE.test(exp) && exp.slice(0, 5) !== 'Math.';
+	}
+	
+	function parse(exp, needSet) {
+	  exp = exp.trim();
+	
+	  var res = {
+	    exp: exp
+	  };
+	  res.get = isSimplePath(exp) && exp.indexOf('[') < 0
+	  // optimized super simple getter
+	  ? makeGetter('binding.value(' + exp + ')')
+	  // dynamic getter
+	  : compileGetter(exp);
+	  if (needSet) {
+	    res.set = compileSetter(exp);
+	  }
+	  return res;
+	}
 
 /***/ }
 /******/ ])

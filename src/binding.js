@@ -1,5 +1,6 @@
 const _ = require('lodash'),
-  observer = require('observer');
+  observer = require('observer'),
+  expression = require('./expression');
 
 export class AbstractBinding {
   constructor(tpl) {
@@ -18,68 +19,65 @@ export class AbstractBinding {
 
 const exprReg = /((?:'[^']*')*(?:(?:[^\|']+(?:'[^']*')*[^\|']*)+|[^\|]+))|^$/g;
 const filterReg = /^$/g
+
 export class Binding extends AbstractBinding {
   constructor(tpl, expr) {
     super(tpl);
 
-    this.fullExpr = expr;
+    this.expr = expr;
     let pipes = expr.match(exprReg);
-    this.expr = pipes.shift();
+    this.expression = expression.parse(pipes.shift());
+
     this.filterExprs = pipes;
-    console.log(this.expr, this.filterExprs);
-    this.filters = this.filterExprs.map(exp => {
-      let pp = exp.match(filterReg);
-      if (!pp) {
-        return null;
-      }
-      return {
-        name: pp.shift(),
-        args: pp
-      }
-    }).filter(f => {
-      return f
-      });
-    }
-
-    realValue(expr, val) {
-      if (arguments.length == 2) {
-        return _.set(this.scope, expr, val);
-      } else {
-        return _.get(this.scope, expr);
-      }
-    }
-
-    applyFilter(val) {
-      for (let i = 0; i < this.filters.length; i++) {
-        val = this.filters[i].apply(val);
-      }
-      return val;
-    }
-
-    unapplyFilter(val) {
-      for (let i = 0; i < this.filters.length; i++) {
-        val = this.filters[i].unapply(val);
-      }
-      return val;
-    }
-
-    value(expr, val) {
-      if (arguments.length == 2) {
-        return _.set(this.scope, this.expr, this.unapplyFilter(val));
-      } else {
-        return this.applyFilter(_.get(this.scope, this.expr));
-      }
-    }
-
-    observe(expr, callback) {
-      return (this.scope = observer.on(this.scope, expr, callback));
-    }
-
-    unobserve(expr, callback) {
-      return (this.scope = observer.un(this.scope, expr, callback));
-    }
-
+    console.log(`${this.className}: "${this.expr}" | ${pipes.join(' & ')}`, this.expression);
+    this.filters = [];
   }
 
-  Binding.generateComments = true;
+  realValue(expr, val) {
+    if (arguments.length == 2) {
+      return _.set(this.scope, expr, val);
+    } else {
+      let scope = this.scope,
+        tpl = this.tpl;
+      while (!_.has(scope, expr)) {
+        tpl = tpl.parent;
+        if (!tpl) return undefined;
+        scope = tpl.scope;
+      }
+      return _.get(scope, expr);
+    }
+  }
+
+  value(expr, val) {
+    if (arguments.length == 2) {
+      return this.realValue(expr, this.unapplyFilter(val));
+    } else {
+      return this.applyFilter(this.realValue(expr));
+    }
+  }
+
+  applyFilter(val) {
+    for (let i = 0; i < this.filters.length; i++) {
+      val = this.filters[i].apply(val);
+    }
+    return val;
+  }
+
+  unapplyFilter(val) {
+    for (let i = 0; i < this.filters.length; i++) {
+      val = this.filters[i].unapply(val);
+    }
+    return val;
+  }
+
+  observe(expr, callback) {
+    return (this.scope = observer.on(this.scope, expr, callback));
+  }
+
+  unobserve(expr, callback) {
+    return (this.scope = observer.un(this.scope, expr, callback));
+  }
+
+}
+Binding.generateComments = true;
 
