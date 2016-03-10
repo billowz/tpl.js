@@ -307,7 +307,8 @@ return /******/ (function(modules) { // webpackBootstrap
 	var _require = __webpack_require__(5);
 	
 	var Binding = _require.Binding;
-	
+	var expression = __webpack_require__(7);
+	var expressionArgs = ['$scope', '$el'];
 	var Text = function (_Binding) {
 	  _inherits(Text, _Binding);
 	
@@ -318,24 +319,41 @@ return /******/ (function(modules) { // webpackBootstrap
 	
 	    _this.el = el;
 	    _this.observeHandler = _this.observeHandler.bind(_this);
+	    _this.expression = expression.parse(_this.expr, expressionArgs);
 	    return _this;
 	  }
 	
+	  Text.prototype.value = function value() {
+	    return this.applyFilter(this.expression.execute.call(this.scope, this.scope, this.el));
+	  };
+	
 	  Text.prototype.bind = function bind() {
+	    var _this2 = this;
+	
 	    if (Binding.generateComments && !this.comment) {
 	      this.comment = $(document.createComment('Text Binding ' + this.expr));
 	      this.comment.insertBefore(this.el);
 	    }
-	    this.observe(this.expr, this.observeHandler);
-	    this.update(this.value(this.expr));
+	    this.expression.identities.forEach(function (ident) {
+	      _this2.observe(ident, _this2.observeHandler);
+	    });
+	    this.update(this.value());
 	  };
 	
 	  Text.prototype.unbind = function unbind() {
-	    this.unobserve(this.expr, this.observeHandler);
+	    var _this3 = this;
+	
+	    this.expression.identities.forEach(function (ident) {
+	      _this3.unobserve(ident, _this3.observeHandler);
+	    });
 	  };
 	
 	  Text.prototype.observeHandler = function observeHandler(attr, val) {
-	    this.update(val);
+	    if (this.expression.simplePath) {
+	      this.update(this.applyFilter(val));
+	    } else {
+	      this.update(this.value());
+	    }
 	  };
 	
 	  Text.prototype.update = function update(val) {
@@ -365,8 +383,7 @@ return /******/ (function(modules) { // webpackBootstrap
 	function _classCallCheck(instance, Constructor) { if (!(instance instanceof Constructor)) { throw new TypeError("Cannot call a class as a function"); } }
 	
 	var _ = __webpack_require__(2),
-	    observer = __webpack_require__(6),
-	    expression = __webpack_require__(7);
+	    observer = __webpack_require__(6);
 	
 	var AbstractBinding = exports.AbstractBinding = function () {
 	  function AbstractBinding(tpl) {
@@ -398,38 +415,15 @@ return /******/ (function(modules) { // webpackBootstrap
 	
 	    var _this = _possibleConstructorReturn(this, _AbstractBinding.call(this, tpl));
 	
-	    _this.expr = expr;
+	    _this.fullExpr = expr;
 	    var pipes = expr.match(exprReg);
-	    _this.expression = expression.parse(pipes.shift());
+	    _this.expr = pipes.shift();
 	
 	    _this.filterExprs = pipes;
-	    console.log(_this.className + ': "' + _this.expr + '" | ' + pipes.join(' & '), _this.expression);
+	    console.log(_this.className + ': "' + _this.expr + '" | ' + pipes.join(' & '));
 	    _this.filters = [];
 	    return _this;
 	  }
-	
-	  Binding.prototype.realValue = function realValue(expr, val) {
-	    if (arguments.length == 2) {
-	      return _.set(this.scope, expr, val);
-	    } else {
-	      var scope = this.scope,
-	          tpl = this.tpl;
-	      while (!_.has(scope, expr)) {
-	        tpl = tpl.parent;
-	        if (!tpl) return undefined;
-	        scope = tpl.scope;
-	      }
-	      return _.get(scope, expr);
-	    }
-	  };
-	
-	  Binding.prototype.value = function value(expr, val) {
-	    if (arguments.length == 2) {
-	      return this.realValue(expr, this.unapplyFilter(val));
-	    } else {
-	      return this.applyFilter(this.realValue(expr));
-	    }
-	  };
 	
 	  Binding.prototype.applyFilter = function applyFilter(val) {
 	    for (var i = 0; i < this.filters.length; i++) {
@@ -487,8 +481,9 @@ return /******/ (function(modules) { // webpackBootstrap
 	var translationReg = /[\{,]\s*[\w\$_]+\s*:|('(?:[^'\\]|\\.)*'|"(?:[^"\\]|\\.)*"|`(?:[^`\\]|\\.)*\$\{|\}(?:[^`\\]|\\.)*`|`(?:[^`\\]|\\.)*`)|new |typeof |void /g;
 	var translationRestoreReg = /"(\d+)"/g;
 	var pathTestReg = /^[A-Za-z_$][\w$]*(?:\.[A-Za-z_$][\w$]*|\['.*?'\]|\[".*?"\]|\[\d+\]|\[[A-Za-z_$][\w$]*\])*$/;
-	var identityReg = /[^\w$\.][A-Za-z_$][\w$]*(?:\.[A-Za-z_$][\w$]*|\['.*?'\]|\[".*?"\]|\[\d+\]|\[[A-Za-z_$][\w$]*\])*/g;
+	var identityReg = /[^\w$\.:][A-Za-z_$][\w$]*(?:\.[A-Za-z_$][\w$]*|\['.*?'\]|\[".*?"\]|\[\d+\]|\[[A-Za-z_$][\w$]*\])*/g;
 	var booleanLiteralReg = /^(?:true|false)$/;
+	var varReg = /^[A-Za-z_$][\w$]*/;
 	
 	var translations = [];
 	function translationProcessor(str, isString) {
@@ -502,32 +497,42 @@ return /******/ (function(modules) { // webpackBootstrap
 	}
 	
 	var identities;
+	var currentArgs;
+	
 	function identityProcessor(raw) {
 	  var c = raw.charAt(0);
 	  raw = raw.slice(1);
-	  console.log(raw, c);
-	  if (allowedKeywordsReg.test(raw) || c == '{') {
+	
+	  if (allowedKeywordsReg.test(raw)) {
 	    return raw;
-	  } else {
-	    if (raw.indexOf('"') > -1) raw = raw.replace(translationRestoreReg, translationRestoreProcessor);
-	    identities[raw] = 1;
-	    return c + '_.get(scope, \'' + raw + '\')';
+	  } else if (currentArgs) {
+	    var f = raw.match(varReg);
+	    if (f && currentArgs.indexOf(f) != -1) {
+	      return raw;
+	    }
 	  }
+	  raw = raw.replace(translationRestoreReg, translationRestoreProcessor);
+	  identities[raw] = 1;
+	  return c + '_.get(this, \'' + raw + '\')';
 	}
 	
-	function compileGetter(exp) {
+	function compileExecuter(exp, args) {
 	  if (improperKeywordsReg.test(exp)) {
 	    throw Error('Invalid expression. Generated function body: ' + exp);
 	  }
-	  var body = exp.replace(translationReg, translationProcessor).replace(wsReg, '').replace(identityReg, identityProcessor).replace(translationRestoreReg, translationRestoreProcessor);
+	  currentArgs = args;
+	  var body = exp.replace(translationReg, translationProcessor).replace(wsReg, '');
+	  body = (' ' + body).replace(identityReg, identityProcessor).replace(translationRestoreReg, translationRestoreProcessor);
 	  translations.length = 0;
-	  return makeGetter(body);
+	  currentArgs = undefined;
+	  return makeExecuter(body, args);
 	}
 	
-	function makeGetter(body) {
-	  console.log('body: return ' + body + ';');
+	function makeExecuter(body, args) {
+	  body = 'body: return ' + body + ';';
+	  if (!args) args = [body];else args = args.concat(body);
 	  try {
-	    return new Function('scope', 'body: return ' + body + ';');
+	    return Function.apply(Function, args);
 	  } catch (e) {
 	    throw Error('Invalid expression. Generated function body: ' + body);
 	  }
@@ -537,19 +542,21 @@ return /******/ (function(modules) { // webpackBootstrap
 	  return pathTestReg.test(exp) && !booleanLiteralReg.test(exp);
 	}
 	
-	function parse(exp) {
+	function parse(exp, args) {
 	  exp = exp.trim();
 	  var res = {
 	    exp: exp
 	  };
 	  if (isSimplePath(exp)) {
+	    res.simplePath = true;
 	    res.identities = [exp];
-	    res.get = function (scope) {
-	      return _.get(scope, exp);
+	    res.execute = function () {
+	      return _.get(this, exp);
 	    };
 	  } else {
+	    res.simplePath = false;
 	    identities = {};
-	    res.get = compileGetter(exp);
+	    res.execute = compileExecuter(exp, args);
 	    res.identities = Object.keys(identities);
 	    identities = undefined;
 	  }
@@ -648,12 +655,14 @@ return /******/ (function(modules) { // webpackBootstrap
 	    return _this3;
 	  }
 	
-	  Directive.prototype.bindComments = function bindComments() {
+	  Directive.prototype.bind = function bind() {
 	    if (Binding.generateComments && !this.comment) {
 	      this.comment = $(document.createComment(' Directive:' + this.name + ' [' + this.expr + '] '));
 	      this.comment.insertBefore(this.el);
 	    }
 	  };
+	
+	  Directive.prototype.unbind = function unbind() {};
 	
 	  return Directive;
 	}(Binding);
@@ -827,11 +836,13 @@ return /******/ (function(modules) { // webpackBootstrap
 	
 	var Directive = _require.Directive;
 	var Template = __webpack_require__(1);
+	var expression = __webpack_require__(7);
 	
 	var _require2 = __webpack_require__(9);
 	
 	var YieId = _require2.YieId;
-	
+	var expressionArgs = ['$scope', '$el'];
+	var eventExpressionArgs = ['$scope', '$el', '$event'];
 	
 	function registerDirective(name, opt) {
 	  var cls = Directive.register(name, opt);;
@@ -847,23 +858,24 @@ return /******/ (function(modules) { // webpackBootstrap
 	    var _this = _possibleConstructorReturn(this, _Directive.call(this, el, tpl, expr));
 	
 	    _this.handler = _this.handler.bind(_this);
-	
+	    _this.expression = expression.parse(_this.expr, eventExpressionArgs);
 	    return _this;
 	  }
 	
 	  AbstractEventDirective.prototype.handler = function handler(e) {
-	    var fn = this.value(this.expr);
-	    if (typeof fn != 'function') {
-	      throw TypeError("Invalid Event Handler ");
+	    var ret = this.expression.execute.call(this.scope, this.scope, this.el, e);
+	    if (typeof ret == 'function') {
+	      ret.call(this.scope, this.scope, this.el, e);
 	    }
-	    fn.call(this.scope, e, e.target, this.scope);
 	  };
 	
 	  AbstractEventDirective.prototype.bind = function bind() {
+	    _Directive.prototype.bind.call(this);
 	    this.$el.on(this.eventType, this.handler);
 	  };
 	
 	  AbstractEventDirective.prototype.unbind = function unbind() {
+	    _Directive.prototype.unbind.call(this);
 	    this.$el.un(this.eventType, this.handler);
 	  };
 	
@@ -899,21 +911,48 @@ return /******/ (function(modules) { // webpackBootstrap
 	    var _this2 = _possibleConstructorReturn(this, _Directive2.call(this, el, tpl, expr));
 	
 	    _this2.observeHandler = _this2.observeHandler.bind(_this2);
+	    _this2.expression = expression.parse(_this2.expr, expressionArgs);
 	    return _this2;
 	  }
 	
+	  AbstractExpressionDirective.prototype.setRealValue = function setRealValue(val) {
+	    _.set(this.scope, this.expr, val);
+	  };
+	
+	  AbstractExpressionDirective.prototype.realValue = function realValue() {
+	    return this.expression.execute.call(this.scope, this.scope, this.el);
+	  };
+	
+	  AbstractExpressionDirective.prototype.setValue = function setValue(val) {
+	    return this.setRealValue(this.unapplyFilter(val));
+	  };
+	
+	  AbstractExpressionDirective.prototype.value = function value() {
+	    return this.applyFilter(this.realValue());
+	  };
+	
 	  AbstractExpressionDirective.prototype.bind = function bind() {
-	    this.observe(this.expr, this.observeHandler);
-	    this.update(this.value(this.expr));
+	    var _this3 = this;
+	
+	    _Directive2.prototype.bind.call(this);
+	    this.expression.identities.forEach(function (ident) {
+	      _this3.observe(ident, _this3.observeHandler);
+	    });
+	    this.update(this.value());
 	  };
 	
 	  AbstractExpressionDirective.prototype.unbind = function unbind() {
-	    this.unobserve(this.expr, this.observeHandler);
+	    var _this4 = this;
+	
+	    _Directive2.prototype.unbind.call(this);
+	    this.expression.identities.forEach(function (ident) {
+	      _this4.unobserve(ident, _this4.observeHandler);
+	    });
 	  };
 	
 	  AbstractExpressionDirective.prototype.blankValue = function blankValue(val) {
 	    if (arguments.length == 0) {
-	      val = this.value(this.expr);
+	      val = this.value();
 	    }
 	    if (val === undefined || val == null) {
 	      return '';
@@ -922,7 +961,11 @@ return /******/ (function(modules) { // webpackBootstrap
 	  };
 	
 	  AbstractExpressionDirective.prototype.observeHandler = function observeHandler(expr, val) {
-	    this.update(this.applyFilter(val));
+	    if (this.expression.simplePath) {
+	      this.update(this.applyFilter(val));
+	    } else {
+	      this.update(this.value());
+	    }
 	  };
 	
 	  AbstractExpressionDirective.prototype.update = function update(val) {
@@ -943,7 +986,6 @@ return /******/ (function(modules) { // webpackBootstrap
 	    expressions = {
 	  text: {
 	    update: function update(val) {
-	      console.log(this.className, val);
 	      this.$el.text(this.blankValue(val));
 	    },
 	
@@ -995,7 +1037,7 @@ return /******/ (function(modules) { // webpackBootstrap
 	      }
 	    },
 	    update: function update(val) {
-	      var _this3 = this;
+	      var _this5 = this;
 	
 	      if (!val) {
 	        this.$el.css('display', 'none');
@@ -1004,7 +1046,7 @@ return /******/ (function(modules) { // webpackBootstrap
 	          this.directives = this.tpl.parseChildNodes(this.el);
 	          this.directives.forEach(function (directive) {
 	            directive.bind();
-	            _this3.scope = directive.scope;
+	            _this5.scope = directive.scope;
 	          });
 	          if (this.yieId) {
 	            this.yieId.done();
@@ -1015,13 +1057,13 @@ return /******/ (function(modules) { // webpackBootstrap
 	      }
 	    },
 	    unbind: function unbind() {
-	      var _this4 = this;
+	      var _this6 = this;
 	
 	      AbstractExpressionDirective.prototype.unbind.call(this);
 	      if (this.directives) {
 	        this.directives.forEach(function (directive) {
 	          directive.unbind();
-	          _this4.scope = directive.scope;
+	          _this6.scope = directive.scope;
 	        });
 	      }
 	    },
@@ -1061,12 +1103,10 @@ return /******/ (function(modules) { // webpackBootstrap
 	    },
 	    onChange: function onChange() {
 	      var val = this.elVal();
-	
-	      if (val != this.val) this.value(this.expr, val);
+	      if (val != this.val) this.setValue(val);
 	    },
 	    update: function update(val) {
 	      this.val = this.blankValue(val);
-	
 	      this.elVal(this.val);
 	    },
 	    elVal: function elVal(val) {
@@ -1118,27 +1158,27 @@ return /******/ (function(modules) { // webpackBootstrap
 	  function EachDirective(el, tpl, expr) {
 	    _classCallCheck(this, EachDirective);
 	
-	    var _this5 = _possibleConstructorReturn(this, _Directive3.call(this, el, tpl, expr));
+	    var _this7 = _possibleConstructorReturn(this, _Directive3.call(this, el, tpl, expr));
 	
-	    _this5.observeHandler = _this5.observeHandler.bind(_this5);
-	    _this5.lengthObserveHandler = _this5.lengthObserveHandler.bind(_this5);
+	    _this7.observeHandler = _this7.observeHandler.bind(_this7);
+	    _this7.lengthObserveHandler = _this7.lengthObserveHandler.bind(_this7);
 	
 	    var token = expr.match(eachReg);
 	    if (!token) throw Error('Invalid Expression[' + expr + '] on Each Directive');
 	
-	    _this5.scopeExpr = token[2];
-	    _this5.indexExpr = token[4];
+	    _this7.scopeExpr = token[2];
+	    _this7.indexExpr = token[4];
 	
 	    var aliasToken = token[1].match(eachAliasReg);
 	    if (!aliasToken) throw Error('Invalid Expression[' + token[1] + '] on Each Directive');
 	
-	    _this5.valueAlias = aliasToken[2] || aliasToken[5];
-	    _this5.keyAlias = aliasToken[4] || aliasToken[7];
+	    _this7.valueAlias = aliasToken[2] || aliasToken[5];
+	    _this7.keyAlias = aliasToken[4] || aliasToken[7];
 	
-	    _this5.$parentEl = _this5.$el.parent();
-	    _this5.$el.remove().removeAttr(_this5.attr);
-	    _this5.childTpl = new Template(_this5.$el);
-	    return _this5;
+	    _this7.$parentEl = _this7.$el.parent();
+	    _this7.$el.remove().removeAttr(_this7.attr);
+	    _this7.childTpl = new Template(_this7.$el);
+	    return _this7;
 	  }
 	
 	  EachDirective.prototype.bindChild = function bindChild(idx, data) {
@@ -1153,9 +1193,10 @@ return /******/ (function(modules) { // webpackBootstrap
 	  };
 	
 	  EachDirective.prototype.bind = function bind() {
+	    _Directive3.prototype.bind.call(this);
 	    this.observe(this.scopeExpr, this.observeHandler);
 	    this.observe(this.scopeExpr + '.length', this.lengthObserveHandler);
-	    this.update(this.realValue(this.scopeExpr));
+	    this.update(this.target());
 	  };
 	
 	  EachDirective.prototype.unbind = function unbind() {
@@ -1174,12 +1215,16 @@ return /******/ (function(modules) { // webpackBootstrap
 	    }
 	  };
 	
-	  EachDirective.prototype.observeHandler = function observeHandler(expr, val) {
-	    this.update(val);
+	  EachDirective.prototype.target = function target() {
+	    return _.get(this.scope, this.scopeExpr);
+	  };
+	
+	  EachDirective.prototype.observeHandler = function observeHandler(expr, target) {
+	    this.update(target);
 	  };
 	
 	  EachDirective.prototype.lengthObserveHandler = function lengthObserveHandler() {
-	    this.update(this.realValue(this.scopeExpr));
+	    this.update(this.target());
 	  };
 	
 	  return EachDirective;

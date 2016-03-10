@@ -13,7 +13,7 @@ class Text extends Binding {
   }
 
   value() {
-    return this.applyFilter(this.expression.execute.call(this.scope, this.scope, this.el));
+    return this.applyFilter(this.expression.execute.call(this.scope, this, this.scope, this.el));
   }
 
   bind() {

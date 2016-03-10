@@ -19,7 +19,7 @@ export class AbstractEventDirective extends Directive {
   }
 
   handler(e) {
-    let ret = this.expression.execute.call(this.scope, this.scope, this.el, e);
+    let ret = this.expression.execute.call(this.scope, this, this.scope, this.el, e);
     if (typeof ret == 'function') {
       ret.call(this.scope, this.scope, this.el, e);
     }
@@ -66,11 +66,11 @@ export class AbstractExpressionDirective extends Directive {
   }
 
   setRealValue(val) {
-    _.set(this.scope, this.expr, val);
+    this.set(this.expr, val);
   }
 
   realValue() {
-    return this.expression.execute.call(this.scope, this.scope, this.el);
+    return this.expression.execute.call(this.scope, this, this.scope, this.el);
   }
 
   setValue(val) {
@@ -83,6 +83,7 @@ export class AbstractExpressionDirective extends Directive {
 
   bind() {
     super.bind();
+    console.log(this.className + ': [' + this.expr + '] ', this.expression.identities);
     this.expression.identities.forEach((ident) => {
       this.observe(ident, this.observeHandler);
     });
@@ -141,13 +142,53 @@ const EVENT_CHANGE = 'change',
       block: true
     },
     'class': {
-      update(val) {
-        let cls = this.blankValue(val);
-        if (this.oldCls) {
-          this.$el.removeClass(this.oldCls);
+      update(value) {
+        if (value && typeof value == 'string') {
+          this.handleArray(value.trim().split(/\s+/));
+        } else if (value instanceof Array) {
+          this.handleArray(value);
+        } else if (value && typeof value == 'object') {
+          this.handleObject(value);
+        } else {
+          this.cleanup();
         }
-        this.$el.addClass(cls);
-        this.oldCls = cls;
+      },
+
+      handleObject(value) {
+        this.cleanup(value);
+        let keys = this.prevKeys = [];
+        for (let key in value) {
+          if (value[key]) {
+            this.$el.addClass(key);
+            keys.push(key);
+          } else {
+            this.$el.removeClass(key);
+          }
+        }
+      },
+
+      handleArray(value) {
+        this.cleanup(value);
+        let keys = this.prevKeys = [];
+        for (let i = 0, l = value.length; i < l; i++) {
+          if (value[i]) {
+            keys.push(value[i]);
+            this.$el.addClass(this.el, value[i]);
+          }
+        }
+      },
+
+      cleanup(value) {
+        if (this.prevKeys) {
+          let i = this.prevKeys.length,
+            isArr = value instanceof Array;
+          while (i--) {
+            let key = this.prevKeys[i];
+            if (!value || (isArr ? value.indexOf(key) != -1 : value.hasOwnProperty(key))) {
+              this.$el.removeClass(key);
+            }
+          }
+        }
       }
     },
     show: {
@@ -320,13 +361,13 @@ export class EachDirective extends Directive {
     this.childTpl = new Template(this.$el);
   }
 
-  bindChild(idx, data) {
+  bindChild(key, data) {
     let scope = {
-      __index__: this.indexExpr ? _.get(data, this.indexExpr) : idx
+      __index__: this.indexExpr ? _.get(data, this.indexExpr) : key
     };
 
     if (this.keyAlias)
-      scope[this.keyAlias] = idx;
+      scope[this.keyAlias] = key;
     scope[this.valueAlias] = data;
 
     let tpl = this.childTpl.complie(scope, this.tpl).renderTo(this.$parentEl);
@@ -351,12 +392,12 @@ export class EachDirective extends Directive {
         this.bindChild(i, scope[i]);
       }
     } else {
-      throw Error(`Invalid Each Scope[${this.scopeExpr}]`);
+      console.warn(`Invalid Each Scope[${this.scopeExpr}] ${scope}`);
     }
   }
 
   target() {
-    return _.get(this.scope, this.scopeExpr);
+    return this.get(this.scopeExpr);
   }
 
   observeHandler(expr, target) {

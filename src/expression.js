@@ -21,6 +21,8 @@ const pathTestReg = /^[A-Za-z_$][\w$]*(?:\.[A-Za-z_$][\w$]*|\['.*?'\]|\[".*?"\]|
 const identityReg = /[^\w$\.:][A-Za-z_$][\w$]*(?:\.[A-Za-z_$][\w$]*|\['.*?'\]|\[".*?"\]|\[\d+\]|\[[A-Za-z_$][\w$]*\])*/g
 const booleanLiteralReg = /^(?:true|false)$/
 const varReg = /^[A-Za-z_$][\w$]*/
+const functionReg = /__\$[\d]+__\.data\(./g
+
 
 var translations = [];
 function translationProcessor(str, isString) {
@@ -35,7 +37,8 @@ function translationRestoreProcessor(str, i) {
 
 var identities;
 var currentArgs;
-
+var currentVars;
+var currentVarNR;
 function identityProcessor(raw) {
   var c = raw.charAt(0);
   raw = raw.slice(1);
@@ -50,7 +53,20 @@ function identityProcessor(raw) {
   }
   raw = raw.replace(translationRestoreReg, translationRestoreProcessor);
   identities[raw] = 1;
-  return `${c}_.get(this, '${raw}')`;
+
+  let _var = `binding.get2('${raw}')`, varNR;
+  if (!(varNR = currentVars[_var])) {
+    varNR = currentVars[_var] = currentVarNR++;
+  }
+  return `${c}__$${varNR}__.data`;
+}
+
+function functionProcessor(raw) {
+  let c = raw.charAt(raw.length - 1);
+  c = c == ')' ? c : ',' + c;
+  raw = raw.slice(0, raw.indexOf('.'));
+  raw = `${raw}.data.call(${raw}.scope${c}`;
+  return raw;
 }
 
 function compileExecuter(exp, args) {
@@ -58,22 +74,31 @@ function compileExecuter(exp, args) {
     throw Error(`Invalid expression. Generated function body: ${exp}`);
   }
   currentArgs = args;
-  var body = exp.replace(translationReg, translationProcessor).replace(wsReg, '');
+  currentVars = {};
+  currentVarNR = 0;
+
+  let body = exp.replace(translationReg, translationProcessor).replace(wsReg, '');
   body = (' ' + body).replace(identityReg, identityProcessor)
+    .replace(functionReg, functionProcessor)
     .replace(translationRestoreReg, translationRestoreProcessor);
+
+  let vars = [];
+  _.each(currentVars, (nr, exp) => {
+    vars.push(`  var __$${nr}__ = ${exp};\n`);
+  })
+
   translations.length = 0;
   currentArgs = undefined;
-  return makeExecuter(body, args);
-}
+  currentVars = undefined;
 
-function makeExecuter(body, args) {
-  body = `body: return ${body};`;
-  if (!args)
-    args = [body];
-  else
-    args = args.concat(body);
+  body = `${vars.join('')}  return ${body};`
+
+  let _args = ['binding'];
+  if (args)
+    _args.push.apply(_args, args);
+  _args.push(body);
   try {
-    return Function.apply(Function, args);
+    return Function.apply(Function, _args);
   } catch (e) {
     throw Error(`Invalid expression. Generated function body: ${body}`);
   }
@@ -92,8 +117,8 @@ export function parse(exp, args) {
   if (isSimplePath(exp)) {
     res.simplePath = true;
     res.identities = [exp];
-    res.execute = function() {
-      return _.get(this, exp);
+    res.execute = function(binding) {
+      return binding.get(exp);
     }
   } else {
     res.simplePath = false;
