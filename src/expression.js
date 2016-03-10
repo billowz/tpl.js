@@ -118,7 +118,7 @@ export function parse(exp, args) {
     res.simplePath = true;
     res.identities = [exp];
     res.execute = function(binding) {
-      return binding.get(exp);
+      return binding.get2(exp);
     }
   } else {
     res.simplePath = false;

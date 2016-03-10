@@ -1,76 +1,107 @@
 const _ = require('lodash'),
   observer = require('observer');
 
+export function ScopeData(scope, data) {
+  this.scope = scope;
+  this.data = data;
+}
+
 export class AbstractBinding {
   constructor(tpl) {
     this.tpl = tpl;
     this.scope = tpl.scope;
     this.ancestorObservers = {};
+    this._ancestorObserveHandler = this._ancestorObserveHandler.bind(this);
   }
 
   destroy() {}
 
 
-  _createObserveAncestorHandler(ancestors, idx, expr, callback) {
-    let fn = () => {
-      callback.apply(this, arguments);
-
-      for (let i = ancestors.length - 1; i >= idx; i--) {
-        observer.un(ancestors[i], fn);
-        ancestors.pop();
-      }
-    }
-    return fn;
-  }
-
-  _has(scope, path) {}
-
   observe(expr, callback) {
     let tpl = this.tpl,
-      hierarchy = [this.scope], l;
+      ancestors,
+      aos = this.ancestorObservers[expr],
+      l, i;
 
-    while (!_.has(tpl.scope, expr)) {
-      tpl = tpl.parent;
-      if (!tpl) {
-        break;
+    observer.on(this.scope, expr, callback);
+
+    if (aos) {
+      ancestors = aos.ancestors;
+    } else {
+      ancestors = [];
+      while (!_.has(tpl.scope, expr)) {
+        tpl = tpl.parent;
+        if (!tpl) {
+          break;
+        }
+        ancestors.push(observer.obj(tpl.scope));
       }
-      hierarchy.push(tpl.scope);
     }
-    observer.on(hierarchy.shift(), expr, callback);
 
-    if ( (l = hierarchy.length) ) {
-      let aos = this.ancestorObservers[expr],
-        fns = [];
+    if ( (l = ancestors.length) ) {
       if (!aos) {
         aos = this.ancestorObservers[expr] = {
-          ancestors: hierarchy.map((h) => {
-            return observer.obj(h);
-          }),
-          callbacks: [],
-          fns: []
+          ancestors: ancestors,
+          callbacks: [callback]
         };
+        for (i = 0; i < l; i++) {
+          observer.on(ancestors[i], expr, this._ancestorObserveHandler);
+        }
+      } else {
+        aos.callbacks.push(callback);
       }
-      aos.callbacks.push(callback);
-      aos.fns.push(fns);
-      for (let i = 0; i < l; i++) {
-        observer.on(hierarchy[i], expr,
-          (fns[i] = this._createObserveAncestorHandler(hierarchy, i, expr, callback)));
+      for (i = 0; i < l; i++) {
+        observer.on(ancestors[i], expr, function() {
+          callback.apply(this, arguments);
+        });
       }
+    }
+  }
+
+  _ancestorObserveHandler(expr, val, oldVal, scope) {
+    scope = observer.obj(scope);
+
+    let aos = this.ancestorObservers[expr],
+      ancestors = aos.ancestors,
+      callbacks = aos.callbacks,
+      idx = aos.ancestors.indexOf(scope),
+      i, j;
+
+    for (i = ancestors.length - 1; i > idx; i--) {
+      scope = ancestors.pop();
+      observer.un(scope, expr, this._ancestorObserveHandler);
+      for (j = callbacks.length - 1; j >= 0; j--) {
+        observer.un(scope, expr, callbacks[j]);
+      }
+    }
+    if (!ancestors.length) {
+      this.ancestorObservers[expr] = undefined;
     }
   }
 
   unobserve(expr, callback) {
+
     observer.un(this.scope, expr, callback);
+
     let aos = this.ancestorObservers[expr];
+
     if (aos) {
-      let i = aos.callbacks.indexOf(callback),
-        fns;
-      if (i != -1) {
-        let tpl = this.tpl;
-        fns = aos.fns[i];
-        for (i = 0; i < fns.length; i++) {
-          tpl = tpl.parent;
-          observer.un(tpl.scope, fns[i]);
+      let ancestors = aos.ancestors,
+        callbacks = aos.callbacks,
+        idx = callbacks.indexOf(callback), l;
+
+      if (idx) {
+        callbacks.splice(idx, 1);
+        l = callbacks.length;
+        for (let i = ancestors.length - 1; i >= idx; i--) {
+          observer.un(scope, expr, callback);
+
+          if (!l) {
+            observer.un(scope, expr, this._ancestorObserveHandler);
+          }
+        }
+        if (!l) {
+          this.ancestorObservers[expr] = undefined;
         }
       }
     }
@@ -78,21 +109,18 @@ export class AbstractBinding {
 
   get2(path) {
     let tpl = this.tpl,
-      scope = this.scope;
+      scope = this.scope, ret;
 
     while (!_.has(scope, path)) {
       tpl = tpl.parent;
-      if (!tpl)
-        return {
-          scope: undefined,
-          data: undefined
-        }
+      if (!tpl) {
+        ret = new ScopeData(scope, undefined);
+        return ret;
+      }
       scope = tpl.scope;
     }
-    return {
-      scope: scope,
-      data: _.get(scope, path)
-    }
+    ret = new ScopeData(scope, _.get(scope, path));
+    return ret;
   }
 
   get(path) {

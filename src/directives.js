@@ -1,4 +1,5 @@
 const _ = require('lodash'),
+  {ScopeData} = require('./Binding'),
   {Directive} = require('./directive'),
   Template = require('./template'),
   expression = require('./expression'),
@@ -16,12 +17,13 @@ export class AbstractEventDirective extends Directive {
     super(el, tpl, expr);
     this.handler = this.handler.bind(this);
     this.expression = expression.parse(this.expr, eventExpressionArgs);
+    console.log(this.className + ': [' + this.expr + '] ', this.expression.identities);
   }
 
   handler(e) {
     let ret = this.expression.execute.call(this.scope, this, this.scope, this.el, e);
-    if (typeof ret == 'function') {
-      ret.call(this.scope, this.scope, this.el, e);
+    if (ret && ret instanceof ScopeData && typeof ret.data == 'function') {
+      ret.data.call(ret.scope, ret.scope, this.el, e);
     }
   }
 
@@ -63,6 +65,7 @@ export class AbstractExpressionDirective extends Directive {
     super(el, tpl, expr);
     this.observeHandler = this.observeHandler.bind(this);
     this.expression = expression.parse(this.expr, expressionArgs);
+    console.log(this.className + ': [' + this.expr + '] ', this.expression.identities);
   }
 
   setRealValue(val) {
@@ -70,7 +73,11 @@ export class AbstractExpressionDirective extends Directive {
   }
 
   realValue() {
-    return this.expression.execute.call(this.scope, this, this.scope, this.el);
+    let ret = this.expression.execute.call(this.scope, this, this.scope, this.el);
+    if (ret instanceof ScopeData) {
+      return ret.data;
+    }
+    return ret;
   }
 
   setValue(val) {
@@ -83,7 +90,6 @@ export class AbstractExpressionDirective extends Directive {
 
   bind() {
     super.bind();
-    console.log(this.className + ': [' + this.expr + '] ', this.expression.identities);
     this.expression.identities.forEach((ident) => {
       this.observe(ident, this.observeHandler);
     });

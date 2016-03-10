@@ -38,7 +38,7 @@
                 this.editedTodo = null;
                 todo.title = todo.title.trim();
                 if (!todo.title) {
-                    this.removeTodo(todo);
+                    this.removeTodo(this.todos.indexOf(todo));
                 }
             },
             removeTodo: function(idx) {
@@ -88,7 +88,7 @@
                         <label tpl-ondblclick="editTodo(todo)">{idx}&nbsp; - &nbsp;{todo.title}</label>
                         <button class="destroy" tpl-onclick="removeTodo(idx)"></button>
                     </div>
-                    <input class="edit" type="text" tpl-input="todo.title" tpl-focus="todo.editing" tpl-onblur="editTodoFinish" tpl-onkeyup="editTodoFinish">
+                    <input class="edit" type="text" tpl-input="todo.title" tpl-focus="todo.editing" tpl-onblur="editTodoFinish">
                 </li>
             </ul>
         </div>
