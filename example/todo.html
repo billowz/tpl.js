@@ -35,7 +35,7 @@
                 if (!this.editedTodo) {
                     return;
                 }
-                this.editedTodo = null;
+                this.editedTodo = undefined;
                 todo.title = todo.title.trim();
                 if (!todo.title) {
                     this.removeTodo(this.todos.indexOf(todo));
@@ -45,19 +45,18 @@
                 this.todos.splice(idx, 1);
             },
             completeTodo(todo) {
-                if (todo) {
+                if (!todo) {
                     var done = this.completedNum != this.todos.length;
                     _.each(this.todos, function(todo) {
                         todo.completed = done;
                     }.bind(this));
                     this.completedNum = done ? this.todos.length : 0;
                 } else {
+                    todo.completed = !todo.completed;
                     if (todo.completed) {
-                        this.completedNum--;
-                        todo.completed = false;
-                    } else {
                         this.completedNum++;
-                        todo.completed = true;
+                    } else {
+                        this.completedNum--;
                     }
                 }
 
@@ -78,7 +77,7 @@
             <h1 tpl-text="title"></h1>
             <input class="new-todo" autofocus autocomplete="off" placeholder="What needs to be done?" tpl-onkeyup="addTodo">
         </div>
-        <div class="main" tpl-if="todos.length">
+        <div class="main" tpl-if="todos.length" tpl-class="title">
             <input class="toggle-all" type="checkbox" tpl-checked="completedNum == todos.length" tpl-onchange="completeTodo()">
             <ul class="todo-list">
                 <li class="todo" tpl-each="todo, idx in todos"
@@ -88,7 +87,7 @@
                         <label tpl-ondblclick="editTodo(todo)">{idx}&nbsp; - &nbsp;{todo.title}</label>
                         <button class="destroy" tpl-onclick="removeTodo(idx)"></button>
                     </div>
-                    <input class="edit" type="text" tpl-input="todo.title" tpl-focus="todo.editing" tpl-onblur="editTodoFinish">
+                    <input class="edit" type="text" tpl-input="todo.title" tpl-focus="todo == editedTodo" tpl-onblur="editTodoFinish">
                 </li>
             </ul>
         </div>

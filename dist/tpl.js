@@ -375,6 +375,7 @@ return /******/ (function(modules) { // webpackBootstrap
 	'use strict';
 	
 	exports.__esModule = true;
+	exports.ScopeData = ScopeData;
 	
 	function _possibleConstructorReturn(self, call) { if (!self) { throw new ReferenceError("this hasn't been initialised - super() hasn't been called"); } return call && (typeof call === "object" || typeof call === "function") ? call : self; }
 	
@@ -385,6 +386,11 @@ return /******/ (function(modules) { // webpackBootstrap
 	var _ = __webpack_require__(2),
 	    observer = __webpack_require__(6);
 	
+	function ScopeData(scope, data) {
+	  this.scope = scope;
+	  this.data = data;
+	}
+	
 	var AbstractBinding = exports.AbstractBinding = function () {
 	  function AbstractBinding(tpl) {
 	    _classCallCheck(this, AbstractBinding);
@@ -392,73 +398,99 @@ return /******/ (function(modules) { // webpackBootstrap
 	    this.tpl = tpl;
 	    this.scope = tpl.scope;
 	    this.ancestorObservers = {};
+	    this._ancestorObserveHandler = this._ancestorObserveHandler.bind(this);
 	  }
 	
 	  AbstractBinding.prototype.destroy = function destroy() {};
 	
-	  AbstractBinding.prototype._createObserveAncestorHandler = function _createObserveAncestorHandler(ancestors, idx, expr, callback) {
-	    var _this = this,
-	        _arguments = arguments;
-	
-	    var fn = function fn() {
-	      callback.apply(_this, _arguments);
-	
-	      for (var i = ancestors.length - 1; i >= idx; i--) {
-	        observer.un(ancestors[i], fn);
-	        ancestors.pop();
-	      }
-	    };
-	    return fn;
-	  };
-	
-	  AbstractBinding.prototype._has = function _has(scope, path) {};
-	
 	  AbstractBinding.prototype.observe = function observe(expr, callback) {
 	    var tpl = this.tpl,
-	        hierarchy = [this.scope],
-	        l = void 0;
+	        ancestors = void 0,
+	        aos = this.ancestorObservers[expr],
+	        l = void 0,
+	        i = void 0;
 	
-	    while (!_.has(tpl.scope, expr)) {
-	      tpl = tpl.parent;
-	      if (!tpl) {
-	        break;
+	    observer.on(this.scope, expr, callback);
+	
+	    if (aos) {
+	      ancestors = aos.ancestors;
+	    } else {
+	      ancestors = [];
+	      while (!_.has(tpl.scope, expr)) {
+	        tpl = tpl.parent;
+	        if (!tpl) {
+	          break;
+	        }
+	        ancestors.push(observer.obj(tpl.scope));
 	      }
-	      hierarchy.push(tpl.scope);
 	    }
-	    observer.on(hierarchy.shift(), expr, callback);
 	
-	    if (l = hierarchy.length) {
-	      var aos = this.ancestorObservers[expr],
-	          fns = [];
+	    if (l = ancestors.length) {
 	      if (!aos) {
 	        aos = this.ancestorObservers[expr] = {
-	          ancestors: hierarchy.map(function (h) {
-	            return observer.obj(h);
-	          }),
-	          callbacks: [],
-	          fns: []
+	          ancestors: ancestors,
+	          callbacks: [callback]
 	        };
+	        for (i = 0; i < l; i++) {
+	          observer.on(ancestors[i], expr, this._ancestorObserveHandler);
+	        }
+	      } else {
+	        aos.callbacks.push(callback);
 	      }
-	      aos.callbacks.push(callback);
-	      aos.fns.push(fns);
-	      for (var i = 0; i < l; i++) {
-	        observer.on(hierarchy[i], expr, fns[i] = this._createObserveAncestorHandler(hierarchy, i, expr, callback));
+	      for (i = 0; i < l; i++) {
+	        observer.on(ancestors[i], expr, function () {
+	          callback.apply(this, arguments);
+	        });
 	      }
+	    }
+	  };
+	
+	  AbstractBinding.prototype._ancestorObserveHandler = function _ancestorObserveHandler(expr, val, oldVal, scope) {
+	    scope = observer.obj(scope);
+	
+	    var aos = this.ancestorObservers[expr],
+	        ancestors = aos.ancestors,
+	        callbacks = aos.callbacks,
+	        idx = aos.ancestors.indexOf(scope),
+	        i = void 0,
+	        j = void 0;
+	
+	    for (i = ancestors.length - 1; i > idx; i--) {
+	      scope = ancestors.pop();
+	      observer.un(scope, expr, this._ancestorObserveHandler);
+	      for (j = callbacks.length - 1; j >= 0; j--) {
+	        observer.un(scope, expr, callbacks[j]);
+	      }
+	    }
+	    if (!ancestors.length) {
+	      this.ancestorObservers[expr] = undefined;
 	    }
 	  };
 	
 	  AbstractBinding.prototype.unobserve = function unobserve(expr, callback) {
+	
 	    observer.un(this.scope, expr, callback);
+	
 	    var aos = this.ancestorObservers[expr];
+	
 	    if (aos) {
-	      var i = aos.callbacks.indexOf(callback),
-	          fns = void 0;
-	      if (i != -1) {
-	        var tpl = this.tpl;
-	        fns = aos.fns[i];
-	        for (i = 0; i < fns.length; i++) {
-	          tpl = tpl.parent;
-	          observer.un(tpl.scope, fns[i]);
+	      var ancestors = aos.ancestors,
+	          callbacks = aos.callbacks,
+	          idx = callbacks.indexOf(callback),
+	          l = void 0;
+	
+	      if (idx) {
+	        callbacks.splice(idx, 1);
+	        l = callbacks.length;
+	        for (var i = ancestors.length - 1; i >= idx; i--) {
+	          observer.un(scope, expr, callback);
+	
+	          if (!l) {
+	            observer.un(scope, expr, this._ancestorObserveHandler);
+	          }
+	        }
+	        if (!l) {
+	          this.ancestorObservers[expr] = undefined;
 	        }
 	      }
 	    }
@@ -466,20 +498,19 @@ return /******/ (function(modules) { // webpackBootstrap
 	
 	  AbstractBinding.prototype.get2 = function get2(path) {
 	    var tpl = this.tpl,
-	        scope = this.scope;
+	        scope = this.scope,
+	        ret = void 0;
 	
 	    while (!_.has(scope, path)) {
 	      tpl = tpl.parent;
-	      if (!tpl) return {
-	        scope: undefined,
-	        data: undefined
-	      };
+	      if (!tpl) {
+	        ret = new ScopeData(scope, undefined);
+	        return ret;
+	      }
 	      scope = tpl.scope;
 	    }
-	    return {
-	      scope: scope,
-	      data: _.get(scope, path)
-	    };
+	    ret = new ScopeData(scope, _.get(scope, path));
+	    return ret;
 	  };
 	
 	  AbstractBinding.prototype.get = function get(path) {
@@ -518,15 +549,15 @@ return /******/ (function(modules) { // webpackBootstrap
 	  function Binding(tpl, expr) {
 	    _classCallCheck(this, Binding);
 	
-	    var _this2 = _possibleConstructorReturn(this, _AbstractBinding.call(this, tpl));
+	    var _this = _possibleConstructorReturn(this, _AbstractBinding.call(this, tpl));
 	
-	    _this2.fullExpr = expr;
+	    _this.fullExpr = expr;
 	    var pipes = expr.match(exprReg);
-	    _this2.expr = pipes.shift();
+	    _this.expr = pipes.shift();
 	
-	    _this2.filterExprs = pipes;
-	    _this2.filters = [];
-	    return _this2;
+	    _this.filterExprs = pipes;
+	    _this.filters = [];
+	    return _this;
 	  }
 	
 	  Binding.prototype.applyFilter = function applyFilter(val) {
@@ -673,7 +704,7 @@ return /******/ (function(modules) { // webpackBootstrap
 	    res.simplePath = true;
 	    res.identities = [exp];
 	    res.execute = function (binding) {
-	      return binding.get(exp);
+	      return binding.get2(exp);
 	    };
 	  } else {
 	    res.simplePath = false;
@@ -956,15 +987,19 @@ return /******/ (function(modules) { // webpackBootstrap
 	
 	var _ = __webpack_require__(2);
 	
-	var _require = __webpack_require__(8);
+	var _require = __webpack_require__(11);
 	
-	var Directive = _require.Directive;
+	var ScopeData = _require.ScopeData;
+	
+	var _require2 = __webpack_require__(8);
+	
+	var Directive = _require2.Directive;
 	var Template = __webpack_require__(1);
 	var expression = __webpack_require__(7);
 	
-	var _require2 = __webpack_require__(9);
+	var _require3 = __webpack_require__(9);
 	
-	var YieId = _require2.YieId;
+	var YieId = _require3.YieId;
 	var expressionArgs = ['$scope', '$el'];
 	var eventExpressionArgs = ['$scope', '$el', '$event'];
 	
@@ -983,13 +1018,14 @@ return /******/ (function(modules) { // webpackBootstrap
 	
 	    _this.handler = _this.handler.bind(_this);
 	    _this.expression = expression.parse(_this.expr, eventExpressionArgs);
+	    console.log(_this.className + ': [' + _this.expr + '] ', _this.expression.identities);
 	    return _this;
 	  }
 	
 	  AbstractEventDirective.prototype.handler = function handler(e) {
 	    var ret = this.expression.execute.call(this.scope, this, this.scope, this.el, e);
-	    if (typeof ret == 'function') {
-	      ret.call(this.scope, this.scope, this.el, e);
+	    if (ret && ret instanceof ScopeData && typeof ret.data == 'function') {
+	      ret.data.call(ret.scope, ret.scope, this.el, e);
 	    }
 	  };
 	
@@ -1036,6 +1072,7 @@ return /******/ (function(modules) { // webpackBootstrap
 	
 	    _this2.observeHandler = _this2.observeHandler.bind(_this2);
 	    _this2.expression = expression.parse(_this2.expr, expressionArgs);
+	    console.log(_this2.className + ': [' + _this2.expr + '] ', _this2.expression.identities);
 	    return _this2;
 	  }
 	
@@ -1044,7 +1081,11 @@ return /******/ (function(modules) { // webpackBootstrap
 	  };
 	
 	  AbstractExpressionDirective.prototype.realValue = function realValue() {
-	    return this.expression.execute.call(this.scope, this, this.scope, this.el);
+	    var ret = this.expression.execute.call(this.scope, this, this.scope, this.el);
+	    if (ret instanceof ScopeData) {
+	      return ret.data;
+	    }
+	    return ret;
 	  };
 	
 	  AbstractExpressionDirective.prototype.setValue = function setValue(val) {
@@ -1059,7 +1100,6 @@ return /******/ (function(modules) { // webpackBootstrap
 	    var _this3 = this;
 	
 	    _Directive2.prototype.bind.call(this);
-	    console.log(this.className + ': [' + this.expr + '] ', this.expression.identities);
 	    this.expression.identities.forEach(function (ident) {
 	      _this3.observe(ident, _this3.observeHandler);
 	    });
@@ -1397,6 +1437,217 @@ return /******/ (function(modules) { // webpackBootstrap
 	EachDirective.prototype.priority = 10;
 	
 	Directive.register('each', EachDirective);
+
+/***/ },
+/* 11 */
+/***/ function(module, exports, __webpack_require__) {
+
+	'use strict';
+	
+	exports.__esModule = true;
+	exports.ScopeData = ScopeData;
+	
+	function _possibleConstructorReturn(self, call) { if (!self) { throw new ReferenceError("this hasn't been initialised - super() hasn't been called"); } return call && (typeof call === "object" || typeof call === "function") ? call : self; }
+	
+	function _inherits(subClass, superClass) { if (typeof superClass !== "function" && superClass !== null) { throw new TypeError("Super expression must either be null or a function, not " + typeof superClass); } subClass.prototype = Object.create(superClass && superClass.prototype, { constructor: { value: subClass, enumerable: false, writable: true, configurable: true } }); if (superClass) Object.setPrototypeOf ? Object.setPrototypeOf(subClass, superClass) : subClass.__proto__ = superClass; }
+	
+	function _classCallCheck(instance, Constructor) { if (!(instance instanceof Constructor)) { throw new TypeError("Cannot call a class as a function"); } }
+	
+	var _ = __webpack_require__(2),
+	    observer = __webpack_require__(6);
+	
+	function ScopeData(scope, data) {
+	  this.scope = scope;
+	  this.data = data;
+	}
+	
+	var AbstractBinding = exports.AbstractBinding = function () {
+	  function AbstractBinding(tpl) {
+	    _classCallCheck(this, AbstractBinding);
+	
+	    this.tpl = tpl;
+	    this.scope = tpl.scope;
+	    this.ancestorObservers = {};
+	    this._ancestorObserveHandler = this._ancestorObserveHandler.bind(this);
+	  }
+	
+	  AbstractBinding.prototype.destroy = function destroy() {};
+	
+	  AbstractBinding.prototype.observe = function observe(expr, callback) {
+	    var tpl = this.tpl,
+	        ancestors = void 0,
+	        aos = this.ancestorObservers[expr],
+	        l = void 0,
+	        i = void 0;
+	
+	    observer.on(this.scope, expr, callback);
+	
+	    if (aos) {
+	      ancestors = aos.ancestors;
+	    } else {
+	      ancestors = [];
+	      while (!_.has(tpl.scope, expr)) {
+	        tpl = tpl.parent;
+	        if (!tpl) {
+	          break;
+	        }
+	        ancestors.push(observer.obj(tpl.scope));
+	      }
+	    }
+	
+	    if (l = ancestors.length) {
+	      if (!aos) {
+	        aos = this.ancestorObservers[expr] = {
+	          ancestors: ancestors,
+	          callbacks: [callback]
+	        };
+	        for (i = 0; i < l; i++) {
+	          observer.on(ancestors[i], expr, this._ancestorObserveHandler);
+	        }
+	      } else {
+	        aos.callbacks.push(callback);
+	      }
+	      for (i = 0; i < l; i++) {
+	        observer.on(ancestors[i], expr, function () {
+	          callback.apply(this, arguments);
+	        });
+	      }
+	    }
+	  };
+	
+	  AbstractBinding.prototype._ancestorObserveHandler = function _ancestorObserveHandler(expr, val, oldVal, scope) {
+	    scope = observer.obj(scope);
+	
+	    var aos = this.ancestorObservers[expr],
+	        ancestors = aos.ancestors,
+	        callbacks = aos.callbacks,
+	        idx = aos.ancestors.indexOf(scope),
+	        i = void 0,
+	        j = void 0;
+	
+	    for (i = ancestors.length - 1; i > idx; i--) {
+	      scope = ancestors.pop();
+	      observer.un(scope, expr, this._ancestorObserveHandler);
+	      for (j = callbacks.length - 1; j >= 0; j--) {
+	        observer.un(scope, expr, callbacks[j]);
+	      }
+	    }
+	    if (!ancestors.length) {
+	      this.ancestorObservers[expr] = undefined;
+	    }
+	  };
+	
+	  AbstractBinding.prototype.unobserve = function unobserve(expr, callback) {
+	
+	    observer.un(this.scope, expr, callback);
+	
+	    var aos = this.ancestorObservers[expr];
+	
+	    if (aos) {
+	      var ancestors = aos.ancestors,
+	          callbacks = aos.callbacks,
+	          idx = callbacks.indexOf(callback),
+	          l = void 0;
+	
+	      if (idx) {
+	        callbacks.splice(idx, 1);
+	        l = callbacks.length;
+	        for (var i = ancestors.length - 1; i >= idx; i--) {
+	          observer.un(scope, expr, callback);
+	
+	          if (!l) {
+	            observer.un(scope, expr, this._ancestorObserveHandler);
+	          }
+	        }
+	        if (!l) {
+	          this.ancestorObservers[expr] = undefined;
+	        }
+	      }
+	    }
+	  };
+	
+	  AbstractBinding.prototype.get2 = function get2(path) {
+	    var tpl = this.tpl,
+	        scope = this.scope,
+	        ret = void 0;
+	
+	    while (!_.has(scope, path)) {
+	      tpl = tpl.parent;
+	      if (!tpl) {
+	        ret = new ScopeData(scope, undefined);
+	        return ret;
+	      }
+	      scope = tpl.scope;
+	    }
+	    ret = new ScopeData(scope, _.get(scope, path));
+	    return ret;
+	  };
+	
+	  AbstractBinding.prototype.get = function get(path) {
+	    var tpl = this.tpl,
+	        scope = this.scope;
+	
+	    while (!_.has(scope, path)) {
+	      tpl = tpl.parent;
+	      if (!tpl) return undefined;
+	      scope = tpl.scope;
+	    }
+	    return _.get(scope, path);
+	  };
+	
+	  AbstractBinding.prototype.set = function set(path, value) {
+	    _.set(this.scope, path, value);
+	  };
+	
+	  AbstractBinding.prototype.bind = function bind() {
+	    throw 'Abstract Method [' + this.constructor.name + '.bind]';
+	  };
+	
+	  AbstractBinding.prototype.unbind = function unbind() {
+	    throw 'Abstract Method [' + this.constructor.name + '.unbind]';
+	  };
+	
+	  return AbstractBinding;
+	}();
+	
+	var exprReg = /((?:'[^']*')*(?:(?:[^\|']+(?:'[^']*')*[^\|']*)+|[^\|]+))|^$/g;
+	var filterReg = /^$/g;
+	
+	var Binding = exports.Binding = function (_AbstractBinding) {
+	  _inherits(Binding, _AbstractBinding);
+	
+	  function Binding(tpl, expr) {
+	    _classCallCheck(this, Binding);
+	
+	    var _this = _possibleConstructorReturn(this, _AbstractBinding.call(this, tpl));
+	
+	    _this.fullExpr = expr;
+	    var pipes = expr.match(exprReg);
+	    _this.expr = pipes.shift();
+	
+	    _this.filterExprs = pipes;
+	    _this.filters = [];
+	    return _this;
+	  }
+	
+	  Binding.prototype.applyFilter = function applyFilter(val) {
+	    for (var i = 0; i < this.filters.length; i++) {
+	      val = this.filters[i].apply(val);
+	    }
+	    return val;
+	  };
+	
+	  Binding.prototype.unapplyFilter = function unapplyFilter(val) {
+	    for (var i = 0; i < this.filters.length; i++) {
+	      val = this.filters[i].unapply(val);
+	    }
+	    return val;
+	  };
+	
+	  return Binding;
+	}(AbstractBinding);
+	
+	Binding.generateComments = true;
 
 /***/ }
 /******/ ])

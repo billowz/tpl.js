@@ -1,6 +1,7 @@
 const _ = require('lodash'),
   $ = require('jquery'),
   {Binding} = require('./binding'),
+  {ScopeData} = require('./util'),
   expression = require('./expression'),
   expressionArgs = ['$scope', '$el'];
 
@@ -13,7 +14,10 @@ class Text extends Binding {
   }
 
   value() {
-    return this.applyFilter(this.expression.execute.call(this.scope, this, this.scope, this.el));
+    let ret = this.expression.execute.call(this.scope, this, this.scope, this.el);
+    if (ret instanceof ScopeData)
+      return ret.data;
+    return this.applyFilter(ret);
   }
 
   bind() {

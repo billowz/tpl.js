@@ -109,16 +109,23 @@ export function isSimplePath(exp) {
     !booleanLiteralReg.test(exp)
 }
 
+let cache = {};
+
 export function parse(exp, args) {
   exp = exp.trim();
-  let res = {
+  let res;
+  if( (res = cache[exp]) ) {
+    return res;
+  }
+  res = {
     exp: exp
   }
   if (isSimplePath(exp)) {
     res.simplePath = true;
     res.identities = [exp];
     res.execute = function(binding) {
-      return binding.get2(exp);
+      let ret = binding.get2(exp);
+      return ret;
     }
   } else {
     res.simplePath = false;
@@ -127,5 +134,6 @@ export function parse(exp, args) {
     res.identities = Object.keys(identities);
     identities = undefined;
   }
+  cache[exp] = res;
   return res
 }

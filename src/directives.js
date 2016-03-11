@@ -1,9 +1,8 @@
 const _ = require('lodash'),
-  {ScopeData} = require('./Binding'),
   {Directive} = require('./directive'),
-  Template = require('./template'),
+  {YieId, ScopeData} = require('./util'),
+  {Template} = require('./template'),
   expression = require('./expression'),
-  {YieId} = require('./util'),
   expressionArgs = ['$scope', '$el'],
   eventExpressionArgs = ['$scope', '$el', '$event'];
 
@@ -17,7 +16,6 @@ export class AbstractEventDirective extends Directive {
     super(el, tpl, expr);
     this.handler = this.handler.bind(this);
     this.expression = expression.parse(this.expr, eventExpressionArgs);
-    console.log(this.className + ': [' + this.expr + '] ', this.expression.identities);
   }
 
   handler(e) {
@@ -65,7 +63,6 @@ export class AbstractExpressionDirective extends Directive {
     super(el, tpl, expr);
     this.observeHandler = this.observeHandler.bind(this);
     this.expression = expression.parse(this.expr, expressionArgs);
-    console.log(this.className + ': [' + this.expr + '] ', this.expression.identities);
   }
 
   setRealValue(val) {
@@ -74,9 +71,8 @@ export class AbstractExpressionDirective extends Directive {
 
   realValue() {
     let ret = this.expression.execute.call(this.scope, this, this.scope, this.el);
-    if (ret instanceof ScopeData) {
+    if (ret instanceof ScopeData)
       return ret.data;
-    }
     return ret;
   }
 
@@ -197,6 +193,23 @@ const EVENT_CHANGE = 'change',
         }
       }
     },
+    'style': {
+      update(value) {
+        if (value && typeof value == 'string') {
+          this.el.style.cssText = value;
+        } else if (value && typeof value == 'object') {
+          this.handleObject(value);
+        }
+      },
+
+      handleObject(value) {
+        this.cleanup(value);
+        let keys = this.prevKeys = [];
+        for (let key in value) {
+          this.$el.css(key, value[key]);
+        }
+      }
+    },
     show: {
       update(val) {
         this.$el.css('display', val ? '' : 'none');
@@ -210,11 +223,6 @@ const EVENT_CHANGE = 'change',
     value: {
       update(val) {
         this.$el.val(this.blankValue(val));
-      }
-    },
-    checked: {
-      update(val) {
-        this.$el.prop('checked', !!val);
       }
     },
     'if': {
@@ -233,7 +241,6 @@ const EVENT_CHANGE = 'change',
             this.directives = this.tpl.parseChildNodes(this.el);
             this.directives.forEach(directive => {
               directive.bind();
-              this.scope = directive.scope;
             });
             if (this.yieId) {
               this.yieId.done();
@@ -248,12 +255,22 @@ const EVENT_CHANGE = 'change',
         if (this.directives) {
           this.directives.forEach(directive => {
             directive.unbind();
-            this.scope = directive.scope;
           });
         }
       },
       priority: 9,
       block: true
+    },
+    checked: {
+      update(val) {
+        if (val instanceof Array)
+          this.$el.prop('checked', _.indexOf(val, this.$el.val()))
+        else
+          this.$el.prop('checked', !!val);
+      }
+    },
+    selected: {
+      update(val) {}
     },
     input: {
       constructor(el, tpl, expr) {
@@ -268,7 +285,7 @@ const EVENT_CHANGE = 'change',
             break;
           case TAG_INPUT:
             let type = this.type = el.type;
-            this.event = (type == RADIO || type == CHECKBOX) ? EVENT_CLICK : EVENT_INPUT;
+            this.event = (type == RADIO || type == CHECKBOX) ? EVENT_CHANGE : EVENT_INPUT;
             break;
           case TAG_TEXTAREA:
             throw TypeError('Directive[input] not support ' + tag);
@@ -288,8 +305,15 @@ const EVENT_CHANGE = 'change',
       },
 
       onChange() {
-        let val = this.elVal();
-        if (val != this.val)
+        let val = this.elVal(), idx;
+        if (this.val instanceof Array) {
+          if (val) {
+            this.val = this.val.concat(val);
+          } else if ((idx = _.indexOf(this.$el.val())) != -1) {
+            this.val = this.val.slice().splice(idx, 1);
+          }
+          this.setValue(this.val);
+        } else if (val != this.val)
           this.setValue(val);
       },
 
@@ -311,7 +335,12 @@ const EVENT_CHANGE = 'change',
               if (arguments.length == 0) {
                 return this.$el.prop('checked') ? this.$el.val() : undefined;
               } else {
-                let checked = _.isString(val) ? val == this.$el.val() : !!val;
+                let checked;
+                if (val instanceof Array)
+                  checked = _.indexOf(this.$el.val()) != -1;
+                else
+                  checked = val == this.$el.val();
+
                 if (this.$el.prop('checked') != checked)
                   this.$el.prop('checked', checked);
               }
@@ -367,16 +396,15 @@ export class EachDirective extends Directive {
     this.childTpl = new Template(this.$el);
   }
 
-  bindChild(key, data) {
+  createChild(key, data, idx) {
     let scope = {
-      __index__: this.indexExpr ? _.get(data, this.indexExpr) : key
+      __index__: idx
     };
 
     if (this.keyAlias)
       scope[this.keyAlias] = key;
     scope[this.valueAlias] = data;
-
-    let tpl = this.childTpl.complie(scope, this.tpl).renderTo(this.$parentEl);
+    return this.childTpl.complie(scope, this.tpl);
   }
 
   bind() {
@@ -392,11 +420,42 @@ export class EachDirective extends Directive {
     this.unobserve(this.scopeExpr + '.length', this.lengthObserveHandler);
   }
 
-  update(scope) {
-    if (scope instanceof Array) {
-      for (let i = 0; i < scope.length; i++) {
-        this.bindChild(i, scope[i]);
+  update(value) {
+    if (value instanceof Array) {
+      let childrenIdx = this.childrenIdx,
+        currentChildrenSortIdx = this.childrenSortIdx,
+        childrenSortIdx = [],
+        data, idx, child,
+        $pel = this.$parentEl,
+        $before,
+        added = [];
+
+      if (!childrenIdx)
+        childrenIdx = this.childrenIdx = {};
+      if (!childrenSortIdx)
+        childrenSortIdx = this.childrenSortIdx = [];
+
+      for (let i = 0, l = value.length; i < l; i++) {
+        data = value[i];
+        idx = this.indexExpr ? _.get(data, this.indexExpr) : i;
+
+        childrenSortIdx[i] = idx;
+        if (!(child = childrenIdx[idx])) {
+          child = childrenIdx[idx] = this.createChild(i, data, idx);
+          child.$el.attr('index', i);
+          if (!$before) {
+            child.$el.insertBefore($cel);
+            $cel = child.$el.next();
+          } else {
+            child.renderTo($pel);
+          }
+        } else if (child.$el != $cel) {
+          let oldIdx = child.$el.attr('index');
+
+        }
       }
+      this.childrenIdx = childrenIdx;
+      console.log(childrenIdx)
     } else {
       console.warn(`Invalid Each Scope[${this.scopeExpr}] ${scope}`);
     }

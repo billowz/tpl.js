@@ -3,7 +3,6 @@ const _ = require('lodash'),
   Text = require('./text'),
   {Directive, DirectiveGroup} = require('./directive');
 
-
 const PRIMITIVE = 0,
   KEYPATH = 1,
   TEXT = 0,
@@ -22,7 +21,7 @@ const PRIMITIVE = 0,
 
 
 let __tmp_id__ = 0;
-class Template {
+export class Template {
   constructor(templ, cfg) {
     this.template = $(templ);
     cfg = cfg || {};
@@ -36,19 +35,25 @@ class Template {
     this.__id__ = __tmp_id__++;
   }
 
-  complie(scope, parent) {
-    return new TemplateInstance(this, scope, parent);
+  complie(scope) {
+    return new TemplateInstance(this, scope);
   }
 }
 
-class TemplateInstance {
+export class TemplateInstance {
   constructor(tpl, scope, parent) {
     this.tpl = tpl;
     this.scope = scope;
     this.el = this.tpl.template.clone();
     this.parent = parent;
+    this._onProxyChange = this._onProxyChange.bind(this);
+    observer.proxy.on(this.scope, this._onProxyChange);
     this.__id__ = tpl.__id__ + '-' + tpl.__instance_nr__++;
     this.init();
+  }
+
+  _onProxyChange(obj, proxy) {
+    this.scope = proxy;
   }
 
   renderTo(el) {
@@ -60,7 +65,6 @@ class TemplateInstance {
     this.bindings = this.parse(this.el);
     this.bindings.forEach(directive => {
       directive.bind();
-      this.scope = directive.scope;
     });
   }
 
@@ -176,4 +180,3 @@ class TemplateInstance {
     return undefined;
   }
 }
-module.exports = Template;

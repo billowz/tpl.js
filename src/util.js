@@ -1,5 +1,12 @@
 const _ = require('lodash');
 
+export class ScopeData {
+  constructor(scope, data) {
+    this.scope = scope;
+    this.data = data;
+  }
+}
+
 export class YieId {
   constructor() {
     this._doned = false;
@@ -20,6 +27,7 @@ export class YieId {
     return this._doned;
   }
 }
+
 export class ArrayIterator {
   constructor(array, point) {
     this.array = array;

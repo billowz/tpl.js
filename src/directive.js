@@ -25,7 +25,6 @@ export class DirectiveGroup extends AbstractBinding {
       while (iter.hasNext()) {
         directive = iter.next();
         ret = directive.bind();
-        _self.scope = directive.scope;
         if (iter.hasNext() && ret && ret instanceof YieId) {
           ret.then(parse);
           break;
@@ -38,7 +37,6 @@ export class DirectiveGroup extends AbstractBinding {
   unbind() {
     this.directives.forEach(directive => {
       directive.unbind();
-      this.scope = directive.scope;
     });
   }
 }
@@ -96,7 +94,7 @@ Directive.register = function register(name, option) {
     directive = (function(opt, SuperClass) {
       let userSuperClass = opt[SUPER_CLASS_OPTION];
       if (userSuperClass && !isDirective(userSuperClass)) {
-        throw 'Invalid Directive SuperClass ' + userSuperClass;
+        throw TypeError('Invalid Directive SuperClass ' + userSuperClass);
       }
       SuperClass = userSuperClass || SuperClass;
 
