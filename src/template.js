@@ -1,5 +1,6 @@
 const _ = require('lodash'),
   $ = require('jquery'),
+  observer = require('observer'),
   Text = require('./text'),
   {Directive, DirectiveGroup} = require('./directive');
 
@@ -35,21 +36,38 @@ export class Template {
     this.__id__ = __tmp_id__++;
   }
 
-  complie(scope) {
-    return new TemplateInstance(this, scope);
+  complie(scope, parent) {
+    return new TemplateInstance(this, scope, parent);
   }
 }
 
 export class TemplateInstance {
   constructor(tpl, scope, parent) {
     this.tpl = tpl;
-    this.scope = scope;
+    this.scope = observer.proxy.proxy(scope);
     this.el = this.tpl.template.clone();
     this.parent = parent;
     this._onProxyChange = this._onProxyChange.bind(this);
     observer.proxy.on(this.scope, this._onProxyChange);
     this.__id__ = tpl.__id__ + '-' + tpl.__instance_nr__++;
     this.init();
+  }
+  updateScope(scope) {
+    if (!observer.eq(scope, this.scope)) {
+      observer.proxy.un(this.scope, this._onProxyChange);
+      this.scope = observer.proxy.proxy(scope);
+      observer.proxy.on(this.scope, this._onProxyChange);
+      this.bindings.forEach(binding => {
+        binding.updateScope();
+      });
+    }
+  }
+  destroy() {
+    this.bindings.forEach(binding => {
+      binding.unbind();
+      binding.destroy();
+    });
+    this.el.remove();
   }
 
   _onProxyChange(obj, proxy) {
@@ -63,8 +81,8 @@ export class TemplateInstance {
 
   init() {
     this.bindings = this.parse(this.el);
-    this.bindings.forEach(directive => {
-      directive.bind();
+    this.bindings.forEach(binding => {
+      binding.bind();
     });
   }
 

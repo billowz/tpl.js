@@ -13,12 +13,23 @@ export class AbstractBinding {
     observer.proxy.on(this.scope, this._onProxyChange);
   }
 
+  updateScope() {
+    if (!observer.eq(this.tpl.scope, this.scope)) {
+      observer.proxy.un(this.scope, this._onProxyChange);
+      this.unbind();
+      this.scope = this.tpl.scope;
+      observer.proxy.on(this.scope, this._onProxyChange);
+      this.bind();
+    }
+  }
+
   _onProxyChange(obj, proxy) {
     this.scope = proxy;
   }
 
-  destroy() {}
-
+  destroy() {
+    observer.proxy.un(this.scope, this._onProxyChange);
+  }
 
   observe(expr, callback) {
     let tpl = this.tpl,

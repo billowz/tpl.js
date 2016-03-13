@@ -44,7 +44,7 @@
             removeTodo: function(idx) {
                 this.todos.splice(idx, 1);
             },
-            completeTodo(todo) {
+            completeTodo: function(todo) {
                 if (!todo) {
                     var done = this.completedNum != this.todos.length;
                     _.each(this.todos, function(todo) {
@@ -80,7 +80,7 @@
         <div class="main" tpl-if="todos.length" tpl-class="title">
             <input class="toggle-all" type="checkbox" tpl-checked="completedNum == todos.length" tpl-onchange="completeTodo()">
             <ul class="todo-list">
-                <li class="todo" tpl-each="todo, idx in todos"
+                <li class="todo" tpl-each="todo, idx in todos "
                     tpl-class="{completed: todo.completed, editing: todo == editedTodo}">
                     <div class="view">
                         <input class="toggle" type="checkbox" tpl-checked="todo.completed" tpl-onchange="completeTodo(todo)">

@@ -29,7 +29,7 @@ var fs = require('fs'),
     }]
   },
   devserver = {
-    host: 'localhost',
+    host: '192.168.116.1',
     port: 8088
   };
 

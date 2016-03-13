@@ -26,18 +26,24 @@ export class DirectiveGroup extends AbstractBinding {
         directive = iter.next();
         ret = directive.bind();
         if (iter.hasNext() && ret && ret instanceof YieId) {
+          _self.waitDirective = directive;
           ret.then(parse);
-          break;
+          return;
         }
       }
+      _self.waitDirective = undefined;
     }
     parse();
   }
 
   unbind() {
-    this.directives.forEach(directive => {
-      directive.unbind();
-    });
+    let ds = this.directives,
+      wd = this.waitDirective;
+    for (let i = 0, l = ds.length; i < l; i++) {
+      ds[i].unbind();
+      if (this.wd == ds[i])
+        return;
+    }
   }
 }
 

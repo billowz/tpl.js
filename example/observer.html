@@ -1,0 +1,70 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta name="description" content="dbmon vue" />
+<link href="./lib/bootstrap.min.css" rel="stylesheet" type="text/css" />
+<link href="./styles.css" rel="stylesheet" type="text/css" />
+<title>dbmon (tpl.js)</title>
+</head>
+<body>
+  <div id="app"></div>
+  <script id="tpl/tpl.html" type="text/template">
+    <table class="table table-striped lastest-data">
+      <tbody>
+        <tr tpl-each="db in databases track by dbname">
+          <td class="dbname">{db.dbname}</td>
+          <td class="query-count">
+            <span tpl-class="db.lastSample.countClassName">{db.lastSample.nbQueries}</span>
+          </td>
+          <td tpl-each="q,idx in db.lastSample.topFiveQueries "
+             class="Query" tpl-class="q.elapsedClassName">
+            {q.formatElapsed}
+            <div class="popover left">
+              <div class="popover-content">{q.query}</div>
+              <div class="arrow"></div>
+            </div>
+          </td>
+        </tr>
+      </tbody>
+    </table>
+  </script>
+
+  <script src="../node_modules/observer.js/dist/observer.js"></script>
+
+  <script src="./lib/ENV.js"></script>
+  <script src="./lib/memory-stats.js"></script>
+  <script src="./lib/monitor.js"></script>
+  <script>
+    var app = {
+      databases: []
+    }
+    function handler(){}
+    function loadSamples() {
+      for(var j=0; j<app.databases.length; j++){
+        var db = app.databases[j];
+        observer.un(db, 'dbname', handler);
+        observer.un(db, 'lastSample.nbQueries', handler);
+        for(var i=0; i<5; i++){
+          observer.un(db, 'lastSample.topFiveQueries['+i+'].formatElapsed', handler);
+          observer.un(db, 'lastSample.topFiveQueries['+i+'].query', handler);
+        }
+      }
+
+      app.databases = ENV.generateData().toArray().slice(0, 10);
+      for(var j=0; j<app.databases.length; j++){
+        var db = app.databases[j];
+        observer.on(db, 'dbname', handler);
+        observer.on(db, 'lastSample.nbQueries', handler);
+        for(var i=0; i<5; i++){
+          observer.on(db, 'lastSample.topFiveQueries['+i+'].formatElapsed', handler);
+          observer.on(db, 'lastSample.topFiveQueries['+i+'].query', handler);
+        }
+      }
+      Monitoring.renderRate.ping();
+      setTimeout(loadSamples, ENV.timeout);
+    }
+    loadSamples()
+  </script>
+  <script src="./lib/ga.js"></script>
+</body>
+</html>

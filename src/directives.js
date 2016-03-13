@@ -32,7 +32,7 @@ export class AbstractEventDirective extends Directive {
 
   unbind() {
     super.unbind();
-    this.$el.un(this.eventType, this.handler);
+    this.$el.off(this.eventType, this.handler);
   }
 }
 
@@ -63,6 +63,7 @@ export class AbstractExpressionDirective extends Directive {
     super(el, tpl, expr);
     this.observeHandler = this.observeHandler.bind(this);
     this.expression = expression.parse(this.expr, expressionArgs);
+    this.$el.removeAttr(this.attr);
   }
 
   setRealValue(val) {
@@ -175,7 +176,7 @@ const EVENT_CHANGE = 'change',
         for (let i = 0, l = value.length; i < l; i++) {
           if (value[i]) {
             keys.push(value[i]);
-            this.$el.addClass(this.el, value[i]);
+            this.$el.addClass(value[i]);
           }
         }
       },
@@ -301,7 +302,7 @@ const EVENT_CHANGE = 'change',
 
       unbind() {
         AbstractExpressionDirective.prototype.unbind.call(this);
-        this.$el.un(this.event, this.onChange);
+        this.$el.off(this.event, this.onChange);
       },
 
       onChange() {
@@ -368,8 +369,8 @@ _.each(expressions, (opt, name) => {
   registerDirective(name, opt);
 });
 
-const eachReg = /^\s*([\S][\s\S]+[\S])\s+in\s+([\S]+)(\s+track\s+by\s+([\S]+))?\s*$/,
-  eachAliasReg = /^(\(\s*([\S]+)(\s*,\s*([\S]+))?\s*\))|([\S]+)(\s*,\s*([\S]+))$/;
+const eachReg = /^\s*([\s\S]+)\s+in\s+([\S]+)(\s+track\s+by\s+([\S]+))?\s*$/,
+  eachAliasReg = /^(\(\s*([^,\s]+)(\s*,\s*([\S]+))?\s*\))|([^,\s]+)(\s*,\s*([\S]+))?$/;
 
 export class EachDirective extends Directive {
   constructor(el, tpl, expr) {
@@ -391,12 +392,14 @@ export class EachDirective extends Directive {
     this.valueAlias = aliasToken[2] || aliasToken[5];
     this.keyAlias = aliasToken[4] || aliasToken[7];
 
-    this.$parentEl = this.$el.parent();
+    this.comment = $(document.createComment(' Directive:' + this.name + ' [' + this.expr + '] '));
+    this.comment.insertBefore(this.el);
+
     this.$el.remove().removeAttr(this.attr);
     this.childTpl = new Template(this.$el);
   }
 
-  createChild(key, data, idx) {
+  createChildScope(key, data, idx) {
     let scope = {
       __index__: idx
     };
@@ -404,7 +407,11 @@ export class EachDirective extends Directive {
     if (this.keyAlias)
       scope[this.keyAlias] = key;
     scope[this.valueAlias] = data;
-    return this.childTpl.complie(scope, this.tpl);
+    return scope;
+  }
+
+  createChild(key, data, idx) {
+    return this.childTpl.complie(this.createChildScope(key, data, idx), this.tpl);
   }
 
   bind() {
@@ -423,39 +430,95 @@ export class EachDirective extends Directive {
   update(value) {
     if (value instanceof Array) {
       let childrenIdx = this.childrenIdx,
-        currentChildrenSortIdx = this.childrenSortIdx,
-        childrenSortIdx = [],
-        data, idx, child,
-        $pel = this.$parentEl,
-        $before,
-        added = [];
+        childrenSortedIdx = this.childrenSortedIdx,
+        data, idx,
+        i, l;
 
-      if (!childrenIdx)
+      if (!childrenIdx) {
+        let tpl,
+          before = this.comment, el;
+
         childrenIdx = this.childrenIdx = {};
-      if (!childrenSortIdx)
-        childrenSortIdx = this.childrenSortIdx = [];
+        childrenSortedIdx = this.childrenSortedIdx = [];
 
-      for (let i = 0, l = value.length; i < l; i++) {
-        data = value[i];
-        idx = this.indexExpr ? _.get(data, this.indexExpr) : i;
+        for (i = 0, l = value.length; i < l; i++) {
+          data = value[i];
+          idx = this.indexExpr ? _.get(data, this.indexExpr) : i;
+          tpl = this.createChild(i, data, idx);
+          el = tpl.el;
+          el.insertAfter(before);
+          before = el;
 
-        childrenSortIdx[i] = idx;
-        if (!(child = childrenIdx[idx])) {
-          child = childrenIdx[idx] = this.createChild(i, data, idx);
-          child.$el.attr('index', i);
-          if (!$before) {
-            child.$el.insertBefore($cel);
-            $cel = child.$el.next();
-          } else {
-            child.renderTo($pel);
+          childrenSortedIdx[i] = childrenIdx[idx] = {
+            idx: idx,
+            scope: data,
+            tpl: tpl,
+            index: i
           }
-        } else if (child.$el != $cel) {
-          let oldIdx = child.$el.attr('index');
-
         }
+      } else {
+        let child, child2, tpl,
+          added = [],
+          removed = [],
+          currentSortedIdx = [];
+
+        for (i = 0, l = value.length; i < l; i++) {
+          data = value[i];
+          idx = this.indexExpr ? _.get(data, this.indexExpr) : i;
+
+          if (!(child = childrenIdx[idx])) {
+            child = childrenIdx[idx] = {
+              idx: idx,
+              scope: data,
+              tpl: undefined,
+              index: i
+            }
+            added.push(child);
+            childrenIdx[idx] = child;
+          } else {
+            if (child.scope != data) {
+              if (child.tpl)
+                child.tpl.updateScope(this.createChildScope(i, data, idx));
+              else
+                throw Error('index for each is not uk')
+            // todo update: child.tpl.updateScope(child.scope)
+            }
+            child.index = i;
+          }
+          currentSortedIdx[i] = child;
+        }
+
+        for (i = 0, l = childrenSortedIdx.length; i < l; i++) {
+          child = childrenSortedIdx[i];
+          child2 = childrenIdx[child.idx];
+          if (child2 && child !== currentSortedIdx[child2.index]) {
+            removed.push(child);
+            childrenIdx[child.idx] = undefined;
+          }
+        }
+
+        for (i = 0, l = added.length; i < l; i++) {
+          child = added[i];
+          if( (child2 = removed.pop()) ) {
+            child.tpl = child2.tpl;
+            child.tpl.updateScope(this.createChildScope(child.index, child.scope, child.idx));
+          // todo update: child.tpl.updateScope(child.scope)
+          } else {
+            tpl = this.createChild(child.index, child.scope, idx);
+            child.tpl = tpl;
+          }
+          if (child.index) {
+            child.tpl.el.insertAfter(currentSortedIdx[child.index - 1].tpl.el);
+          } else {
+            child.tpl.el.insertAfter(this.comment);
+          }
+        }
+
+        while ((child = removed.pop()))
+        child.tpl.destroy();
+
+        this.childrenSortedIdx = currentSortedIdx;
       }
-      this.childrenIdx = childrenIdx;
-      console.log(childrenIdx)
     } else {
       console.warn(`Invalid Each Scope[${this.scopeExpr}] ${scope}`);
     }
