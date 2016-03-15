@@ -1,64 +1,75 @@
-const _ = require('lodash'),
+const _ = require('./util'),
+  dom = require('./dom'),
   $ = require('jquery'),
   {Binding, AbstractBinding} = require('./binding'),
   {ArrayIterator, YieId} = require('./util'),
   SUPER_CLASS_OPTION = 'extend';
 
 export class DirectiveGroup extends AbstractBinding {
-  constructor(el, tpl, directiveConsts) {
+  constructor(el, tpl, directiveConfigs) {
     super(tpl);
-
     this.el = el;
-    directiveConsts.sort((a, b) => {
+    this.directiveConfigs = directiveConfigs.sort((a, b) => {
       return (b.const.prototype.priority - a.const.prototype.priority) || 0;
     });
-    this.directives = directiveConsts.map((dir) => {
-      return new dir.const(el, tpl, dir.val);
-    });
+    this.directives = [];
+    this.bindedCount = 0;
   }
 
   bind() {
-    let iter = new ArrayIterator(this.directives),
-      _self = this;
+    if (!super.bind())
+      return;
+
+    let directives = this.directives,
+      directiveConfigs = this.directiveConfigs,
+      tpl = this.tpl,
+      el = this.el,
+      directiveCount = this.directiveConfigs.length,
+      self = this;
     function parse() {
-      let directive, ret;
-      while (iter.hasNext()) {
-        directive = iter.next();
-        ret = directive.bind();
-        if (iter.hasNext() && ret && ret instanceof YieId) {
-          _self.waitDirective = directive;
-          ret.then(parse);
-          return;
-        }
+      let idx = self.bindedCount,
+        directive = directives[idx],
+        ret;
+      if (!directive) {
+        let cfg = directiveConfigs[idx];
+        directive = directives[idx] = new cfg.const(el, tpl,
+          cfg.expression, cfg.attr);
       }
-      _self.waitDirective = undefined;
+      ret = directive.bind();
+      if ((++self.bindedCount) < directiveCount) {
+        if (ret && ret instanceof YieId)
+          ret.then(parse);
+        else
+          parse();
+      }
     }
     parse();
   }
 
   unbind() {
-    let ds = this.directives,
-      wd = this.waitDirective;
-    for (let i = 0, l = ds.length; i < l; i++) {
-      ds[i].unbind();
-      if (this.wd == ds[i])
-        return;
+    if (!super.unbind())
+      return;
+
+    let directives = this.directives;
+    for (let i = 0, l = this.bindedCount; i < l; i++) {
+      directives[i].unbind();
     }
+    this.bindedCount = 0;
   }
 }
 
 export class Directive extends Binding {
-  constructor(el, tpl, expr) {
+  constructor(el, tpl, expr, attr) {
     super(tpl, expr);
     this.el = el;
     this.$el = $(el);
-    this.attr = tpl.tpl.directivePrefix + this.name;
+    this.attr = attr;
   }
 
   bind() {
     if (Binding.generateComments && !this.comment) {
-      this.comment = $(document.createComment(' Directive:' + this.name + ' [' + this.expr + '] '));
-      this.comment.insertBefore(this.el);
+      let comment = this.comment = document.createComment(' Directive:' + this.name + ' [' + this.expr + '] ');
+      dom.before(comment, this.el);
     }
   }
 
@@ -67,7 +78,7 @@ export class Directive extends Binding {
 Directive.prototype.abstract = false;
 Directive.prototype.name = 'Unkown';
 Directive.prototype.block = false;
-Directive.prototype.priority = 0;
+Directive.prototype.priority = 5;
 
 const directives = {};
 
@@ -75,15 +86,13 @@ let isDirective = Directive.isDirective = function isDirective(object) {
   let type = typeof object;
   if (!object || (type != 'function' && type != 'object')) {
     return false;
-  } else {
-    let proto = object;
-    while ((proto = Object.getPrototypeOf(proto))) {
-      if (proto === Directive) {
-        return true;
-      }
-    }
-    return false;
   }
+  let proto = object;
+  while ((proto = _.prototypeOf(proto))) {
+    if (proto === Directive)
+      return true;
+  }
+  return false;
 }
 
 Directive.getDirective = function getDirective(name) {
@@ -95,30 +104,30 @@ Directive.register = function register(name, option) {
     console.warn('Directive[' + name + '] is defined');
   }
   let directive;
-  if (_.isPlainObject(option)) {
+  if (typeof option == 'function') {
+    if (!isDirective(option))
+      throw TypeError('Invalid Directive constructor ' + option);
+    directive = option;
+    directive.prototype.className = directive.prototype.className || directive.name;
+  } else if (option && typeof option == 'object') {
 
     directive = (function(opt, SuperClass) {
       let userSuperClass = opt[SUPER_CLASS_OPTION];
-      if (userSuperClass && !isDirective(userSuperClass)) {
+      if (userSuperClass && !isDirective(userSuperClass))
         throw TypeError('Invalid Directive SuperClass ' + userSuperClass);
-      }
       SuperClass = userSuperClass || SuperClass;
 
-      let constructor = _.isFunction(opt.constructor) ? opt.constructor : undefined,
-        Directive = (function() {
-          let fn = function() {
-            if (!(this instanceof SuperClass)) {
-              throw new TypeError('Cannot call a class as a function');
-            }
-            SuperClass.apply(this, arguments);
-            if (constructor) {
-              constructor.apply(this, arguments);
-            }
-          }
-          return fn;
-        })();
+      let constructor = typeof opt.constructor == 'function' ? opt.constructor : undefined,
+        Directive = function DynamicDirective() {
+          if (!(this instanceof SuperClass))
+            throw new TypeError('Cannot call a class as a function');
 
-      Directive.prototype = Object.create(SuperClass.prototype, {
+          SuperClass.apply(this, arguments);
+          if (constructor)
+            constructor.apply(this, arguments);
+        }
+
+      Directive.prototype = _.create(SuperClass.prototype, {
         constructor: {
           value: Directive,
           enumerable: false,
@@ -130,22 +139,17 @@ Directive.register = function register(name, option) {
       delete opt.constructor;
       delete opt[SUPER_CLASS_OPTION];
 
-      _.each(opt, (val, key) => {
+      _.eachObj(opt, (val, key) => {
         Directive.prototype[key] = val;
       });
 
-      Object.setPrototypeOf(Directive, SuperClass);
+      _.setPrototypeOf(Directive, SuperClass);
       return Directive;
-
     })(option, Directive);
 
     directive.prototype.className = (_.capitalize(name) + 'Directive');
-  } else if (isDirective(option)) {
-    directive = option;
-    directive.prototype.className = directive.prototype.constructor.name;
-  } else {
+  } else
     throw TypeError('Invalid Directive Object ' + option);
-  }
 
   directive.prototype.name = name;
 

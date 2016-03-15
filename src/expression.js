@@ -1,4 +1,4 @@
-const _ = require('lodash');
+const _ = require('./util');
 
 const allowedKeywords = 'Math,Date,this,true,false,null,undefined,Infinity,NaN,' +
   'isNaN,isFinite,decodeURI,decodeURIComponent,encodeURI,' +
@@ -21,12 +21,11 @@ const pathTestReg = /^[A-Za-z_$][\w$]*(?:\.[A-Za-z_$][\w$]*|\['.*?'\]|\[".*?"\]|
 const identityReg = /[^\w$\.:][A-Za-z_$][\w$]*(?:\.[A-Za-z_$][\w$]*|\['.*?'\]|\[".*?"\]|\[\d+\]|\[[A-Za-z_$][\w$]*\])*/g
 const booleanLiteralReg = /^(?:true|false)$/
 const varReg = /^[A-Za-z_$][\w$]*/
-const functionReg = /__\$[\d]+__\.data\(./g
 
 
-var translations = [];
+let translations = [];
 function translationProcessor(str, isString) {
-  var i = translations.length
+  let i = translations.length
   translations[i] = isString ? str.replace(newlineReg, '\\n') : str
   return `"${i}"`;
 }
@@ -35,38 +34,23 @@ function translationRestoreProcessor(str, i) {
   return translations[i]
 }
 
-var identities;
-var currentArgs;
-var currentVars;
-var currentVarNR;
+let identities;
+let currentArgs;
 function identityProcessor(raw) {
-  var c = raw.charAt(0);
-  raw = raw.slice(1);
+  let c = raw.charAt(0),
+    exp = raw.slice(1);
 
-  if (allowedKeywordsReg.test(raw)) {
+  if (allowedKeywordsReg.test(exp)) {
     return raw;
   } else if (currentArgs) {
-    let f = raw.match(varReg);
-    if (f && currentArgs.indexOf(f) != -1) {
+    let f = exp.match(varReg);
+    if (f && f[0] && currentArgs.indexOf(f[0]) != -1) {
       return raw;
     }
   }
-  raw = raw.replace(translationRestoreReg, translationRestoreProcessor);
-  identities[raw] = 1;
-
-  let _var = `binding.get2('${raw}')`, varNR;
-  if (!(varNR = currentVars[_var])) {
-    varNR = currentVars[_var] = currentVarNR++;
-  }
-  return `${c}__$${varNR}__.data`;
-}
-
-function functionProcessor(raw) {
-  let c = raw.charAt(raw.length - 1);
-  c = c == ')' ? c : ',' + c;
-  raw = raw.slice(0, raw.indexOf('.'));
-  raw = `${raw}.data.call(${raw}.scope${c}`;
-  return raw;
+  exp = exp.replace(translationRestoreReg, translationRestoreProcessor);
+  identities[exp] = 1
+  return `${c}scope.${exp}`
 }
 
 function compileExecuter(exp, args) {
@@ -74,29 +58,21 @@ function compileExecuter(exp, args) {
     throw Error(`Invalid expression. Generated function body: ${exp}`);
   }
   currentArgs = args;
-  currentVars = {};
-  currentVarNR = 0;
 
   let body = exp.replace(translationReg, translationProcessor).replace(wsReg, '');
   body = (' ' + body).replace(identityReg, identityProcessor)
-    .replace(functionReg, functionProcessor)
     .replace(translationRestoreReg, translationRestoreProcessor);
-
-  let vars = [];
-  _.each(currentVars, (nr, exp) => {
-    vars.push(`  var __$${nr}__ = ${exp};\n`);
-  })
 
   translations.length = 0;
   currentArgs = undefined;
-  currentVars = undefined;
+  return makeExecuter(body, args);
+}
 
-  body = `${vars.join('')}  return ${body};`
-
-  let _args = ['binding'];
+function makeExecuter(body, args) {
+  let _args = ['scope'];
   if (args)
     _args.push.apply(_args, args);
-  _args.push(body);
+  _args.push(`return ${body};`);
   try {
     return Function.apply(Function, _args);
   } catch (e) {
@@ -123,10 +99,7 @@ export function parse(exp, args) {
   if (isSimplePath(exp)) {
     res.simplePath = true;
     res.identities = [exp];
-    res.execute = function(binding) {
-      let ret = binding.get2(exp);
-      return ret;
-    }
+    res.execute = makeExecuter(`scope.${exp}`, args);
   } else {
     res.simplePath = false;
     identities = {};

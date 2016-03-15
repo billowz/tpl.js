@@ -1,4 +1,4 @@
-const _ = require('lodash');
+let observer = require('observer')
 
 export class ScopeData {
   constructor(scope, data) {
@@ -7,19 +7,20 @@ export class ScopeData {
   }
 }
 
-export class YieId {
+class YieId {
   constructor() {
     this._doned = false;
     this._thens = [];
   }
   then(callback) {
-    if (!_.include(this._thens, callback)) {
-      this._thens.push(callback);
-    }
+    this._thens.push(callback);
   }
   done() {
     if (!this._doned) {
-      _.each(this._thens, callback => callback());
+      let thens = this._thens;
+      for (let i = 0, l = thens.length; i < l; i++) {
+        thens[i]();
+      }
       this._doned = true;
     }
   }
@@ -28,7 +29,7 @@ export class YieId {
   }
 }
 
-export class ArrayIterator {
+class ArrayIterator {
   constructor(array, point) {
     this.array = array;
     this.index = point || 0;
@@ -40,3 +41,83 @@ export class ArrayIterator {
     return this.array[this.index++];
   }
 }
+
+let hasOwn = Object.prototype.hasOwnProperty;
+let trimReg = /^\s+|\s+$/g;
+let util = {
+  ScopeData: ScopeData,
+  ArrayIterator: ArrayIterator,
+  YieId: YieId,
+  Map: observer.Map,
+  bind: observer.util.bind,
+  indexOf: observer.util.indexOf,
+  requestAnimationFrame: observer.util.requestAnimationFrame,
+  cancelAnimationFrame: observer.util.cancelAnimationFrame,
+  parseExpr: observer.util.parseExpr,
+  get: observer.util.get,
+  has(object, path) {
+    if (object) {
+      path = util.parseExpr(path);
+      var index = 0,
+        l = path.length - 1;
+
+      while (object && index < l) {
+        object = object[path[index++]];
+      }
+      return index == l && object && path[index++] in object;
+    }
+    return false;
+  },
+  set(object, path, value) {
+    if (object) {
+      path = util.parseExpr(path);
+      let obj = object,
+        attr = path[0];
+      for (let i = 0, l = path.length - 1; i < l; i++) {
+        if (!obj[attr])
+          obj = obj[attr] = {};
+        attr = path[i + 1];
+      }
+      obj[attr] = value;
+    }
+    return object;
+  },
+  hasProp(obj, prop) {
+    return hasOwn.call(observer.obj(obj), prop);
+  },
+  keys: Object.keys || function keys(obj) {
+      let arr = [];
+      for (let key in obj) {
+        arr.push(key);
+      }
+      return arr;
+  },
+  eachKeys(obj, callback) {
+    obj = observer.obj(obj);
+    for (let key in obj) {
+      if (hasOwn.call(obj, key))
+        if (callback(key) === false)
+          return false;
+    }
+    return true;
+  },
+  eachObj(obj, callback) {
+    obj = observer.obj(obj);
+    for (let key in obj) {
+      if (hasOwn.call(obj, key))
+        if (callback(obj[key], key) === false)
+          return false;
+    }
+    return true;
+  },
+  trim(str) {
+    return str.replace(trimReg, '');
+  },
+  capitalize(str) {
+    return str;
+  },
+  prototypeOf: Object.getPrototypeOf,
+  setPrototypeOf: Object.setPrototypeOf,
+  create: Object.create
+}
+module.exports = util;

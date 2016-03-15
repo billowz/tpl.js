@@ -17,7 +17,7 @@ class Text extends Binding {
     let ret = this.expression.execute.call(this.scope, this, this.scope, this.el);
     if (ret instanceof ScopeData)
       return ret.data;
-    return this.applyFilter(ret);
+    return this.filter(ret);
   }
 
   bind() {
@@ -39,7 +39,7 @@ class Text extends Binding {
 
   observeHandler(attr, val) {
     if (this.expression.simplePath) {
-      this.update(this.applyFilter(val));
+      this.update(this.filter(val));
     } else {
       this.update(this.value());
     }

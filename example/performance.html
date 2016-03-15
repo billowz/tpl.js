@@ -34,9 +34,8 @@
   <script src="../node_modules/observer.js/dist/observer.js"></script>
   <script src="../dist/tpl.js"></script>
 
-  <script src="./lib/ENV.js"></script>
-  <script src="./lib/memory-stats.js"></script>
-  <script src="./lib/monitor.js"></script>
+  <script src="../node_modules/observer.js/lib/ENV.js"></script>
+  <script src="../node_modules/observer.js/lib/monitor.js"></script>
   <script>
     var app = {
       databases: []
@@ -45,12 +44,11 @@
     template.complie(app).renderTo('#app');
 
     function loadSamples() {
-      app.databases = ENV.generateData().toArray().slice(0, 10);
+      app.databases = ENV.generateData().toArray();
       Monitoring.renderRate.ping();
       setTimeout(loadSamples, ENV.timeout);
     }
     loadSamples()
   </script>
-  <script src="./lib/ga.js"></script>
 </body>
 </html>
