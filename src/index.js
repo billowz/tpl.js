@@ -1,6 +1,9 @@
 let tpl = require('./template').Template;
-tpl.Directive = require('./Directive');
-tpl.Directives = require('./directives');
 tpl.expression = require('./expression');
 tpl.util = require('./util');
+tpl.Directive = require('./Directive').Directive;
+tpl.Directives = require('./directives');
+tpl.EventDirectives = require('./eventDirective');
+tpl.EachDirective = require('./eachDirective');
+
 module.exports = tpl;

@@ -17,8 +17,8 @@ export class AbstractEventDirective extends Directive {
 
   handler(e) {
     let ret = this.expression.execute.call(this.scope, this.scope, this.scope, this.el, e);
-    if (ret && ret instanceof ScopeData && typeof ret.data == 'function') {
-      ret.data.call(ret.scope, ret.scope, this.el, e);
+    if (typeof ret == 'function') {
+      ret.call(this.scope, this.scope, this.scope, this.el, e);
     }
   }
 

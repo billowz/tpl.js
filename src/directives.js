@@ -1,6 +1,6 @@
-const _ = require('lodash'),
+const _ = require('./util'),
   {Directive} = require('./directive'),
-  {YieId, ScopeData} = require('./util'),
+  {YieId} = _,
   {Template} = require('./template'),
   expression = require('./expression'),
   expressionArgs = ['$scope', '$el'],
@@ -24,10 +24,7 @@ export class AbstractExpressionDirective extends Directive {
   }
 
   realValue() {
-    let ret = this.expression.execute.call(this.scope, this.scope, this.scope, this.el);
-    if (ret instanceof ScopeData)
-      return ret.data;
-    return ret;
+    return this.expression.execute.call(this.scope, this.scope, this.scope, this.el);
   }
 
   setValue(val) {
