@@ -42,8 +42,11 @@ class ArrayIterator {
   }
 }
 
-let hasOwn = Object.prototype.hasOwnProperty;
-let trimReg = /^\s+|\s+$/g;
+let hasOwn = Object.prototype.hasOwnProperty,
+  trimReg = /^\s+|\s+$/g,
+  strFirstLetterReg = /^[a-zA-Z]/,
+  strHumpReg = /(^[a-zA-Z])|(_[a-zA-Z])/g;
+
 let util = {
   ScopeData: ScopeData,
   ArrayIterator: ArrayIterator,
@@ -51,6 +54,9 @@ let util = {
   Map: observer.Map,
   bind: observer.util.bind,
   indexOf: observer.util.indexOf,
+  prototypeOf: Object.getPrototypeOf,
+  setPrototypeOf: Object.setPrototypeOf,
+  create: Object.create,
   requestAnimationFrame: observer.util.requestAnimationFrame,
   cancelAnimationFrame: observer.util.cancelAnimationFrame,
   parseExpr: observer.util.parseExpr,
@@ -116,8 +122,19 @@ let util = {
   capitalize(str) {
     return str;
   },
-  prototypeOf: Object.getPrototypeOf,
-  setPrototypeOf: Object.setPrototypeOf,
-  create: Object.create
+  upperFirst(str) {
+    return str.replace(strFirstLetterReg, strUpperFirstProcessor);
+  },
+  hump(str) {
+    return str.replace(strHumpReg, strHumpProcessor);
+  }
+}
+function strUpperFirstProcessor(k) {
+  return k.toUpperCase();
+}
+function strHumpProcessor(k) {
+  if (k[0] == '_')
+    return k[1].toUpperCase();
+  return k.toUpperCase();
 }
 module.exports = util;

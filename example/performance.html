@@ -9,6 +9,7 @@
 <body>
   <div id="app"></div>
   <script id="tpl/tpl.html" type="text/template">
+    <h3>Data-Length: {databases.length}</h3>
     <table class="table table-striped lastest-data">
       <tbody>
         <tr tpl-each="db in databases track by dbname">

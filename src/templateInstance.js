@@ -19,10 +19,20 @@ export class TemplateInstance {
   }
 
   renderTo(target) {
-    debugger;
-    $(target).append(this.el)
+    this.appendTo(target)
   }
-
+  before(target) {
+    dom.before(this.el, target);
+  }
+  after(target) {
+    dom.after(this.el, target);
+  }
+  prependTo(target) {
+    dom.prependTo(this.el, target);
+  }
+  appendTo(target) {
+    dom.appendTo(this.el, target);
+  }
   updateScope(scope) {
     if (!observer.eq(scope, this.scope)) {
       observer.proxy.un(this.scope, this._scopeProxyListen);
@@ -99,7 +109,7 @@ export class TemplateInstance {
 
       this.createTextNode2(text.substring(lastIndex, delimiterReg.lastIndex - token[0].length), el);
 
-      bindings.push(new Text(this.createTextNode('', el), this, token[1]));
+      bindings.push(new Text(this.createTextNode('binding', el), this, token[1]));
 
       lastIndex = delimiterReg.lastIndex;
     }

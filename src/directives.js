@@ -1,10 +1,10 @@
 const _ = require('./util'),
+  dom = require('./dom'),
   {Directive} = require('./directive'),
   {YieId} = _,
   {Template} = require('./template'),
   expression = require('./expression'),
-  expressionArgs = ['$scope', '$el'],
-  eventExpressionArgs = ['$scope', '$el', '$event'];
+  expressionArgs = ['$el'];
 
 function registerDirective(name, opt) {
   let cls = Directive.register(name, opt);;
@@ -14,9 +14,9 @@ function registerDirective(name, opt) {
 export class AbstractExpressionDirective extends Directive {
   constructor(el, tpl, expr, attr) {
     super(el, tpl, expr, attr);
-    this.observeHandler = this.observeHandler.bind(this);
+    this.observeHandler = _.bind.call(this.observeHandler, this);
     this.expression = expression.parse(this.expr, expressionArgs);
-    this.$el.removeAttr(this.attr);
+    dom.removeAttr(this.el, this.attr);
   }
 
   setRealValue(val) {
@@ -24,7 +24,7 @@ export class AbstractExpressionDirective extends Directive {
   }
 
   realValue() {
-    return this.expression.execute.call(this.scope, this.scope, this.scope, this.el);
+    return this.expression.execute.call(this.scope, this.scope, this.el);
   }
 
   setValue(val) {
@@ -36,18 +36,22 @@ export class AbstractExpressionDirective extends Directive {
   }
 
   bind() {
-    super.bind();
+    if (!super.bind())
+      return false;
     this.expression.identities.forEach((ident) => {
       this.observe(ident, this.observeHandler);
     });
     this.update(this.value());
+    return true;
   }
 
   unbind() {
-    super.unbind();
+    if (!super.unbind())
+      return false;
     this.expression.identities.forEach((ident) => {
       this.unobserve(ident, this.observeHandler);
     });
+    return true;
   }
 
   blankValue(val) {
@@ -84,13 +88,13 @@ const EVENT_CHANGE = 'change',
   expressions = {
     text: {
       update(val) {
-        this.$el.text(this.blankValue(val));
+        dom.setText(this.el, this.blankValue(val))
       },
       block: true
     },
     html: {
       update(val) {
-        this.$el.html(this.blankValue(val));
+        dom.setHtml(this.blankValue(val))
       },
       block: true
     },
@@ -109,36 +113,40 @@ const EVENT_CHANGE = 'change',
 
       handleObject(value) {
         this.cleanup(value);
-        let keys = this.prevKeys = [];
+        let keys = this.prevKeys = [],
+          el = this.el;
         for (let key in value) {
           if (value[key]) {
-            this.$el.addClass(key);
+            dom.addClass(el, key)
             keys.push(key);
           } else {
-            this.$el.removeClass(key);
+            dom.removeClass(el, key)
           }
         }
       },
 
       handleArray(value) {
         this.cleanup(value);
-        let keys = this.prevKeys = [];
+        let keys = this.prevKeys = [],
+          el = this.el;
         for (let i = 0, l = value.length; i < l; i++) {
           if (value[i]) {
             keys.push(value[i]);
-            this.$el.addClass(value[i]);
+            dom.addClass(el, value[i])
           }
         }
       },
 
       cleanup(value) {
-        if (this.prevKeys) {
-          let i = this.prevKeys.length,
-            isArr = value instanceof Array;
+        let prevKeys = this.prevKeys;
+        if (prevKeys) {
+          let i = prevKeys.length,
+            isArr = value instanceof Array,
+            el = this.el;
           while (i--) {
-            let key = this.prevKeys[i];
-            if (!value || (isArr ? value.indexOf(key) != -1 : value.hasOwnProperty(key))) {
-              this.$el.removeClass(key);
+            let key = prevKeys[i];
+            if (!value || (isArr ? _.indexOf.call(value, key) != -1 : value.hasOwnProperty(key))) {
+              dom.removeClass(el, key)
             }
           }
         }
@@ -147,7 +155,7 @@ const EVENT_CHANGE = 'change',
     'style': {
       update(value) {
         if (value && typeof value == 'string') {
-          this.el.style.cssText = value;
+          dom.setStyle(this.el, value)
         } else if (value && typeof value == 'object') {
           this.handleObject(value);
         }
@@ -155,38 +163,41 @@ const EVENT_CHANGE = 'change',
 
       handleObject(value) {
         this.cleanup(value);
-        let keys = this.prevKeys = [];
+        let keys = this.prevKeys = [],
+          el = this.el;
         for (let key in value) {
-          this.$el.css(key, value[key]);
+          dom.setCss(el, key, value[key]);
         }
       }
     },
     show: {
       update(val) {
-        this.$el.css('display', val ? '' : 'none');
+        dom.setCss(this.el, 'display', val ? '' : 'none')
       }
     },
     hide: {
       update(val) {
-        this.$el.css('display', val ? 'none' : '');
+        dom.setCss(this.el, 'display', val ? 'none' : '')
       }
     },
     value: {
       update(val) {
-        this.$el.val(this.blankValue(val));
+        dom.setVal(this.el, this.blankValue(val))
       }
     },
     'if': {
       bind() {
-        AbstractExpressionDirective.prototype.bind.call(this);
+        if (!AbstractExpressionDirective.prototype.bind.call(this))
+          return false;
         if (!this.directives) {
           this.yieId = new YieId();
           return this.yieId;
         }
+        return true;
       },
       update(val) {
         if (!val) {
-          this.$el.css('display', 'none');
+          dom.setCss(this.el, 'display', 'none');
         } else {
           if (!this.directives) {
             this.directives = this.tpl.parseChildNodes(this.el);
@@ -198,16 +209,18 @@ const EVENT_CHANGE = 'change',
               delete this.yieId;
             }
           }
-          this.$el.css('display', '');
+          dom.setCss(this.el, 'display', '');
         }
       },
       unbind() {
-        AbstractExpressionDirective.prototype.unbind.call(this);
+        if (!AbstractExpressionDirective.prototype.unbind.call(this))
+          return false;
         if (this.directives) {
           this.directives.forEach(directive => {
             directive.unbind();
           });
         }
+        return true;
       },
       priority: 9,
       block: true
@@ -215,9 +228,9 @@ const EVENT_CHANGE = 'change',
     checked: {
       update(val) {
         if (val instanceof Array)
-          this.$el.prop('checked', _.indexOf(val, this.$el.val()))
+          dom.setChecked(this.el, _.indexOf.call(val, dom.val(this.el)))
         else
-          this.$el.prop('checked', !!val);
+          dom.setChecked(this.el, !!val);
       }
     },
     selected: {
@@ -227,7 +240,7 @@ const EVENT_CHANGE = 'change',
       constructor(el) {
         AbstractExpressionDirective.apply(this, arguments);
 
-        this.onChange = this.onChange.bind(this);
+        this.onChange = _.bind.call(this.onChange, this);
 
         let tag = this.tag = el.tagName;
         switch (tag) {
@@ -246,31 +259,32 @@ const EVENT_CHANGE = 'change',
       },
 
       bind() {
-        AbstractExpressionDirective.prototype.bind.call(this);
-        this.$el.on(this.event, this.onChange);
+        if (!AbstractExpressionDirective.prototype.bind.call(this))
+          return false;
+        dom.on(this.el, this.event, this.onChange);
+        return true;
       },
 
       unbind() {
-        AbstractExpressionDirective.prototype.unbind.call(this);
-        this.$el.off(this.event, this.onChange);
+        if (!AbstractExpressionDirective.prototype.unbind.call(this))
+          return false;
+        dom.off(this.el, this.event, this.onChange);
+        return true;
       },
 
       onChange() {
-        let val = this.elVal(), idx;
-        if (this.val instanceof Array) {
-          if (val) {
-            this.val = this.val.concat(val);
-          } else if ((idx = _.indexOf(this.$el.val())) != -1) {
-            this.val = this.val.slice().splice(idx, 1);
-          }
-          this.setValue(this.val);
-        } else if (val != this.val)
+        let val = this.elVal(), idx,
+          _val = this.val;
+        if (val != _val)
           this.setValue(val);
       },
 
       update(val) {
-        this.val = this.blankValue(val);
-        this.elVal(this.val);
+        let _val = this.blankValue(val);
+        if (_val != this.val) {
+          this.elVal(_val);
+          this.val = _val;
+        }
       },
 
       elVal(val) {
@@ -284,22 +298,20 @@ const EVENT_CHANGE = 'change',
 
             if (type == RADIO || type == CHECKBOX) {
               if (arguments.length == 0) {
-                return this.$el.prop('checked') ? this.$el.val() : undefined;
+                return dom.checked(this.el) ? dom.val(this.el) : undefined;
               } else {
                 let checked;
-                if (val instanceof Array)
-                  checked = _.indexOf(this.$el.val()) != -1;
-                else
-                  checked = val == this.$el.val();
 
-                if (this.$el.prop('checked') != checked)
-                  this.$el.prop('checked', checked);
+                checked = val == dom.val(this.el);
+
+                if (dom.checked(this.el) != checked)
+                  dom.setChecked(this.el, checked);
               }
             } else {
               if (arguments.length == 0) {
-                return this.$el.val();
-              } else if (val != this.$el.val()) {
-                this.$el.val(val);
+                return dom.val(this.el);
+              } else if (val != dom.val(this.el)) {
+                dom.setVal(this.el, val)
               }
             }
             break;
@@ -315,7 +327,7 @@ const EVENT_CHANGE = 'change',
   };
 
 // register Expression Directive
-_.each(expressions, (opt, name) => {
+_.eachObj(expressions, (opt, name) => {
   opt.extend = AbstractExpressionDirective;
   registerDirective(name, opt);
 });

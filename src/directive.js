@@ -1,6 +1,5 @@
 const _ = require('./util'),
   dom = require('./dom'),
-  $ = require('jquery'),
   {Binding, AbstractBinding} = require('./binding'),
   {ArrayIterator, YieId} = require('./util'),
   SUPER_CLASS_OPTION = 'extend';
@@ -18,7 +17,7 @@ export class DirectiveGroup extends AbstractBinding {
 
   bind() {
     if (!super.bind())
-      return;
+      return false;
 
     let directives = this.directives,
       directiveConfigs = this.directiveConfigs,
@@ -44,17 +43,19 @@ export class DirectiveGroup extends AbstractBinding {
       }
     }
     parse();
+    return true;
   }
 
   unbind() {
     if (!super.unbind())
-      return;
+      return false;
 
     let directives = this.directives;
     for (let i = 0, l = this.bindedCount; i < l; i++) {
       directives[i].unbind();
     }
     this.bindedCount = 0;
+    return true;
   }
 }
 
@@ -62,18 +63,18 @@ export class Directive extends Binding {
   constructor(el, tpl, expr, attr) {
     super(tpl, expr);
     this.el = el;
-    this.$el = $(el);
     this.attr = attr;
   }
 
   bind() {
+    if (!super.bind())
+      return false;
     if (Binding.generateComments && !this.comment) {
-      let comment = this.comment = document.createComment(' Directive:' + this.name + ' [' + this.expr + '] ');
-      dom.before(comment, this.el);
+      this.comment = document.createComment(' Directive:' + this.name + ' [' + this.expr + '] ');
+      dom.before(this.comment, this.el);
     }
+    return true;
   }
-
-  unbind() {}
 }
 Directive.prototype.abstract = false;
 Directive.prototype.name = 'Unkown';
@@ -147,10 +148,11 @@ Directive.register = function register(name, option) {
       return Directive;
     })(option, Directive);
 
-    directive.prototype.className = (_.capitalize(name) + 'Directive');
+    directive.prototype.className = (_.hump(name) + 'Directive');
   } else
     throw TypeError('Invalid Directive Object ' + option);
 
+  name = name.toLowerCase();
   directive.prototype.name = name;
 
   directives[name] = directive;

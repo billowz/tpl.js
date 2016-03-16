@@ -21,11 +21,11 @@ export class AbstractBinding {
   }
 
   get(expr) {
-    _.get(this.scope, expr);
+    return _.get(this.scope, expr);
   }
 
   has(scope, expr) {
-    _.get(this.scope, expr);
+    return _.has(this.scope, expr);
   }
 
   set(expr, value) {

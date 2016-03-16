@@ -1,29 +1,25 @@
-const _ = require('lodash'),
-  $ = require('jquery'),
+const _ = require('./util'),
+  dom = require('./dom'),
   {Binding} = require('./binding'),
-  {ScopeData} = require('./util'),
   expression = require('./expression'),
-  expressionArgs = ['$scope', '$el'];
+  expressionArgs = ['$el'];
 
 class Text extends Binding {
   constructor(el, tpl, expr) {
     super(tpl, expr);
     this.el = el;
-    this.observeHandler = this.observeHandler.bind(this);
+    this.observeHandler = _.bind.call(this.observeHandler, this);
     this.expression = expression.parse(this.expr, expressionArgs);
   }
 
   value() {
-    let ret = this.expression.execute.call(this.scope, this, this.scope, this.el);
-    if (ret instanceof ScopeData)
-      return ret.data;
-    return this.filter(ret);
+    return this.filter(this.expression.execute.call(this.scope, this.scope, this.el));
   }
 
   bind() {
     if (Binding.generateComments && !this.comment) {
-      this.comment = $(document.createComment('Text Binding ' + this.expr));
-      this.comment.insertBefore(this.el);
+      this.comment = document.createComment('Text Binding ' + this.expr);
+      dom.before(this.comment, this.el);
     }
     this.expression.identities.forEach((ident) => {
       this.observe(ident, this.observeHandler);
@@ -49,6 +45,7 @@ class Text extends Binding {
     if (val === undefined || val === null) {
       val = '';
     }
+    dom.text(this.el, val)
     this.el.data = val;
   }
 }

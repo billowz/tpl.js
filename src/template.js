@@ -14,7 +14,7 @@ const parseDelimiterReg = function(delimiter) {
 
 export class Template {
   constructor(templ, cfg = {}) {
-    this.els = $(templ);
+    this.el = $(templ);
 
     this.directivePrefix = cfg.directivePrefix || defaultCfg.directivePrefix;
     this.delimiter = cfg.delimiter || defaultCfg.delimiter;
@@ -23,6 +23,6 @@ export class Template {
   }
 
   complie(scope) {
-    return new TemplateInstance(this.els, scope, this.delimiterReg, this.directiveReg);
+    return new TemplateInstance(dom.clone(this.el), scope, this.delimiterReg, this.directiveReg);
   }
 }

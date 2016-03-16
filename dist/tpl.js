@@ -1274,20 +1274,16 @@ return /******/ (function(modules) { // webpackBootstrap
 	
 	function _inherits(subClass, superClass) { if (typeof superClass !== "function" && superClass !== null) { throw new TypeError("Super expression must either be null or a function, not " + typeof superClass); } subClass.prototype = Object.create(superClass && superClass.prototype, { constructor: { value: subClass, enumerable: false, writable: true, configurable: true } }); if (superClass) Object.setPrototypeOf ? Object.setPrototypeOf(subClass, superClass) : subClass.__proto__ = superClass; }
 	
-	var _ = __webpack_require__(7);
+	var _ = __webpack_require__(5);
 	
 	var _require = __webpack_require__(11);
 	
 	var Directive = _require.Directive;
+	var YieId = _.YieId;
 	
-	var _require2 = __webpack_require__(5);
+	var _require2 = __webpack_require__(1);
 	
-	var YieId = _require2.YieId;
-	var ScopeData = _require2.ScopeData;
-	
-	var _require3 = __webpack_require__(1);
-	
-	var Template = _require3.Template;
+	var Template = _require2.Template;
 	var expression = __webpack_require__(10);
 	var expressionArgs = ['$scope', '$el'];
 	var eventExpressionArgs = ['$scope', '$el', '$event'];
@@ -1316,9 +1312,7 @@ return /******/ (function(modules) { // webpackBootstrap
 	  };
 	
 	  AbstractExpressionDirective.prototype.realValue = function realValue() {
-	    var ret = this.expression.execute.call(this.scope, this.scope, this.scope, this.el);
-	    if (ret instanceof ScopeData) return ret.data;
-	    return ret;
+	    return this.expression.execute.call(this.scope, this.scope, this.scope, this.el);
 	  };
 	
 	  AbstractExpressionDirective.prototype.setValue = function setValue(val) {
@@ -1615,8 +1609,6 @@ return /******/ (function(modules) { // webpackBootstrap
 
 	'use strict';
 	
-	exports.__esModule = true;
-	
 	function _classCallCheck(instance, Constructor) { if (!(instance instanceof Constructor)) { throw new TypeError("Cannot call a class as a function"); } }
 	
 	function _possibleConstructorReturn(self, call) { if (!self) { throw new ReferenceError("this hasn't been initialised - super() hasn't been called"); } return call && (typeof call === "object" || typeof call === "function") ? call : self; }
@@ -1636,7 +1628,7 @@ return /******/ (function(modules) { // webpackBootstrap
 	  module.exports[cls.prototype.className] = cls;
 	}
 	
-	var AbstractEventDirective = exports.AbstractEventDirective = function (_Directive) {
+	var AbstractEventDirective = function (_Directive) {
 	  _inherits(AbstractEventDirective, _Directive);
 	
 	  function AbstractEventDirective(el, tpl, expr, attr) {
@@ -1651,8 +1643,8 @@ return /******/ (function(modules) { // webpackBootstrap
 	
 	  AbstractEventDirective.prototype.handler = function handler(e) {
 	    var ret = this.expression.execute.call(this.scope, this.scope, this.scope, this.el, e);
-	    if (ret && ret instanceof ScopeData && typeof ret.data == 'function') {
-	      ret.data.call(ret.scope, ret.scope, this.el, e);
+	    if (typeof ret == 'function') {
+	      ret.call(this.scope, this.scope, this.scope, this.el, e);
 	    }
 	  };
 	
@@ -1668,6 +1660,8 @@ return /******/ (function(modules) { // webpackBootstrap
 	
 	  return AbstractEventDirective;
 	}(Directive);
+	
+	module.exports = AbstractEventDirective;
 	
 	var events = ['blur', 'change', 'click', 'dblclick', 'error', 'focus', 'keydown', 'keypress', 'keyup', 'load', 'mousedown', 'mousemove', 'mouseout', 'mouseover', 'mouseup', 'resize', 'scroll', 'select', 'submit', 'unload', {
 	  name: 'oninput',

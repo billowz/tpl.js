@@ -44,13 +44,13 @@ function identityProcessor(raw) {
     return raw;
   } else if (currentArgs) {
     let f = exp.match(varReg);
-    if (f && f[0] && currentArgs.indexOf(f[0]) != -1) {
+    if (f && f[0] && _.indexOf.call(currentArgs, f[0]) != -1) {
       return raw;
     }
   }
   exp = exp.replace(translationRestoreReg, translationRestoreProcessor);
   identities[exp] = 1
-  return `${c}scope.${exp}`
+  return `${c}$scope.${exp}`
 }
 
 function compileExecuter(exp, args) {
@@ -69,7 +69,7 @@ function compileExecuter(exp, args) {
 }
 
 function makeExecuter(body, args) {
-  let _args = ['scope'];
+  let _args = ['$scope'];
   if (args)
     _args.push.apply(_args, args);
   _args.push(`return ${body};`);
@@ -99,7 +99,7 @@ export function parse(exp, args) {
   if (isSimplePath(exp)) {
     res.simplePath = true;
     res.identities = [exp];
-    res.execute = makeExecuter(`scope.${exp}`, args);
+    res.execute = makeExecuter(`$scope.${exp}`, args);
   } else {
     res.simplePath = false;
     identities = {};

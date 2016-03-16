@@ -1,3 +1,9 @@
+const _ = require('./util')
+
+export function clone(el) {
+  return $(el).clone();
+}
+
 export function remove(el, coll) {
   if (el instanceof Array) {
     for (let i = 0, l = el.length; i < l; i++)
@@ -13,38 +19,108 @@ export function remove(el, coll) {
     }
   }
 }
+
 export function before(el, target) {
-  target.parentNode.insertBefore(el, target)
+  $(el).insertBefore(target)
 }
+
 export function after(el, target) {
-  if (target.nextSibling) {
-    before(el, target.nextSibling)
-  } else {
-    target.parentNode.appendChild(el)
-  }
+  $(el).insertAfter(target)
 }
-export function append(el, target) {
-  target.appendChild(el)
+
+export function append(target, el) {
+  $(target).append(el)
 }
-export function prepend(el, target) {
+
+export function appendTo(el, target) {
+  append(target, el);
+}
+
+export function prepend(target, el) {
   if (target.firstChild) {
     before(el, target.firstChild)
   } else {
-    target.appendChild(el)
+    append(target, el)
   }
 }
+
+export function prependTo(el, target) {
+  prepend(target, el)
+}
+
 export function replace(target, el) {
   var parent = target.parentNode
   if (parent) {
     parent.replaceChild(el, target)
   }
 }
+
 export function on(el, event, cb, useCapture) {
-  el.addEventListener(event, cb, useCapture)
+  $(el).on(event, cb)
 }
 
 export function off(el, event, cb) {
-  el.removeEventListener(event, cb)
+  $(el).off(event, cb)
+}
+
+export function setHtml(el, html) {
+  $(el).html(html);
+}
+
+export function html(el) {
+  return $(el).html();
+}
+
+export function setText(el, text) {
+  $(el).text(text);
+}
+
+export function text(el) {
+  return $(el).text();
+}
+
+export function setAttr(el, attr, val) {
+  el.setAttribute(attr, val);
+}
+
+export function removeAttr(el, attr) {
+  el.removeAttribute(attr)
+}
+
+export function attr(el, attr) {
+  return el.getAttribute(attr)
+}
+
+export function style(el) {
+  return $(el).attr('style');
+}
+
+export function setStyle(el, style) {
+  $(el).attr('style', style);
+}
+
+export function css(el, name) {
+  return $(el).css(name);
+}
+
+export function setCss(el, name, val) {
+  return $(el).css(name, val);
+}
+
+export function val(el) {
+  return $(el).val();
+}
+
+export function setVal(el, val) {
+  return $(el).val(val);
+}
+
+export function checked(el) {
+  return $(el).prop('checked')
+}
+
+export function setChecked(el, val) {
+  return $(el).prop('checked', val)
 }
 
 export function setClass(el, cls) {
@@ -55,23 +131,25 @@ export function setClass(el, cls) {
     el.setAttribute('class', cls)
   }
 }
+
 export function addClass(el, cls) {
   if (el.classList) {
     el.classList.add(cls)
   } else {
     var cur = ' ' + (el.getAttribute('class') || '') + ' '
-    if (cur.indexOf(' ' + cls + ' ') < 0) {
+    if (_.indexOf.call(cur, ' ' + cls + ' ') < 0) {
       setClass(el, (cur + cls).trim())
     }
   }
 }
+
 export function removeClass(el, cls) {
   if (el.classList) {
     el.classList.remove(cls)
   } else {
     var cur = ' ' + (el.getAttribute('class') || '') + ' '
     var tar = ' ' + cls + ' '
-    while (cur.indexOf(tar) >= 0) {
+    while (_.indexOf.call(cur, tar) >= 0) {
       cur = cur.replace(tar, ' ')
     }
     setClass(el, cur.trim())
