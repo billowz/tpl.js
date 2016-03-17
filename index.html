@@ -4,24 +4,6 @@
 <head>
     <meta charset="utf-8">
     <title>tpl.js</title>
-    <script src="node_modules/lodash/lodash.js"></script>
-    <script src="node_modules/jQuery/dist/jquery.js"></script>
-    <script src="node_modules/observer.js/dist/observer.min.js"></script>
-    <script src="dist/tpl.js"></script>
-    <script>
-    window.data = {
-      time:null
-    }
-
-    function updateTime() {
-        data.time = new Date().toLocaleString();
-        setTimeout(updateTime, 1000);
-    }
-    updateTime();
-    $(document).ready(function() {
-        $(document.body).append(new tpl('<h3> Current Time: <span style="color:red">{time}</span></h3>').complie(data).el);
-    });
-    </script>
 </head>
 
 <body>
@@ -32,5 +14,27 @@
         <li><a href="example/performance.html">DBMON</a></li>
     </ul>
 </body>
+<script src="node_modules/jQuery/dist/jquery.js"></script>
+<script src="node_modules/observer.js/dist/observer.min.js"></script>
+<script src="dist/tpl.js"></script>
+<script>
+var data = {
+    time: null
+}
+
+observer.proxy.on(data, function(obj, proxy){
+  data = proxy || obj;
+});
+
+function updateTime() {
+    data.time = new Date().toLocaleString();
+    setTimeout(updateTime, 1000);
+}
+updateTime();
+$(document).ready(function() {
+    window.t = new tpl('<h3> Current Time: <span style="color:red">{time}</span></h3>')
+        .complie(data).appendTo(document.body)
+});
+</script>
 
 </html>

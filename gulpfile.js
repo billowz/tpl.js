@@ -6,6 +6,7 @@ var fs = require('fs'),
   gulpWebpack = require('gulp-webpack'),
   WebpackDevServer = require('webpack-dev-server'),
   mkcfg = require('./tool/make.webpack.js'),
+  pkg = require('./package.json'),
   karma = require('karma').Server,
   main = {
     src: './src',
@@ -14,6 +15,13 @@ var fs = require('fs'),
     library: 'tpl',
     output: 'tpl.js',
     moduleDirectories: ['node_modules'],
+    plugins: [new webpack.BannerPlugin(`${pkg.name} v${pkg.version} built in ${new Date().toUTCString()}
+Copyright (c) 2016 ${pkg.author}
+Based on observer.js v0.0.x
+Released under the ${pkg.license} license
+support IE6+ and other browsers
+support ES6 Proxy and Object.observe
+${pkg.homepage}`)],
     externals: [{
       path: 'lodash',
       root: '_',

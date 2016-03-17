@@ -17,9 +17,11 @@ class AbstractEventDirective extends Directive {
   }
 
   handler(e) {
-    let ret = this.expression.execute.call(this.scope, this.scope, this.el, e);
+    let scope = this.scope(),
+      ret = this.expression.execute.call(scope, scope, this.el, e);
+
     if (typeof ret == 'function')
-      ret.call(this.scope, this.scope, this.el, e);
+      ret.call(scope, scope, this.el, e);
   }
 
   bind() {

@@ -1,7 +1,7 @@
 const _ = require('./util'),
   dom = require('./dom'),
   {Binding, AbstractBinding} = require('./binding'),
-  {ArrayIterator, YieId} = require('./util'),
+  {YieId} = require('./util'),
   SUPER_CLASS_OPTION = 'extend';
 
 export class DirectiveGroup extends AbstractBinding {

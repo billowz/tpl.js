@@ -1,44 +1,27 @@
 let observer = require('observer')
 
-export class ScopeData {
-  constructor(scope, data) {
-    this.scope = scope;
-    this.data = data;
-  }
-}
-
 class YieId {
   constructor() {
-    this._doned = false;
-    this._thens = [];
+    this.doned = false;
+    this.thens = [];
   }
   then(callback) {
-    this._thens.push(callback);
+    if (this.doned)
+      callback();
+    else
+      this.thens.push(callback);
   }
   done() {
-    if (!this._doned) {
-      let thens = this._thens;
+    if (!this.doned) {
+      let thens = this.thens;
       for (let i = 0, l = thens.length; i < l; i++) {
         thens[i]();
       }
-      this._doned = true;
+      this.doned = true;
     }
   }
   isDone() {
-    return this._doned;
-  }
-}
-
-class ArrayIterator {
-  constructor(array, point) {
-    this.array = array;
-    this.index = point || 0;
-  }
-  hasNext() {
-    return this.index < this.array.length;
-  }
-  next() {
-    return this.array[this.index++];
+    return this.doned;
   }
 }
 
@@ -48,8 +31,6 @@ let hasOwn = Object.prototype.hasOwnProperty,
   strHumpReg = /(^[a-zA-Z])|(_[a-zA-Z])/g;
 
 let util = {
-  ScopeData: ScopeData,
-  ArrayIterator: ArrayIterator,
   YieId: YieId,
   Map: observer.Map,
   bind: observer.util.bind,

@@ -4,7 +4,8 @@ const _ = require('./util'),
   {YieId} = _,
   {Template} = require('./template'),
   expression = require('./expression'),
-  expressionArgs = ['$el'];
+  expressionArgs = ['$el'],
+  hasOwn = Object.prototype.hasOwnProperty;
 
 function registerDirective(name, opt) {
   let cls = Directive.register(name, opt);;
@@ -24,7 +25,9 @@ export class AbstractExpressionDirective extends Directive {
   }
 
   realValue() {
-    return this.expression.execute.call(this.scope, this.scope, this.el);
+    let scope = this.scope();
+
+    return this.expression.execute.call(scope, scope, this.el);
   }
 
   setValue(val) {
@@ -112,7 +115,7 @@ const EVENT_CHANGE = 'change',
       },
 
       handleObject(value) {
-        this.cleanup(value);
+        this.cleanup(value, false);
         let keys = this.prevKeys = [],
           el = this.el;
         for (let key in value) {
@@ -126,7 +129,7 @@ const EVENT_CHANGE = 'change',
       },
 
       handleArray(value) {
-        this.cleanup(value);
+        this.cleanup(value, true);
         let keys = this.prevKeys = [],
           el = this.el;
         for (let i = 0, l = value.length; i < l; i++) {
@@ -137,15 +140,14 @@ const EVENT_CHANGE = 'change',
         }
       },
 
-      cleanup(value) {
+      cleanup(value, isArr) {
         let prevKeys = this.prevKeys;
         if (prevKeys) {
           let i = prevKeys.length,
-            isArr = value instanceof Array,
             el = this.el;
           while (i--) {
             let key = prevKeys[i];
-            if (!value || (isArr ? _.indexOf.call(value, key) != -1 : value.hasOwnProperty(key))) {
+            if (!value || (isArr ? _.indexOf.call(value, key) == -1 : !hasOwn.call(value, key))) {
               dom.removeClass(el, key)
             }
           }

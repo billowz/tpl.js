@@ -133,28 +133,9 @@ export function setClass(el, cls) {
 }
 
 export function addClass(el, cls) {
-  if (el.classList) {
-    el.classList.add(cls)
-  } else {
-    var cur = ' ' + (el.getAttribute('class') || '') + ' '
-    if (_.indexOf.call(cur, ' ' + cls + ' ') < 0) {
-      setClass(el, (cur + cls).trim())
-    }
-  }
+  $(el).addClass(cls)
 }
 
 export function removeClass(el, cls) {
-  if (el.classList) {
-    el.classList.remove(cls)
-  } else {
-    var cur = ' ' + (el.getAttribute('class') || '') + ' '
-    var tar = ' ' + cls + ' '
-    while (_.indexOf.call(cur, tar) >= 0) {
-      cur = cur.replace(tar, ' ')
-    }
-    setClass(el, cur.trim())
-  }
-  if (!el.className) {
-    el.removeAttribute('class')
-  }
+  $(el).removeClass(cls)
 }

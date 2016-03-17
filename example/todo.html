@@ -6,115 +6,112 @@
     <title>tpl.js • TodoMVC </title>
     <link rel="stylesheet" href="../node_modules/todomvc-common/base.css">
     <link rel="stylesheet" href="../node_modules/todomvc-app-css/index.css">
-    <style>
 
-    </style>
-    <script src="../node_modules/lodash/lodash.js"></script>
-    <script src="../node_modules/jQuery/dist/jquery.js"></script>
-    <script src="../node_modules/observer.js/dist/observer.js"></script>
-    <script src="../dist/tpl.js"></script>
-    <script type="text/javascript">
-    $(document).ready(function() {
-        window.template = new tpl($(document.getElementById('tpl/todo.html')).html());
-        window.templ = template.complie({
-            addTodo: function(scope, el, e) {
-                if (e.which === 13 && (el = $(el)).val()) {
-                    console.log('push todo:', el.val(), this);
-                    this.todos.push({
-                        title: el.val(),
-                        completed: false
-                    });
-                    el.val('');
-                }
-            },
-            editTodo: function(todo) {
-                this.beforeEditCache = todo.title;
-                this.editedTodo = todo;
-            },
-            editTodoFinish: function (todo) {
-                if (!this.editedTodo) {
-                    return;
-                }
-                this.editedTodo = undefined;
-                todo.title = todo.title.trim();
-                if (!todo.title) {
-                    this.removeTodo(this.todos.indexOf(todo));
-                }
-            },
-            removeTodo: function(idx) {
-                this.todos.splice(idx, 1);
-            },
-            completeTodo: function(todo) {
-                if (!todo) {
-                    var done = this.completedNum != this.todos.length;
-                    _.each(this.todos, function(todo) {
-                        todo.completed = done;
-                    }.bind(this));
-                    this.completedNum = done ? this.todos.length : 0;
-                } else {
-                    todo.completed = !todo.completed;
-                    if (todo.completed) {
-                        this.completedNum++;
-                    } else {
-                        this.completedNum--;
-                    }
-                }
-
-            },
-            editedTodo: null,
-            todos: [{
-                title: 'abc',
-                completed: false
-            }],
-            completedNum: 0,
-            title: 'Todo MVC',
-            remaining: 0
-        }).renderTo('.todoapp');
-    })
-    </script>
-    <script id="tpl/todo.html" type="text/template">
-        <div class="header">
-            <h1 tpl-text="title"></h1>
-            <input class="new-todo" autofocus autocomplete="off" placeholder="What needs to be done?" tpl-onkeyup="addTodo">
-        </div>
-        <div class="main" tpl-if="todos.length" tpl-class="title">
-            <input class="toggle-all" type="checkbox" tpl-checked="completedNum == todos.length" tpl-onchange="completeTodo()">
-            <ul class="todo-list">
-                <li class="todo" tpl-each="todo, idx in todos "
-                    tpl-class="{completed: todo.completed, editing: todo == editedTodo}">
-                    <div class="view">
-                        <input class="toggle" type="checkbox" tpl-checked="todo.completed" tpl-onchange="completeTodo(todo)">
-                        <label tpl-ondblclick="editTodo(todo)">{idx}&nbsp; - &nbsp;{todo.title}</label>
-                        <button class="destroy" tpl-onclick="removeTodo(idx)"></button>
-                    </div>
-                    <input class="edit" type="text" tpl-input="todo.title" tpl-focus="todo == editedTodo" tpl-onblur="editTodoFinish">
-                </li>
-            </ul>
-        </div>
-        <div class="footer" tpl-if="todos.length">
-            <span class="todo-count">
-                  <strong tpl-text="remaining"></strong> {remaining | pluralize 'item'} left
-              </span>
-            <ul class="filters">
-                <li><a href="#/all" tpl-class="{selected: visibility == 'all'}">All</a></li>
-                <li><a href="#/active" tpl-class="{selected: visibility == 'active'}">Active</a></li>
-                <li><a href="#/completed" tpl-class="{selected: visibility == 'completed'}">Completed</a></li>
-            </ul>
-            <button class="clear-completed" tpl-on="click:removeCompleted" tpl-if="todos.length > remaining">
-                Clear completed
-            </button>
-        </div>
-    </script>
 </head>
 
 <body>
-    <div class="todoapp">
-    </div>
+    <div class="todoapp"></div>
     <div class="info">
         <p>Double-click to edit a todo</p>
         <p>Part of <a href="http://todomvc.com">TodoMVC</a></p>
         <p><a href="../index.html">Back</a></p>
     </div>
 </body>
+
+<script src="../node_modules/lodash/lodash.js"></script>
+<script src="../node_modules/jQuery/dist/jquery.js"></script>
+<script src="../node_modules/observer.js/dist/observer.js"></script>
+<script src="../dist/tpl.js"></script>
+<script type="text/javascript">
+$(document).ready(function() {
+    window.template = new tpl($(document.getElementById('tpl/todo.html')).html());
+    window.templ = template.complie({
+        addTodo: function(scope, el, e) {
+            if (e.which === 13 && (el = $(el)).val()) {
+                console.log('push todo:', el.val(), this);
+                this.todos.push({
+                    title: el.val(),
+                    completed: false
+                });
+                el.val('');
+            }
+        },
+        editTodo: function(todo) {
+            this.beforeEditCache = todo.title;
+            this.editedTodo = todo;
+        },
+        editTodoFinish: function(todo) {
+            if (!this.editedTodo) {
+                return;
+            }
+            this.editedTodo = undefined;
+            todo.title = todo.title.trim();
+            if (!todo.title) {
+                this.removeTodo(this.todos.indexOf(todo));
+            }
+        },
+        removeTodo: function(idx) {
+            this.todos.splice(idx, 1);
+        },
+        completeTodo: function(todo) {
+            if (!todo) {
+                var done = this.completedNum != this.todos.length;
+                _.each(this.todos, function(todo) {
+                    todo.completed = done;
+                }.bind(this));
+                this.completedNum = done ? this.todos.length : 0;
+            } else {
+                todo.completed = !todo.completed;
+                if (todo.completed) {
+                    this.completedNum++;
+                } else {
+                    this.completedNum--;
+                }
+            }
+
+        },
+        editedTodo: null,
+        todos: [{
+            title: 'abc',
+            completed: false
+        }],
+        completedNum: 0,
+        title: 'Todo MVC',
+        remaining: 0
+    }).appendTo('.todoapp');
+})
+</script>
+<script id="tpl/todo.html" type="text/template">
+    <div class="header">
+        <h1 tpl-text="title"></h1>
+        <input class="new-todo" autofocus autocomplete="off" placeholder="What needs to be done?" tpl-onkeyup="addTodo">
+    </div>
+    <div class="main" tpl-if="todos.length" tpl-class="title">
+        <input class="toggle-all" type="checkbox" tpl-checked="completedNum == todos.length" tpl-onchange="completeTodo()">
+        <ul class="todo-list">
+            <li class="todo" tpl-each="todo, idx in todos " tpl-class="{completed: todo.completed, editing: todo == editedTodo}">
+                <div class="view">
+                    <input class="toggle" type="checkbox" tpl-checked="todo.completed" tpl-onchange="completeTodo(todo)">
+                    <label tpl-ondblclick="editTodo(todo)">{idx}&nbsp; - &nbsp;{todo.title}</label>
+                    <button class="destroy" tpl-onclick="removeTodo(idx)"></button>
+                </div>
+                <input class="edit" type="text" tpl-input="todo.title" tpl-focus="todo == editedTodo" tpl-onblur="editTodoFinish">
+            </li>
+        </ul>
+    </div>
+    <div class="footer" tpl-if="todos.length">
+        <span class="todo-count">
+                  <strong tpl-text="remaining"></strong> {remaining | pluralize 'item'} left
+              </span>
+        <ul class="filters">
+            <li><a href="#/all" tpl-class="{selected: visibility == 'all'}">All</a></li>
+            <li><a href="#/active" tpl-class="{selected: visibility == 'active'}">Active</a></li>
+            <li><a href="#/completed" tpl-class="{selected: visibility == 'completed'}">Completed</a></li>
+        </ul>
+        <button class="clear-completed" tpl-on="click:removeCompleted" tpl-if="todos.length > remaining">
+            Clear completed
+        </button>
+    </div>
+</script>
 
 </html>

@@ -4,7 +4,6 @@ const _ = require('./util'),
 export class AbstractBinding {
   constructor(tpl) {
     this.tpl = tpl;
-    this.scope = tpl.scope;
     this.binded = false;
   }
 
@@ -12,24 +11,32 @@ export class AbstractBinding {
 
   destroy() {}
 
+  scope() {
+    return this.tpl.scope;
+  }
+
+  realScope() {
+    return observer.obj(this.tpl.scope);
+  }
+
   observe(expr, callback) {
-    observer.on(this.scope, expr, callback);
+    observer.on(this.tpl.scope, expr, callback);
   }
 
   unobserve(expr, callback) {
-    observer.un(this.scope, expr, callback);
+    observer.un(this.tpl.scope, expr, callback);
   }
 
   get(expr) {
-    return _.get(this.scope, expr);
+    return _.get(this.tpl.scope, expr);
   }
 
-  has(scope, expr) {
-    return _.has(this.scope, expr);
+  has(expr) {
+    return _.has(this.tpl.scope, expr);
   }
 
   set(expr, value) {
-    _.set(this.scope, expr, value);
+    _.set(this.tpl.scope, expr, value);
   }
 
   bind() {

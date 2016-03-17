@@ -10,7 +10,7 @@ export class TemplateInstance {
     this.el = el;
     this.delimiterReg = delimiterReg;
     this.directiveReg = directiveReg;
-    this.scope = observer.proxy.proxy(scope);
+    this.scope = observer.proxy.proxy(scope) || scope;
     this._scopeProxyListen = _.bind.call(this._scopeProxyListen, this);
     observer.proxy.on(this.scope, this._scopeProxyListen);
     this.bindings = this.parse(el, this);
@@ -18,32 +18,26 @@ export class TemplateInstance {
     this.bind();
   }
 
-  renderTo(target) {
-    this.appendTo(target)
-  }
   before(target) {
     dom.before(this.el, target);
+    return this;
   }
+
   after(target) {
     dom.after(this.el, target);
+    return this;
   }
+
   prependTo(target) {
     dom.prependTo(this.el, target);
+    return this;
   }
+
   appendTo(target) {
     dom.appendTo(this.el, target);
+    return this;
   }
-  updateScope(scope) {
-    if (!observer.eq(scope, this.scope)) {
-      observer.proxy.un(this.scope, this._scopeProxyListen);
-      this.scope = observer.proxy.proxy(scope);
-      observer.proxy.on(this.scope, this._scopeProxyListen);
-      let bindings = this.bindings;
-      for (let i = 0, l = bindings.length; i < l; i++) {
-        bindings[i].updateScope();
-      }
-    }
-  }
+
   bind() {
     if (this.binded)
       return;
@@ -52,7 +46,9 @@ export class TemplateInstance {
       bindings[i].bind();
     }
     this.binded = true;
+    return this;
   }
+
   unbind() {
     if (!this.binded)
       return;
@@ -61,7 +57,9 @@ export class TemplateInstance {
       bindings[i].unbind();
     }
     this.binded = false;
+    return this;
   }
+
   destroy() {
     observer.proxy.un(this.scope, this._scopeProxyListen);
     let bindings = this.bindings;
@@ -74,6 +72,7 @@ export class TemplateInstance {
     this.bindings = undefined;
     this.scope = undefined;
   }
+
   _scopeProxyListen(obj, proxy) {
     this.scope = proxy || obj;
   }

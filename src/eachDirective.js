@@ -39,8 +39,9 @@ export class EachDirective extends Directive {
   }
 
   update(data) {
-    let item, scope, oldScope, i, l, index,
-      start = this.start,
+    let parentScope = this.realScope(),
+      item, scope, oldScope, i, l, index,
+      begin = this.begin,
       end = this.end,
       indexExpr = this.indexExpr,
       valueAlias = this.valueAlias,
@@ -53,64 +54,63 @@ export class EachDirective extends Directive {
       added = [];
 
     for (i = 0, l = data.length; i < l; i++) {
-      item = data[i]
-      index = indexExpr ? _.get(item, indexExpr) : i
-      scope = !init && cache[index]
+      item = data[i];
+      index = indexExpr ? _.get(item, indexExpr) : i;
+      scope = !init && cache[index];
       if (scope) {
-        this.initScope(scope, item, i, index)
+        this.initScope(scope, item, i, index);
       } else {
-        scope = cache[index] = this.createScope(item, i, index)
+        scope = cache[index] = this.createScope(parentScope, item, i, index);
         if (!init)
-          added.push(scope)
+          added.push(scope);
       }
-      sort[i] = scope
+      sort[i] = scope;
       if (init) {
-        scope.$tpl = new TemplateInstance(dom.clone(this.el), scope, this.tpl.delimiterReg, this.tpl.directiveReg)
-        scope.$tpl.before(end)
-        scope.$tpl.bind()
+        scope.$tpl = new TemplateInstance(dom.clone(this.el), scope, this.tpl.delimiterReg, this.tpl.directiveReg);
+        scope.$tpl.before(end);
       }
     }
 
     if (init)
-      return
+      return;
 
     for (i = 0, l = oldSort.length; i < l; i++) {
-      oldScope = oldSort[i]
-      scope = cache[oldScope.$index]
+      oldScope = oldSort[i];
+      scope = cache[oldScope.$index];
       if (scope && scope !== sort[oldScope.$sort]) {
-        removed.push(oldScope)
+        removed.push(oldScope);
         cache[oldScope.$index] = undefined;
       }
     }
     for (i = 0, l = added.length; i < l; i++) {
       scope = added[i];
       if( (oldScope = removed.pop()) ) {
-        this.initScope(oldScope, scope)
+        this.initScope(oldScope, scope);
         cache[scope.$index] = oldScope;
         sort[scope.$sort] = oldScope;
         scope = oldScope;
       } else {
-        scope.$tpl = new TemplateInstance(dom.clone(this.el), scope, this.tpl.delimiterReg, this.tpl.directiveReg)
-        scope.$tpl.bind()
+        scope.$tpl = new TemplateInstance(dom.clone(this.el), scope, this.tpl.delimiterReg, this.tpl.directiveReg);
       }
-      scope.$tpl.after(scope.$sort ? sort[scope.$sort - 1].$tpl.el : start)
+      scope.$tpl.after(scope.$sort ? sort[scope.$sort - 1].$tpl.el : begin);
     }
     while ((scope = removed.pop())) {
       scope.$tpl.destroy();
     }
   }
 
-  createScope(value, i, index) {
-    let parentScope = this.scope,
-      scope = _.create(parentScope);
+  createScope(parentScope, value, i, index) {
+    let scope = _.create(parentScope, {});
     scope.$parent = parentScope;
     scope.$context = this;
     scope.$tpl = null;
-    this.initScope(scope, value, i, index);
+    this.initScope(scope, value, i, index, true);
     return scope;
   }
 
-  initScope(scope, value, i, index) {
+  initScope(scope, value, i, index, isCreate) {
+    if (!isCreate)
+      scope = scope.$tpl.scope;
     scope.$sort = i;
     scope[this.valueAlias] = value;
     if (this.keyAlias)
