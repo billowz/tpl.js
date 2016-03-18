@@ -5,5 +5,4 @@ tpl.Directive = require('./Directive').Directive;
 tpl.Directives = require('./directives');
 tpl.EventDirectives = require('./eventDirective');
 tpl.EachDirective = require('./eachDirective');
-
 module.exports = tpl;

@@ -19,6 +19,36 @@ export class AbstractBinding {
     return observer.obj(this.tpl.scope);
   }
 
+  propScope(prop) {
+    let scope = this.tpl.scope,
+      parent = scope.$parent;
+
+    if (!parent)
+      return scope;
+
+    while (parent && !_.hasOwnProp(scope, prop)) {
+      scope = parent;
+      parent = scope.$parent;
+    }
+    return observer.proxy.proxy(scope) || scope;
+  }
+
+  exprScope(expr) {
+    let scope = this.tpl.scope,
+      parent = scope.$parent,
+      prop;
+
+    if (!parent)
+      return scope;
+
+    prop = _.parseExpr(expr)[0];
+    while (parent && !_.hasOwnProp(scope, prop)) {
+      scope = parent;
+      parent = scope.$parent;
+    }
+    return observer.proxy.proxy(scope) || scope;
+  }
+
   observe(expr, callback) {
     observer.on(this.tpl.scope, expr, callback);
   }

@@ -1,27 +1,32 @@
 const _ = require('./util');
-
-const allowedKeywords = 'Math,Date,this,true,false,null,undefined,Infinity,NaN,' +
-  'isNaN,isFinite,decodeURI,decodeURIComponent,encodeURI,' +
-  'encodeURIComponent,parseInt,parseFloat';
-const allowedKeywordsReg = new RegExp('^(' + allowedKeywords.replace(/,/g, '\\b|') + '\\b)')
-
-// keywords that don't make sense inside expressions
-const improperKeywords = 'break,case,class,catch,const,continue,debugger,default,' +
-  'delete,do,else,export,extends,finally,for,function,if,' +
-  'import,in,instanceof,let,return,super,switch,throw,try,' +
-  'var,while,with,yield,enum,await,implements,package,' +
-  'proctected,static,interface,private,public';
-const improperKeywordsReg = new RegExp('^(' + improperKeywords.replace(/,/g, '\\b|') + '\\b)')
+const defaultKeywords = {
+  'Math': true,
+  'Date': true,
+  'this': true,
+  'true': true,
+  'false': true,
+  'null': true,
+  'undefined': true,
+  'Infinity': true,
+  'NaN': true,
+  'isNaN': true,
+  'isFinite': true,
+  'decodeURI': true,
+  'decodeURIComponent': true,
+  'encodeURI': true,
+  'encodeURIComponent': true,
+  'parseInt': true,
+  'parseFloat': true
+};
 
 const wsReg = /\s/g
 const newlineReg = /\n/g
 const translationReg = /[\{,]\s*[\w\$_]+\s*:|('(?:[^'\\]|\\.)*'|"(?:[^"\\]|\\.)*"|`(?:[^`\\]|\\.)*\$\{|\}(?:[^`\\]|\\.)*`|`(?:[^`\\]|\\.)*`)|new |typeof |void /g
 const translationRestoreReg = /"(\d+)"/g
 const pathTestReg = /^[A-Za-z_$][\w$]*(?:\.[A-Za-z_$][\w$]*|\['.*?'\]|\[".*?"\]|\[\d+\]|\[[A-Za-z_$][\w$]*\])*$/
-const identityReg = /[^\w$\.:][A-Za-z_$][\w$]*(?:\.[A-Za-z_$][\w$]*|\['.*?'\]|\[".*?"\]|\[\d+\]|\[[A-Za-z_$][\w$]*\])*/g
 const booleanLiteralReg = /^(?:true|false)$/
-const varReg = /^[A-Za-z_$][\w$]*/
-
+const identityReg = /[A-Za-z_$][\w$]*(?:\.[A-Za-z_$][\w$]*|\['.*?'\]|\[".*?"\]|\[\d+\]|\[[A-Za-z_$][\w$]*\])*[^\w$\.]/g
+const propReg = /^[A-Za-z_$][\w$]*/;
 
 let translations = [];
 function translationProcessor(str, isString) {
@@ -34,41 +39,55 @@ function translationRestoreProcessor(str, i) {
   return translations[i]
 }
 
-let identities;
-let currentArgs;
-function identityProcessor(raw) {
-  let c = raw.charAt(0),
-    exp = raw.slice(1);
+let currentIdentities;
+let currentKeywords;
+function identityProcessor(raw, idx, str) {
+  let l = raw.length,
+    suffix = raw.charAt(l - 1),
+    exp = raw.slice(0, l - 1),
+    prop = exp.match(propReg)[0];
 
-  if (allowedKeywordsReg.test(exp)) {
+  if (defaultKeywords[prop] || currentKeywords[prop])
     return raw;
-  } else if (currentArgs) {
-    let f = exp.match(varReg);
-    if (f && f[0] && _.indexOf.call(currentArgs, f[0]) != -1) {
-      return raw;
-    }
+
+  currentIdentities[exp] = true;
+  if (suffix == '(') {
+    suffix = (idx + l == str.length || str.charAt(idx + l) == ')') ? '' : ',';
+    return `$scope.${exp}.call(this.propScope('${prop}')${suffix}`;
   }
-  exp = exp.replace(translationRestoreReg, translationRestoreProcessor);
-  identities[exp] = 1
-  return `${c}$scope.${exp}`
+  return `$scope.${exp}${suffix}`;
 }
 
-function compileExecuter(exp, args) {
-  if (improperKeywordsReg.test(exp)) {
-    throw Error(`Invalid expression. Generated function body: ${exp}`);
-  }
-  currentArgs = args;
+function compileExecuter(exp, keywords) {
 
-  let body = exp.replace(translationReg, translationProcessor).replace(wsReg, '');
-  body = (' ' + body).replace(identityReg, identityProcessor)
-    .replace(translationRestoreReg, translationRestoreProcessor);
+  let body = exp.replace(translationReg, translationProcessor).replace(wsReg, ''),
+    identities;
+
+  currentIdentities = {};
+  currentKeywords = {};
+  if (keywords) {
+    for (let i = 0, l = keywords.length; i < l; i++)
+      currentKeywords[keywords[i]] = true;
+  }
+
+  body = (body + ' ').replace(identityReg, identityProcessor)
+
+  body = body.replace(translationRestoreReg, translationRestoreProcessor);
+
+  identities = _.keys(currentIdentities);
 
   translations.length = 0;
-  currentArgs = undefined;
-  return makeExecuter(body, args);
+  currentKeywords = undefined;
+  currentIdentities = undefined;
+
+  return {
+    fn: makeExecuter(body, keywords),
+    identities: identities
+  }
 }
 
 function makeExecuter(body, args) {
+  console.log('--->', body)
   let _args = ['$scope'];
   if (args)
     _args.push.apply(_args, args);
@@ -97,15 +116,16 @@ export function parse(exp, args) {
     exp: exp
   }
   if (isSimplePath(exp)) {
-    res.simplePath = true;
-    res.identities = [exp];
     res.execute = makeExecuter(`$scope.${exp}`, args);
+    res.identities = [exp];
+    res.simplePath = true;
+    res.path = _.parseExpr(exp);
   } else {
+    let exe = compileExecuter(exp, args);
+
     res.simplePath = false;
-    identities = {};
-    res.execute = compileExecuter(exp, args);
-    res.identities = Object.keys(identities);
-    identities = undefined;
+    res.execute = exe.fn;
+    res.identities = exe.identities;
   }
   cache[exp] = res;
   return res

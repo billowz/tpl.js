@@ -37,9 +37,29 @@ let util = {
   indexOf: observer.util.indexOf,
   prototypeOf: Object.getPrototypeOf,
   setPrototypeOf: Object.setPrototypeOf,
-  create: Object.create,
+  create: Object.create || (function() {
+      function Temp() {
+      }
+      return function(O, props) {
+        if (typeof O != 'object')
+          throw TypeError('Object prototype may only be an Object or null');
+
+        Temp.prototype = O;
+        var obj = new Temp();
+        Temp.prototype = undefined;
+        if (props) {
+          for (let prop in props) {
+            if (hasOwn.call(props, prop))
+              obj[prop] = props[prop];
+          }
+        }
+        return obj;
+      };
+    })(),
   requestAnimationFrame: observer.util.requestAnimationFrame,
   cancelAnimationFrame: observer.util.cancelAnimationFrame,
+  requestTimeoutFrame: observer.util.requestTimeoutFrame,
+  cancelTimeoutFrame: observer.util.cancelTimeoutFrame,
   parseExpr: observer.util.parseExpr,
   get: observer.util.get,
   has(object, path) {
@@ -69,7 +89,7 @@ let util = {
     }
     return object;
   },
-  hasProp(obj, prop) {
+  hasOwnProp(obj, prop) {
     return hasOwn.call(observer.obj(obj), prop);
   },
   keys: Object.keys || function keys(obj) {

@@ -18,10 +18,14 @@ class AbstractEventDirective extends Directive {
 
   handler(e) {
     let scope = this.scope(),
-      ret = this.expression.execute.call(scope, scope, this.el, e);
+      exp = this.expression,
+      fn = exp.execute.call(this, scope, this.el, e);
+    if (exp.simplePath) {
+      if (typeof fn != 'function')
+        throw TypeError('Invalid Event Handler:' + this.expr + ' -> ' + fn);
 
-    if (typeof ret == 'function')
-      ret.call(scope, scope, this.el, e);
+      fn.call(this.propScope(exp.path[0]), scope, this.el, e);
+    }
   }
 
   bind() {

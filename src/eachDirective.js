@@ -67,6 +67,7 @@ export class EachDirective extends Directive {
       sort[i] = scope;
       if (init) {
         scope.$tpl = new TemplateInstance(dom.clone(this.el), scope, this.tpl.delimiterReg, this.tpl.directiveReg);
+        data[i] = scope[valueAlias];
         scope.$tpl.before(end);
       }
     }
@@ -92,6 +93,7 @@ export class EachDirective extends Directive {
       } else {
         scope.$tpl = new TemplateInstance(dom.clone(this.el), scope, this.tpl.delimiterReg, this.tpl.directiveReg);
       }
+      data[scope.$sort] = scope[valueAlias];
       scope.$tpl.after(scope.$sort ? sort[scope.$sort - 1].$tpl.el : begin);
     }
     while ((scope = removed.pop())) {
@@ -102,7 +104,7 @@ export class EachDirective extends Directive {
   createScope(parentScope, value, i, index) {
     let scope = _.create(parentScope, {});
     scope.$parent = parentScope;
-    scope.$context = this;
+    scope.$eachContext = this;
     scope.$tpl = null;
     this.initScope(scope, value, i, index, true);
     return scope;

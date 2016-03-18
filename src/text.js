@@ -15,7 +15,7 @@ class Text extends Binding {
   value() {
     let scope = this.scope();
 
-    return this.filter(this.expression.execute.call(scope, scope, this.el));
+    return this.filter(this.expression.execute.call(this, scope, this.el));
   }
 
   bind() {

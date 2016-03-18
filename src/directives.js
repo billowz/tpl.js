@@ -27,7 +27,7 @@ export class AbstractExpressionDirective extends Directive {
   realValue() {
     let scope = this.scope();
 
-    return this.expression.execute.call(scope, scope, this.el);
+    return this.expression.execute.call(this, scope, this.el);
   }
 
   setValue(val) {
