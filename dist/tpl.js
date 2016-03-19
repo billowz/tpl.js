@@ -1,5 +1,5 @@
 /*!
- * tpl.js v0.0.1 built in Fri, 18 Mar 2016 02:30:04 GMT
+ * tpl.js v0.0.1 built in Sat, 19 Mar 2016 15:13:00 GMT
  * Copyright (c) 2016 Tao Zeng <tao.zeng.zt@gmail.com>
  * Based on observer.js v0.0.x
  * Released under the MIT license
@@ -72,7 +72,6 @@ return /******/ (function(modules) { // webpackBootstrap
 	tpl.Directives = __webpack_require__(11);
 	tpl.EventDirectives = __webpack_require__(12);
 	tpl.EachDirective = __webpack_require__(13);
-	
 	module.exports = tpl;
 
 /***/ },
@@ -167,18 +166,7 @@ return /******/ (function(modules) { // webpackBootstrap
 	}
 	
 	function remove(el, coll) {
-	  if (el instanceof Array) {
-	    for (var i = 0, l = el.length; i < l; i++) {
-	      remove(el);
-	    }return;
-	  }
-	  if (el.parentNode) {
-	    el.parentNode.removeChild(el);
-	  } else if (coll instanceof Array) {
-	    for (var _i = coll.length - 1; _i >= 0; _i--) {
-	      if (coll[_i] === el) coll.splice(_i, 1);
-	    }
-	  }
+	  $(el).remove();
 	}
 	
 	function before(el, target) {
@@ -307,6 +295,8 @@ return /******/ (function(modules) { // webpackBootstrap
 
 	'use strict';
 	
+	var _typeof = typeof Symbol === "function" && typeof Symbol.iterator === "symbol" ? function (obj) { return typeof obj; } : function (obj) { return obj && typeof Symbol === "function" && obj.constructor === Symbol ? "symbol" : typeof obj; };
+	
 	function _classCallCheck(instance, Constructor) { if (!(instance instanceof Constructor)) { throw new TypeError("Cannot call a class as a function"); } }
 	
 	var observer = __webpack_require__(4);
@@ -352,9 +342,26 @@ return /******/ (function(modules) { // webpackBootstrap
 	  indexOf: observer.util.indexOf,
 	  prototypeOf: Object.getPrototypeOf,
 	  setPrototypeOf: Object.setPrototypeOf,
-	  create: Object.create,
+	  create: Object.create || function () {
+	    function Temp() {}
+	    return function (O, props) {
+	      if ((typeof O === 'undefined' ? 'undefined' : _typeof(O)) != 'object') throw TypeError('Object prototype may only be an Object or null');
+	
+	      Temp.prototype = O;
+	      var obj = new Temp();
+	      Temp.prototype = undefined;
+	      if (props) {
+	        for (var prop in props) {
+	          if (hasOwn.call(props, prop)) obj[prop] = props[prop];
+	        }
+	      }
+	      return obj;
+	    };
+	  }(),
 	  requestAnimationFrame: observer.util.requestAnimationFrame,
 	  cancelAnimationFrame: observer.util.cancelAnimationFrame,
+	  requestTimeoutFrame: observer.util.requestTimeoutFrame,
+	  cancelTimeoutFrame: observer.util.cancelTimeoutFrame,
 	  parseExpr: observer.util.parseExpr,
 	  get: observer.util.get,
 	  has: function has(object, path) {
@@ -383,7 +390,7 @@ return /******/ (function(modules) { // webpackBootstrap
 	    }
 	    return object;
 	  },
-	  hasProp: function hasProp(obj, prop) {
+	  hasOwnProp: function hasOwnProp(obj, prop) {
 	    return hasOwn.call(observer.obj(obj), prop);
 	  },
 	
@@ -684,7 +691,7 @@ return /******/ (function(modules) { // webpackBootstrap
 	  Text.prototype.value = function value() {
 	    var scope = this.scope();
 	
-	    return this.filter(this.expression.execute.call(scope, scope, this.el));
+	    return this.filter(this.expression.execute.call(this, scope, this.el));
 	  };
 	
 	  Text.prototype.bind = function bind() {
@@ -766,12 +773,40 @@ return /******/ (function(modules) { // webpackBootstrap
 	    return observer.obj(this.tpl.scope);
 	  };
 	
+	  AbstractBinding.prototype.propScope = function propScope(prop) {
+	    var scope = this.tpl.scope,
+	        parent = scope.$parent;
+	
+	    if (!parent) return scope;
+	
+	    while (parent && !_.hasOwnProp(scope, prop)) {
+	      scope = parent;
+	      parent = scope.$parent;
+	    }
+	    return observer.proxy.proxy(scope) || scope;
+	  };
+	
+	  AbstractBinding.prototype.exprScope = function exprScope(expr) {
+	    var scope = this.tpl.scope,
+	        parent = scope.$parent,
+	        prop = void 0;
+	
+	    if (!parent) return scope;
+	
+	    prop = _.parseExpr(expr)[0];
+	    while (parent && !_.hasOwnProp(scope, prop)) {
+	      scope = parent;
+	      parent = scope.$parent;
+	    }
+	    return observer.proxy.proxy(scope) || scope;
+	  };
+	
 	  AbstractBinding.prototype.observe = function observe(expr, callback) {
-	    observer.on(this.tpl.scope, expr, callback);
+	    observer.on(this.exprScope(expr), expr, callback);
 	  };
 	
 	  AbstractBinding.prototype.unobserve = function unobserve(expr, callback) {
-	    observer.un(this.tpl.scope, expr, callback);
+	    observer.un(this.exprScope(expr), expr, callback);
 	  };
 	
 	  AbstractBinding.prototype.get = function get(expr) {
@@ -850,22 +885,34 @@ return /******/ (function(modules) { // webpackBootstrap
 	exports.isSimplePath = isSimplePath;
 	exports.parse = parse;
 	var _ = __webpack_require__(3);
-	
-	var allowedKeywords = 'Math,Date,this,true,false,null,undefined,Infinity,NaN,' + 'isNaN,isFinite,decodeURI,decodeURIComponent,encodeURI,' + 'encodeURIComponent,parseInt,parseFloat';
-	var allowedKeywordsReg = new RegExp('^(' + allowedKeywords.replace(/,/g, '\\b|') + '\\b)');
-	
-	// keywords that don't make sense inside expressions
-	var improperKeywords = 'break,case,class,catch,const,continue,debugger,default,' + 'delete,do,else,export,extends,finally,for,function,if,' + 'import,in,instanceof,let,return,super,switch,throw,try,' + 'var,while,with,yield,enum,await,implements,package,' + 'proctected,static,interface,private,public';
-	var improperKeywordsReg = new RegExp('^(' + improperKeywords.replace(/,/g, '\\b|') + '\\b)');
+	var defaultKeywords = {
+	  'Math': true,
+	  'Date': true,
+	  'this': true,
+	  'true': true,
+	  'false': true,
+	  'null': true,
+	  'undefined': true,
+	  'Infinity': true,
+	  'NaN': true,
+	  'isNaN': true,
+	  'isFinite': true,
+	  'decodeURI': true,
+	  'decodeURIComponent': true,
+	  'encodeURI': true,
+	  'encodeURIComponent': true,
+	  'parseInt': true,
+	  'parseFloat': true
+	};
 	
 	var wsReg = /\s/g;
 	var newlineReg = /\n/g;
 	var translationReg = /[\{,]\s*[\w\$_]+\s*:|('(?:[^'\\]|\\.)*'|"(?:[^"\\]|\\.)*"|`(?:[^`\\]|\\.)*\$\{|\}(?:[^`\\]|\\.)*`|`(?:[^`\\]|\\.)*`)|new |typeof |void /g;
 	var translationRestoreReg = /"(\d+)"/g;
 	var pathTestReg = /^[A-Za-z_$][\w$]*(?:\.[A-Za-z_$][\w$]*|\['.*?'\]|\[".*?"\]|\[\d+\]|\[[A-Za-z_$][\w$]*\])*$/;
-	var identityReg = /[^\w$\.:][A-Za-z_$][\w$]*(?:\.[A-Za-z_$][\w$]*|\['.*?'\]|\[".*?"\]|\[\d+\]|\[[A-Za-z_$][\w$]*\])*/g;
 	var booleanLiteralReg = /^(?:true|false)$/;
-	var varReg = /^[A-Za-z_$][\w$]*/;
+	var identityReg = /[A-Za-z_$][\w$]*(?:\.[A-Za-z_$][\w$]*|\['.*?'\]|\[".*?"\]|\[\d+\]|\[[A-Za-z_$][\w$]*\])*[^\w$\.]/g;
+	var propReg = /^[A-Za-z_$][\w$]*/;
 	
 	var translations = [];
 	function translationProcessor(str, isString) {
@@ -878,37 +925,51 @@ return /******/ (function(modules) { // webpackBootstrap
 	  return translations[i];
 	}
 	
-	var identities = void 0;
-	var currentArgs = void 0;
-	function identityProcessor(raw) {
-	  var c = raw.charAt(0),
-	      exp = raw.slice(1);
+	var currentIdentities = void 0;
+	var currentKeywords = void 0;
+	function identityProcessor(raw, idx, str) {
+	  var l = raw.length,
+	      suffix = raw.charAt(l - 1),
+	      exp = raw.slice(0, l - 1),
+	      prop = exp.match(propReg)[0];
 	
-	  if (allowedKeywordsReg.test(exp)) {
-	    return raw;
-	  } else if (currentArgs) {
-	    var f = exp.match(varReg);
-	    if (f && f[0] && _.indexOf.call(currentArgs, f[0]) != -1) {
-	      return raw;
-	    }
+	  if (defaultKeywords[prop] || currentKeywords[prop]) return raw;
+	
+	  currentIdentities[exp] = true;
+	  if (suffix == '(') {
+	    suffix = idx + l == str.length || str.charAt(idx + l) == ')' ? '' : ',';
+	    return '$scope.' + exp + '.call(this.propScope(\'' + prop + '\')' + suffix;
 	  }
-	  exp = exp.replace(translationRestoreReg, translationRestoreProcessor);
-	  identities[exp] = 1;
-	  return c + '$scope.' + exp;
+	  return '$scope.' + exp + suffix;
 	}
 	
-	function compileExecuter(exp, args) {
-	  if (improperKeywordsReg.test(exp)) {
-	    throw Error('Invalid expression. Generated function body: ' + exp);
-	  }
-	  currentArgs = args;
+	function compileExecuter(exp, keywords) {
 	
-	  var body = exp.replace(translationReg, translationProcessor).replace(wsReg, '');
-	  body = (' ' + body).replace(identityReg, identityProcessor).replace(translationRestoreReg, translationRestoreProcessor);
+	  var body = exp.replace(translationReg, translationProcessor).replace(wsReg, ''),
+	      identities = void 0;
+	
+	  currentIdentities = {};
+	  currentKeywords = {};
+	  if (keywords) {
+	    for (var i = 0, l = keywords.length; i < l; i++) {
+	      currentKeywords[keywords[i]] = true;
+	    }
+	  }
+	
+	  body = (body + ' ').replace(identityReg, identityProcessor);
+	
+	  body = body.replace(translationRestoreReg, translationRestoreProcessor);
+	
+	  identities = _.keys(currentIdentities);
 	
 	  translations.length = 0;
-	  currentArgs = undefined;
-	  return makeExecuter(body, args);
+	  currentKeywords = undefined;
+	  currentIdentities = undefined;
+	
+	  return {
+	    fn: makeExecuter(body, keywords),
+	    identities: identities
+	  };
 	}
 	
 	function makeExecuter(body, args) {
@@ -938,15 +999,16 @@ return /******/ (function(modules) { // webpackBootstrap
 	    exp: exp
 	  };
 	  if (isSimplePath(exp)) {
-	    res.simplePath = true;
-	    res.identities = [exp];
 	    res.execute = makeExecuter('$scope.' + exp, args);
+	    res.identities = [exp];
+	    res.simplePath = true;
+	    res.path = _.parseExpr(exp);
 	  } else {
+	    var exe = compileExecuter(exp, args);
+	
 	    res.simplePath = false;
-	    identities = {};
-	    res.execute = compileExecuter(exp, args);
-	    res.identities = Object.keys(identities);
-	    identities = undefined;
+	    res.execute = exe.fn;
+	    res.identities = exe.identities;
 	  }
 	  cache[exp] = res;
 	  return res;
@@ -1098,7 +1160,7 @@ return /******/ (function(modules) { // webpackBootstrap
 	
 	    directive = function (opt, SuperClass) {
 	      var userSuperClass = opt[SUPER_CLASS_OPTION];
-	      if (userSuperClass && !isDirective(userSuperClass)) throw TypeError('Invalid Directive SuperClass ' + userSuperClass);
+	      if (false) throw TypeError('Invalid Directive SuperClass ' + userSuperClass);
 	      SuperClass = userSuperClass || SuperClass;
 	
 	      var constructor = typeof opt.constructor == 'function' ? opt.constructor : undefined,
@@ -1285,7 +1347,7 @@ return /******/ (function(modules) { // webpackBootstrap
 	
 	    directive = function (opt, SuperClass) {
 	      var userSuperClass = opt[SUPER_CLASS_OPTION];
-	      if (userSuperClass && !isDirective(userSuperClass)) throw TypeError('Invalid Directive SuperClass ' + userSuperClass);
+	      if (false) throw TypeError('Invalid Directive SuperClass ' + userSuperClass);
 	      SuperClass = userSuperClass || SuperClass;
 	
 	      var constructor = typeof opt.constructor == 'function' ? opt.constructor : undefined,
@@ -1372,7 +1434,6 @@ return /******/ (function(modules) { // webpackBootstrap
 	
 	    _this.observeHandler = _.bind.call(_this.observeHandler, _this);
 	    _this.expression = expression.parse(_this.expr, expressionArgs);
-	    dom.removeAttr(_this.el, _this.attr);
 	    return _this;
 	  }
 	
@@ -1383,7 +1444,7 @@ return /******/ (function(modules) { // webpackBootstrap
 	  AbstractExpressionDirective.prototype.realValue = function realValue() {
 	    var scope = this.scope();
 	
-	    return this.expression.execute.call(scope, scope, this.el);
+	    return this.expression.execute.call(this, scope, this.el);
 	  };
 	
 	  AbstractExpressionDirective.prototype.setValue = function setValue(val) {
@@ -1725,9 +1786,13 @@ return /******/ (function(modules) { // webpackBootstrap
 	
 	  AbstractEventDirective.prototype.handler = function handler(e) {
 	    var scope = this.scope(),
-	        ret = this.expression.execute.call(scope, scope, this.el, e);
+	        exp = this.expression,
+	        fn = exp.execute.call(this, scope, this.el, e);
+	    if (exp.simplePath) {
+	      if (typeof fn != 'function') throw TypeError('Invalid Event Handler:' + this.expr + ' -> ' + fn);
 	
-	    if (typeof ret == 'function') ret.call(scope, scope, this.el, e);
+	      fn.call(this.propScope(exp.path[0]), scope, this.el, e);
+	    }
 	  };
 	
 	  AbstractEventDirective.prototype.bind = function bind() {
@@ -1866,6 +1931,7 @@ return /******/ (function(modules) { // webpackBootstrap
 	      sort[i] = scope;
 	      if (init) {
 	        scope.$tpl = new TemplateInstance(dom.clone(this.el), scope, this.tpl.delimiterReg, this.tpl.directiveReg);
+	        data[i] = scope[valueAlias];
 	        scope.$tpl.before(end);
 	      }
 	    }
@@ -1890,17 +1956,19 @@ return /******/ (function(modules) { // webpackBootstrap
 	      } else {
 	        scope.$tpl = new TemplateInstance(dom.clone(this.el), scope, this.tpl.delimiterReg, this.tpl.directiveReg);
 	      }
+	      data[scope.$sort] = scope[valueAlias];
 	      scope.$tpl.after(scope.$sort ? sort[scope.$sort - 1].$tpl.el : begin);
 	    }
-	    while (scope = removed.pop()) {
-	      scope.$tpl.destroy();
+	
+	    for (i = 0, l = removed.length; i < l; i++) {
+	      removed[i].$tpl.destroy();
 	    }
 	  };
 	
 	  EachDirective.prototype.createScope = function createScope(parentScope, value, i, index) {
 	    var scope = _.create(parentScope, {});
 	    scope.$parent = parentScope;
-	    scope.$context = this;
+	    scope.$eachContext = this;
 	    scope.$tpl = null;
 	    this.initScope(scope, value, i, index, true);
 	    return scope;

@@ -50,11 +50,11 @@ export class AbstractBinding {
   }
 
   observe(expr, callback) {
-    observer.on(this.tpl.scope, expr, callback);
+    observer.on(this.exprScope(expr), expr, callback);
   }
 
   unobserve(expr, callback) {
-    observer.un(this.tpl.scope, expr, callback);
+    observer.un(this.exprScope(expr), expr, callback);
   }
 
   get(expr) {

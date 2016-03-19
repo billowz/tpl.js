@@ -96,8 +96,9 @@ export class EachDirective extends Directive {
       data[scope.$sort] = scope[valueAlias];
       scope.$tpl.after(scope.$sort ? sort[scope.$sort - 1].$tpl.el : begin);
     }
-    while ((scope = removed.pop())) {
-      scope.$tpl.destroy();
+
+    for (i = 0, l = removed.length; i < l; i++) {
+      removed[i].$tpl.destroy();
     }
   }
 

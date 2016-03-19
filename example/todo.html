@@ -40,15 +40,17 @@ $(document).ready(function() {
             this.beforeEditCache = todo.title;
             this.editedTodo = todo;
         },
-        editTodoFinish: function(todo) {
+        editTodoFinish: function($scope, $el) {
             if (!this.editedTodo) {
                 return;
             }
-            this.editedTodo = undefined;
-            todo.title = todo.title.trim();
+            let todo = this.editedTodo
+            todo.title = $($el).val().trim();
             if (!todo.title) {
                 this.removeTodo(this.todos.indexOf(todo));
             }
+            console.log(todo)
+            this.editedTodo = undefined;
         },
         removeTodo: function(idx) {
             this.todos.splice(idx, 1);

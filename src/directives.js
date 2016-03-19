@@ -17,7 +17,6 @@ export class AbstractExpressionDirective extends Directive {
     super(el, tpl, expr, attr);
     this.observeHandler = _.bind.call(this.observeHandler, this);
     this.expression = expression.parse(this.expr, expressionArgs);
-    dom.removeAttr(this.el, this.attr);
   }
 
   setRealValue(val) {

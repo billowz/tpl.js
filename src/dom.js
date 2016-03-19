@@ -5,19 +5,7 @@ export function clone(el) {
 }
 
 export function remove(el, coll) {
-  if (el instanceof Array) {
-    for (let i = 0, l = el.length; i < l; i++)
-      remove(el);
-    return;
-  }
-  if (el.parentNode) {
-    el.parentNode.removeChild(el)
-  } else if (coll instanceof Array) {
-    for (let i = coll.length - 1; i >= 0; i--) {
-      if (coll[i] === el)
-        coll.splice(i, 1);
-    }
-  }
+  $(el).remove();
 }
 
 export function before(el, target) {

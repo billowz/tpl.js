@@ -87,7 +87,6 @@ function compileExecuter(exp, keywords) {
 }
 
 function makeExecuter(body, args) {
-  console.log('--->', body)
   let _args = ['$scope'];
   if (args)
     _args.push.apply(_args, args);

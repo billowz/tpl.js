@@ -114,7 +114,7 @@ Directive.register = function register(name, option) {
 
     directive = (function(opt, SuperClass) {
       let userSuperClass = opt[SUPER_CLASS_OPTION];
-      if (userSuperClass && !isDirective(userSuperClass))
+      if (false && userSuperClass && !isDirective(userSuperClass))
         throw TypeError('Invalid Directive SuperClass ' + userSuperClass);
       SuperClass = userSuperClass || SuperClass;
 
