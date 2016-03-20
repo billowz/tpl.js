@@ -5,7 +5,7 @@ var fs = require('fs'),
   webpack = require('webpack'),
   gulpWebpack = require('gulp-webpack'),
   WebpackDevServer = require('webpack-dev-server'),
-  mkcfg = require('./tool/make.webpack.js'),
+  mkcfg = require('./build/make.webpack.js'),
   pkg = require('./package.json'),
   karma = require('karma').Server,
   main = {
@@ -83,19 +83,6 @@ gulp.task('watch', function(event) {
   });
 });
 
-gulp.task('test', function(done) {
-  new karma({
-    configFile: __dirname + '/karma.conf.js',
-    singleRun: true
-  }).start();
-});
-
-gulp.task('tdd', function(done) {
-  new karma({
-    configFile: __dirname + '/karma.conf.js',
-    singleRun: false
-  }).start();
-});
 
 gulp.task('server', ['build'], function() {
   var cfg = Object.create(main);
@@ -123,3 +110,27 @@ gulp.task('server', ['build'], function() {
     }
   });
 });
+
+gulp.task('test', function(done) {
+  new karma({
+    configFile: __dirname + '/build/karma.unit.config.js'
+  }, done).start();
+});
+gulp.task('cover', function(done) {
+  new karma({
+    configFile: __dirname + '/build/karma.cover.config.js'
+  }, done).start();
+});
+
+gulp.task('sauce', function(done) {
+  new karma({
+    configFile: __dirname + '/build/karma.sauce.config.js'
+  }, done).start();
+});
+
+gulp.task('cover-ci', ['cover'], function() {
+  return gulp.src('./coverage/lcov.info')
+    .pipe(codecov());
+});
+
+gulp.task('ci', ['cover-ci', 'sauce']);
