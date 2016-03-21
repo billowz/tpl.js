@@ -1,4 +1,5 @@
-var gulp = require('gulp'),
+var path = require('path'),
+  gulp = require('gulp'),
   clean = require('gulp-clean'),
   run = require('gulp-run'),
   webpack = require('webpack'),
@@ -45,7 +46,17 @@ gulp.task('watch', function(event) {
 
 gulp.task('server', function() {
   webpackCfg.devtool = 'source-map'
-  var devServer = new WebpackDevServer(webpack(webpackCfg));
+  webpackCfg.hot = false;
+  var devServer = new WebpackDevServer(webpack(webpackCfg), {
+    contentBase: path.join('./'),
+    publicPath: webpackCfg.output.publicPath,
+    hot: false,
+    noInfo: false,
+    inline: false,
+    stats: {
+      colors: true
+    }
+  });
   devServer.listen(webpackCfg.devServer.port, webpackCfg.devServer.host, function(err, result) {
     if (err) {
       console.log(err);

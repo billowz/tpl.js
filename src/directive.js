@@ -84,6 +84,8 @@ Directive.prototype.priority = 5;
 const directives = {};
 
 let isDirective = Directive.isDirective = function isDirective(object) {
+  // TODO IE Shim
+  return true;
   let type = typeof object;
   if (!object || (type != 'function' && type != 'object')) {
     return false;

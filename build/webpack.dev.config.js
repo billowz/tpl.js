@@ -28,12 +28,6 @@ var config = {
     libraryTarget: 'umd'
   },
   externals: {
-    'lodash': {
-      root: '_',
-      commonjs: 'lodash',
-      commonjs2: 'lodash',
-      amd: 'lodash'
-    },
     observer: {
       root: 'observer',
       commonjs: 'observer',

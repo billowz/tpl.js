@@ -40,9 +40,11 @@ export class AbstractExpressionDirective extends Directive {
   bind() {
     if (!super.bind())
       return false;
-    this.expression.identities.forEach((ident) => {
-      this.observe(ident, this.observeHandler);
-    });
+
+    let identities = this.expression.identities;
+    for (let i = 0, l = identities.length; i < l; i++)
+      this.observe(identities[i], this.observeHandler);
+
     this.update(this.value());
     return true;
   }
@@ -50,9 +52,11 @@ export class AbstractExpressionDirective extends Directive {
   unbind() {
     if (!super.unbind())
       return false;
-    this.expression.identities.forEach((ident) => {
-      this.unobserve(ident, this.observeHandler);
-    });
+
+    let identities = this.expression.identities;
+    for (let i = 0, l = identities.length; i < l; i++)
+      this.unobserve(identities[i], this.observeHandler);
+
     return true;
   }
 
@@ -103,7 +107,7 @@ const EVENT_CHANGE = 'change',
     'class': {
       update(value) {
         if (value && typeof value == 'string') {
-          this.handleArray(value.trim().split(/\s+/));
+          this.handleArray(_.trim(value).split(/\s+/));
         } else if (value instanceof Array) {
           this.handleArray(value);
         } else if (value && typeof value == 'object') {
@@ -201,10 +205,11 @@ const EVENT_CHANGE = 'change',
           dom.setCss(this.el, 'display', 'none');
         } else {
           if (!this.directives) {
-            this.directives = this.tpl.parseChildNodes(this.el);
-            this.directives.forEach(directive => {
-              directive.bind();
-            });
+            let directives = this.directives = this.tpl.parseChildNodes(this.el);
+
+            for (let i = 0, l = directives.length; i < l; i++)
+              directives[i].bind();
+
             if (this.yieId) {
               this.yieId.done();
               delete this.yieId;
@@ -217,9 +222,10 @@ const EVENT_CHANGE = 'change',
         if (!AbstractExpressionDirective.prototype.unbind.call(this))
           return false;
         if (this.directives) {
-          this.directives.forEach(directive => {
-            directive.unbind();
-          });
+          let directives = this.directives;
+
+          for (let i = 0, l = directives.length; i < l; i++)
+            directives[i].unbind();
         }
         return true;
       },

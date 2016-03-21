@@ -106,7 +106,7 @@ export function isSimplePath(exp) {
 let cache = {};
 
 export function parse(exp, args) {
-  exp = exp.trim();
+  exp = _.trim(exp);
   let res;
   if( (res = cache[exp]) ) {
     return res;

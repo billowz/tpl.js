@@ -19,20 +19,30 @@ class Text extends Binding {
   }
 
   bind() {
+    if (!super.bind())
+      return false;
+
     if (Binding.generateComments && !this.comment) {
       this.comment = document.createComment('Text Binding ' + this.expr);
       dom.before(this.comment, this.el);
     }
-    this.expression.identities.forEach((ident) => {
-      this.observe(ident, this.observeHandler);
-    });
-    this.update(this.value());
+
+    let identities = this.expression.identities;
+    for (let i = 0, l = identities.length; i < l; i++)
+      this.observe(identities[i], this.observeHandler);
+
+    return true;
   }
 
   unbind() {
-    this.expression.identities.forEach((ident) => {
-      this.unobserve(ident, this.observeHandler);
-    });
+    if (!super.unbind())
+      return false;
+
+    let identities = this.expression.identities;
+    for (let i = 0, l = identities.length; i < l; i++)
+      this.unobserve(identities[i], this.observeHandler);
+
+    return true;
   }
 
   observeHandler(attr, val) {

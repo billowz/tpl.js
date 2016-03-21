@@ -35,8 +35,12 @@ let util = {
   Map: observer.Map,
   bind: observer.util.bind,
   indexOf: observer.util.indexOf,
-  prototypeOf: Object.getPrototypeOf,
-  setPrototypeOf: Object.setPrototypeOf,
+  prototypeOf: Object.getPrototypeOf || function(obj) {
+      return obj.__proto__;
+  },
+  setPrototypeOf: Object.setPrototypeOf || function(obj, proto) {
+      obj.__proto__ = proto;
+  },
   create: Object.create || (function() {
       function Temp() {
       }
@@ -139,3 +143,6 @@ function strHumpProcessor(k) {
   return k.toUpperCase();
 }
 module.exports = util;
+
+if (!Object.create)
+  Object.create = util.create

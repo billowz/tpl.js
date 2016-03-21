@@ -1,7 +1,7 @@
 {
   "name": "tpl.js",
   "description": "data binding template",
-  "version": "0.0.4",
+  "version": "0.0.5",
   "homepage": "https://github.com/tao-zeng/tpl.js",
   "author": "Tao Zeng <tao.zeng.zt@gmail.com>",
   "bugs": {
@@ -28,7 +28,7 @@
     ]
   },
   "dependencies": {
-    "jquery": "^2.2.1",
+    "jquery": "^1.9.1",
     "lodash": "^4.6.1",
     "observer.js": "~0.0.6",
     "todomvc-common": "",

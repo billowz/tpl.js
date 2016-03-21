@@ -1,5 +1,5 @@
 /*!
- * tpl.js v0.0.3 built in Mon, 21 Mar 2016 10:23:19 GMT
+ * tpl.js v0.0.4 built in Mon, 21 Mar 2016 11:20:53 GMT
  * Copyright (c) 2016 Tao Zeng <tao.zeng.zt@gmail.com>
  * Based on observer.js v0.0.x
  * Released under the MIT license
@@ -340,8 +340,12 @@ return /******/ (function(modules) { // webpackBootstrap
 	  Map: observer.Map,
 	  bind: observer.util.bind,
 	  indexOf: observer.util.indexOf,
-	  prototypeOf: Object.getPrototypeOf,
-	  setPrototypeOf: Object.setPrototypeOf,
+	  prototypeOf: Object.getPrototypeOf || function (obj) {
+	    return obj.__proto__;
+	  },
+	  setPrototypeOf: Object.setPrototypeOf || function (obj, proto) {
+	    obj.__proto__ = proto;
+	  },
 	  create: Object.create || function () {
 	    function Temp() {}
 	    return function (O, props) {
@@ -436,6 +440,8 @@ return /******/ (function(modules) { // webpackBootstrap
 	  return k.toUpperCase();
 	}
 	module.exports = util;
+	
+	if (!Object.create) Object.create = util.create;
 
 /***/ },
 /* 4 */
@@ -695,24 +701,26 @@ return /******/ (function(modules) { // webpackBootstrap
 	  };
 	
 	  Text.prototype.bind = function bind() {
-	    var _this2 = this;
+	    if (!_Binding.prototype.bind.call(this)) return false;
 	
 	    if (Binding.generateComments && !this.comment) {
 	      this.comment = document.createComment('Text Binding ' + this.expr);
 	      dom.before(this.comment, this.el);
 	    }
-	    this.expression.identities.forEach(function (ident) {
-	      _this2.observe(ident, _this2.observeHandler);
-	    });
-	    this.update(this.value());
+	
+	    var identities = this.expression.identities;
+	    for (var i = 0, l = identities.length; i < l; i++) {
+	      this.observe(identities[i], this.observeHandler);
+	    }return true;
 	  };
 	
 	  Text.prototype.unbind = function unbind() {
-	    var _this3 = this;
+	    if (!_Binding.prototype.unbind.call(this)) return false;
 	
-	    this.expression.identities.forEach(function (ident) {
-	      _this3.unobserve(ident, _this3.observeHandler);
-	    });
+	    var identities = this.expression.identities;
+	    for (var i = 0, l = identities.length; i < l; i++) {
+	      this.unobserve(identities[i], this.observeHandler);
+	    }return true;
 	  };
 	
 	  Text.prototype.observeHandler = function observeHandler(attr, val) {
@@ -990,7 +998,7 @@ return /******/ (function(modules) { // webpackBootstrap
 	var cache = {};
 	
 	function parse(exp, args) {
-	  exp = exp.trim();
+	  exp = _.trim(exp);
 	  var res = void 0;
 	  if (res = cache[exp]) {
 	    return res;
@@ -1132,6 +1140,8 @@ return /******/ (function(modules) { // webpackBootstrap
 	var directives = {};
 	
 	var isDirective = Directive.isDirective = function isDirective(object) {
+	  // TODO IE Shim
+	  return true;
 	  var type = typeof object === 'undefined' ? 'undefined' : _typeof(object);
 	  if (!object || type != 'function' && type != 'object') {
 	    return false;
@@ -1269,24 +1279,22 @@ return /******/ (function(modules) { // webpackBootstrap
 	  };
 	
 	  AbstractExpressionDirective.prototype.bind = function bind() {
-	    var _this2 = this;
-	
 	    if (!_Directive.prototype.bind.call(this)) return false;
-	    this.expression.identities.forEach(function (ident) {
-	      _this2.observe(ident, _this2.observeHandler);
-	    });
-	    this.update(this.value());
+	
+	    var identities = this.expression.identities;
+	    for (var i = 0, l = identities.length; i < l; i++) {
+	      this.observe(identities[i], this.observeHandler);
+	    }this.update(this.value());
 	    return true;
 	  };
 	
 	  AbstractExpressionDirective.prototype.unbind = function unbind() {
-	    var _this3 = this;
-	
 	    if (!_Directive.prototype.unbind.call(this)) return false;
-	    this.expression.identities.forEach(function (ident) {
-	      _this3.unobserve(ident, _this3.observeHandler);
-	    });
-	    return true;
+	
+	    var identities = this.expression.identities;
+	    for (var i = 0, l = identities.length; i < l; i++) {
+	      this.unobserve(identities[i], this.observeHandler);
+	    }return true;
 	  };
 	
 	  AbstractExpressionDirective.prototype.blankValue = function blankValue(val) {
@@ -1340,7 +1348,7 @@ return /******/ (function(modules) { // webpackBootstrap
 	  'class': {
 	    update: function update(value) {
 	      if (value && typeof value == 'string') {
-	        this.handleArray(value.trim().split(/\s+/));
+	        this.handleArray(_.trim(value).split(/\s+/));
 	      } else if (value instanceof Array) {
 	        this.handleArray(value);
 	      } else if (value && (typeof value === 'undefined' ? 'undefined' : _typeof(value)) == 'object') {
@@ -1433,11 +1441,11 @@ return /******/ (function(modules) { // webpackBootstrap
 	        dom.setCss(this.el, 'display', 'none');
 	      } else {
 	        if (!this.directives) {
-	          this.directives = this.tpl.parseChildNodes(this.el);
-	          this.directives.forEach(function (directive) {
-	            directive.bind();
-	          });
-	          if (this.yieId) {
+	          var directives = this.directives = this.tpl.parseChildNodes(this.el);
+	
+	          for (var i = 0, l = directives.length; i < l; i++) {
+	            directives[i].bind();
+	          }if (this.yieId) {
 	            this.yieId.done();
 	            delete this.yieId;
 	          }
@@ -1448,9 +1456,11 @@ return /******/ (function(modules) { // webpackBootstrap
 	    unbind: function unbind() {
 	      if (!AbstractExpressionDirective.prototype.unbind.call(this)) return false;
 	      if (this.directives) {
-	        this.directives.forEach(function (directive) {
-	          directive.unbind();
-	        });
+	        var directives = this.directives;
+	
+	        for (var i = 0, l = directives.length; i < l; i++) {
+	          directives[i].unbind();
+	        }
 	      }
 	      return true;
 	    },
