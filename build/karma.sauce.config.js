@@ -60,7 +60,7 @@ module.exports = function(config) {
     sauceLabs: {
       testName: 'tpl.js unit tests',
       username: 'tpl_js',
-      accessKey: '0a943154-ae00-4742-bb2b-6a87cf2d13b3'
+      accessKey: '1410ba42-f5e0-4dcd-867d-1852420b5826'
     },
     port: 9876,
     // mobile emulators are really slow
