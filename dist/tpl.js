@@ -1,5 +1,5 @@
 /*!
- * tpl.js v0.0.1 built in Sat, 19 Mar 2016 15:13:00 GMT
+ * tpl.js v0.0.1 built in Mon, 21 Mar 2016 08:48:24 GMT
  * Copyright (c) 2016 Tao Zeng <tao.zeng.zt@gmail.com>
  * Based on observer.js v0.0.x
  * Released under the MIT license
@@ -53,7 +53,7 @@ return /******/ (function(modules) { // webpackBootstrap
 /******/ 	__webpack_require__.c = installedModules;
 /******/
 /******/ 	// __webpack_public_path__
-/******/ 	__webpack_require__.p = "";
+/******/ 	__webpack_require__.p = "http://localhost:8088/dist/";
 /******/
 /******/ 	// Load entry module and return exports
 /******/ 	return __webpack_require__(0);
