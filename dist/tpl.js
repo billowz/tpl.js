@@ -1,5 +1,5 @@
 /*!
- * tpl.js v0.0.3 built in Mon, 21 Mar 2016 10:09:33 GMT
+ * tpl.js v0.0.3 built in Mon, 21 Mar 2016 10:23:19 GMT
  * Copyright (c) 2016 Tao Zeng <tao.zeng.zt@gmail.com>
  * Based on observer.js v0.0.x
  * Released under the MIT license
@@ -68,10 +68,10 @@ return /******/ (function(modules) { // webpackBootstrap
 	var tpl = __webpack_require__(1).Template;
 	tpl.expression = __webpack_require__(8);
 	tpl.util = __webpack_require__(3);
-	tpl.Directive = __webpack_require__(10).Directive;
-	tpl.Directives = __webpack_require__(11);
-	tpl.EventDirectives = __webpack_require__(12);
-	tpl.EachDirective = __webpack_require__(13);
+	tpl.Directive = __webpack_require__(9).Directive;
+	tpl.Directives = __webpack_require__(10);
+	tpl.EventDirectives = __webpack_require__(11);
+	tpl.EachDirective = __webpack_require__(12);
 	module.exports = tpl;
 
 /***/ },
@@ -1220,193 +1220,6 @@ return /******/ (function(modules) { // webpackBootstrap
 	var _ = __webpack_require__(3);
 	var dom = __webpack_require__(2);
 	
-	var _require = __webpack_require__(7);
-	
-	var Binding = _require.Binding;
-	var AbstractBinding = _require.AbstractBinding;
-	
-	var _require2 = __webpack_require__(3);
-	
-	var YieId = _require2.YieId;
-	var SUPER_CLASS_OPTION = 'extend';
-	var DirectiveGroup = exports.DirectiveGroup = function (_AbstractBinding) {
-	  _inherits(DirectiveGroup, _AbstractBinding);
-	
-	  function DirectiveGroup(el, tpl, directiveConfigs) {
-	    _classCallCheck(this, DirectiveGroup);
-	
-	    var _this = _possibleConstructorReturn(this, _AbstractBinding.call(this, tpl));
-	
-	    _this.el = el;
-	    _this.directiveConfigs = directiveConfigs.sort(function (a, b) {
-	      return b['const'].prototype.priority - a['const'].prototype.priority || 0;
-	    });
-	    _this.directives = [];
-	    _this.bindedCount = 0;
-	    return _this;
-	  }
-	
-	  DirectiveGroup.prototype.bind = function bind() {
-	    if (!_AbstractBinding.prototype.bind.call(this)) return false;
-	
-	    var directives = this.directives,
-	        directiveConfigs = this.directiveConfigs,
-	        tpl = this.tpl,
-	        el = this.el,
-	        directiveCount = this.directiveConfigs.length,
-	        self = this;
-	    function parse() {
-	      var idx = self.bindedCount,
-	          directive = directives[idx],
-	          ret = void 0;
-	      if (!directive) {
-	        var cfg = directiveConfigs[idx];
-	        directive = directives[idx] = new cfg['const'](el, tpl, cfg.expression, cfg.attr);
-	      }
-	      ret = directive.bind();
-	      if (++self.bindedCount < directiveCount) {
-	        if (ret && ret instanceof YieId) ret.then(parse);else parse();
-	      }
-	    }
-	    parse();
-	    return true;
-	  };
-	
-	  DirectiveGroup.prototype.unbind = function unbind() {
-	    if (!_AbstractBinding.prototype.unbind.call(this)) return false;
-	
-	    var directives = this.directives;
-	    for (var i = 0, l = this.bindedCount; i < l; i++) {
-	      directives[i].unbind();
-	    }
-	    this.bindedCount = 0;
-	    return true;
-	  };
-	
-	  return DirectiveGroup;
-	}(AbstractBinding);
-	
-	var Directive = exports.Directive = function (_Binding) {
-	  _inherits(Directive, _Binding);
-	
-	  function Directive(el, tpl, expr, attr) {
-	    _classCallCheck(this, Directive);
-	
-	    var _this2 = _possibleConstructorReturn(this, _Binding.call(this, tpl, expr));
-	
-	    _this2.el = el;
-	    _this2.attr = attr;
-	    return _this2;
-	  }
-	
-	  Directive.prototype.bind = function bind() {
-	    if (!_Binding.prototype.bind.call(this)) return false;
-	    if (Binding.generateComments && !this.comment) {
-	      this.comment = document.createComment(' Directive:' + this.name + ' [' + this.expr + '] ');
-	      dom.before(this.comment, this.el);
-	    }
-	    return true;
-	  };
-	
-	  return Directive;
-	}(Binding);
-	
-	Directive.prototype.abstract = false;
-	Directive.prototype.name = 'Unkown';
-	Directive.prototype.block = false;
-	Directive.prototype.priority = 5;
-	
-	var directives = {};
-	
-	var isDirective = Directive.isDirective = function isDirective(object) {
-	  var type = typeof object === 'undefined' ? 'undefined' : _typeof(object);
-	  if (!object || type != 'function' && type != 'object') {
-	    return false;
-	  }
-	  var proto = object;
-	  while (proto = _.prototypeOf(proto)) {
-	    if (proto === Directive) return true;
-	  }
-	  return false;
-	};
-	
-	Directive.getDirective = function getDirective(name) {
-	  return directives[name];
-	};
-	
-	Directive.register = function register(name, option) {
-	  if (name in directives) {
-	    console.warn('Directive[' + name + '] is defined');
-	  }
-	  var directive = void 0;
-	  if (typeof option == 'function') {
-	    if (!isDirective(option)) throw TypeError('Invalid Directive constructor ' + option);
-	    directive = option;
-	    directive.prototype.className = directive.prototype.className || directive.name;
-	  } else if (option && (typeof option === 'undefined' ? 'undefined' : _typeof(option)) == 'object') {
-	
-	    directive = function (opt, SuperClass) {
-	      var userSuperClass = opt[SUPER_CLASS_OPTION];
-	      if (false) throw TypeError('Invalid Directive SuperClass ' + userSuperClass);
-	      SuperClass = userSuperClass || SuperClass;
-	
-	      var constructor = typeof opt.constructor == 'function' ? opt.constructor : undefined,
-	          Directive = function DynamicDirective() {
-	        if (!(this instanceof SuperClass)) throw new TypeError('Cannot call a class as a function');
-	
-	        SuperClass.apply(this, arguments);
-	        if (constructor) constructor.apply(this, arguments);
-	      };
-	
-	      Directive.prototype = _.create(SuperClass.prototype, {
-	        constructor: {
-	          value: Directive,
-	          enumerable: false,
-	          writable: true,
-	          configurable: true
-	        }
-	      });
-	
-	      delete opt.constructor;
-	      delete opt[SUPER_CLASS_OPTION];
-	
-	      _.eachObj(opt, function (val, key) {
-	        Directive.prototype[key] = val;
-	      });
-	
-	      _.setPrototypeOf(Directive, SuperClass);
-	      return Directive;
-	    }(option, Directive);
-	
-	    directive.prototype.className = _.hump(name) + 'Directive';
-	  } else throw TypeError('Invalid Directive Object ' + option);
-	
-	  name = name.toLowerCase();
-	  directive.prototype.name = name;
-	
-	  directives[name] = directive;
-	  return directive;
-	};
-
-/***/ },
-/* 11 */
-/***/ function(module, exports, __webpack_require__) {
-
-	'use strict';
-	
-	exports.__esModule = true;
-	
-	var _typeof = typeof Symbol === "function" && typeof Symbol.iterator === "symbol" ? function (obj) { return typeof obj; } : function (obj) { return obj && typeof Symbol === "function" && obj.constructor === Symbol ? "symbol" : typeof obj; };
-	
-	function _classCallCheck(instance, Constructor) { if (!(instance instanceof Constructor)) { throw new TypeError("Cannot call a class as a function"); } }
-	
-	function _possibleConstructorReturn(self, call) { if (!self) { throw new ReferenceError("this hasn't been initialised - super() hasn't been called"); } return call && (typeof call === "object" || typeof call === "function") ? call : self; }
-	
-	function _inherits(subClass, superClass) { if (typeof superClass !== "function" && superClass !== null) { throw new TypeError("Super expression must either be null or a function, not " + typeof superClass); } subClass.prototype = Object.create(superClass && superClass.prototype, { constructor: { value: subClass, enumerable: false, writable: true, configurable: true } }); if (superClass) Object.setPrototypeOf ? Object.setPrototypeOf(subClass, superClass) : subClass.__proto__ = superClass; }
-	
-	var _ = __webpack_require__(3);
-	var dom = __webpack_require__(2);
-	
 	var _require = __webpack_require__(9);
 	
 	var Directive = _require.Directive;
@@ -1744,7 +1557,7 @@ return /******/ (function(modules) { // webpackBootstrap
 	});
 
 /***/ },
-/* 12 */
+/* 11 */
 /***/ function(module, exports, __webpack_require__) {
 
 	'use strict';
@@ -1834,7 +1647,7 @@ return /******/ (function(modules) { // webpackBootstrap
 	}
 
 /***/ },
-/* 13 */
+/* 12 */
 /***/ function(module, exports, __webpack_require__) {
 
 	'use strict';
