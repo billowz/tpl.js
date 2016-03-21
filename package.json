@@ -20,8 +20,7 @@
   "main": "src/index.js",
   "babel": {
     "presets": [
-      "es2015-loose",
-      "stage-0"
+      "es2015-loose"
     ],
     "plugins": [
       "transform-es3-member-expression-literals",

@@ -13,6 +13,5 @@ Array.prototype.forEach = Array.prototype.forEach || function(cb) {
     }
 }
 
-describe("Test", () => {
-  it('Test', function() {})
-});
+var testsContext = require.context('.', true, /\.spec$/)
+testsContext.keys().forEach(testsContext)
