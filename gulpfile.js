@@ -1,5 +1,6 @@
 var gulp = require('gulp'),
   clean = require('gulp-clean'),
+  run = require('gulp-run'),
   webpack = require('webpack'),
   runSequence = require('run-sequence'),
   gulpWebpack = require('gulp-webpack'),
@@ -7,6 +8,7 @@ var gulp = require('gulp'),
   karma = require('karma').Server,
   webpackCfg = require('./build/webpack.dev.config.js'),
   minimist = require('minimist'),
+  codecov = require('gulp-codecov'),
   bump = require('gulp-bump'),
   git = require('gulp-git'),
   pkg = require('./package.json'),
@@ -118,7 +120,8 @@ gulp.task('_version', function() {
     }).on('error', function(err) {
       console.log(err)
     }))
-    .pipe(gulp.dest('./'));
+    .pipe(gulp.dest('./'))
+    .pipe(run('npm publish'));
 });
 
 gulp.task('version', function(callback) {
