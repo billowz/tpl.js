@@ -1,7 +1,7 @@
 {
   "name": "tpl.js",
   "description": "data binding template",
-  "version": "0.0.6",
+  "version": "0.0.7",
   "homepage": "https://github.com/tao-zeng/tpl.js",
   "author": "Tao Zeng <tao.zeng.zt@gmail.com>",
   "bugs": {

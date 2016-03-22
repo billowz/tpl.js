@@ -1,5 +1,5 @@
 /*!
- * tpl.js v0.0.5 built in Tue, 22 Mar 2016 10:54:37 GMT
+ * tpl.js v0.0.6 built in Tue, 22 Mar 2016 15:09:23 GMT
  * Copyright (c) 2016 Tao Zeng <tao.zeng.zt@gmail.com>
  * Based on observer.js v0.0.x
  * Released under the MIT license
