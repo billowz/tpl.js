@@ -60,11 +60,11 @@ export function html(el) {
 }
 
 export function setText(el, text) {
-  $(el).text(text);
+  el.data = text;
 }
 
 export function text(el) {
-  return $(el).text();
+  return el.data;
 }
 
 export function setAttr(el, attr, val) {

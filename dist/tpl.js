@@ -1,5 +1,5 @@
 /*!
- * tpl.js v0.0.4 built in Mon, 21 Mar 2016 11:20:53 GMT
+ * tpl.js v0.0.5 built in Tue, 22 Mar 2016 10:54:37 GMT
  * Copyright (c) 2016 Tao Zeng <tao.zeng.zt@gmail.com>
  * Based on observer.js v0.0.x
  * Released under the MIT license
@@ -221,11 +221,11 @@ return /******/ (function(modules) { // webpackBootstrap
 	}
 	
 	function setText(el, text) {
-	  $(el).text(text);
+	  el.data = text;
 	}
 	
 	function text(el) {
-	  return $(el).text();
+	  return el.data;
 	}
 	
 	function setAttr(el, attr, val) {
@@ -711,7 +711,8 @@ return /******/ (function(modules) { // webpackBootstrap
 	    var identities = this.expression.identities;
 	    for (var i = 0, l = identities.length; i < l; i++) {
 	      this.observe(identities[i], this.observeHandler);
-	    }return true;
+	    }this.update(this.value());
+	    return true;
 	  };
 	
 	  Text.prototype.unbind = function unbind() {
@@ -735,8 +736,7 @@ return /******/ (function(modules) { // webpackBootstrap
 	    if (val === undefined || val === null) {
 	      val = '';
 	    }
-	    dom.text(this.el, val);
-	    this.el.data = val;
+	    if (val !== dom.text(this.el)) dom.setText(this.el, val);
 	  };
 	
 	  return Text;

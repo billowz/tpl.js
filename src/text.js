@@ -31,6 +31,7 @@ class Text extends Binding {
     for (let i = 0, l = identities.length; i < l; i++)
       this.observe(identities[i], this.observeHandler);
 
+    this.update(this.value());
     return true;
   }
 
@@ -57,8 +58,8 @@ class Text extends Binding {
     if (val === undefined || val === null) {
       val = '';
     }
-    dom.text(this.el, val)
-    this.el.data = val;
+    if (val !== dom.text(this.el))
+      dom.setText(this.el, val)
   }
 }
 module.exports = Text;
