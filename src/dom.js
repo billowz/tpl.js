@@ -50,19 +50,15 @@ let propFix = {
 let dom = {
   prop: function(elem, name, value) {
     name = propFix[name] || name;
-    hooks = propHooks[name];
+    hook = propHooks[name];
     if (arguments.length > 2) {
-      if (hooks && "set" in hooks && (ret = hooks.set(elem, value, name)) !== undefined) {
-        return ret;
-
-      } else {
-        return (elem[name] = value);
-      }
+      if (hook && hook.set)
+        return hook.set(elem, name, value);
+      return (elem[name] = value);
     } else {
-      if (hooks && "get" in hooks && (ret = hooks.get(elem, name)) !== null)
-        return ret;
-      else
-        return elem[name];
+      if (hook && hook.get)
+        return hook.get(elem, name);
+      return elem[name];
     }
   },
   query(selectors, all) {
@@ -196,16 +192,16 @@ let dom = {
     $(el).prop('checked', val)
   },
   class(el, cls) {
-    return dom.attr('class')
+    return dom.prop(el, 'class')
   },
   setClass(el, cls) {
-    dom.setAttr(el, 'class', cls)
+    dom.prop(el, 'class', cls)
   },
   addClass(el, cls) {
     if (el.classList) {
       el.classList.add(cls)
     } else {
-      var cur = ' ' + (dom.attr(el, 'class') || '') + ' '
+      var cur = ' ' + (dom.prop(el, 'class') || '') + ' '
       if (cur.indexOf(' ' + cls + ' ') < 0) {
         dom.setClass(el, _.trim(cur + cls))
       }
@@ -215,15 +211,13 @@ let dom = {
     if (el.classList) {
       el.classList.remove(cls)
     } else {
-      var cur = ' ' + (dom.attr(el, 'class') || '') + ' '
+      var cur = ' ' + (dom.prop(el, 'class') || '') + ' '
       var tar = ' ' + cls + ' '
       while (cur.indexOf(tar) >= 0) {
         cur = cur.replace(tar, ' ')
       }
       dom.setClass(el, _.trim(cur))
     }
-    if (!el.className)
-      dom.removeAttr(el, 'class')
   },
   focus(el) {
     el.focus();
