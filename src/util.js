@@ -35,13 +35,37 @@ let util = {
   Map: observer.Map,
   bind: observer.util.bind,
   indexOf: observer.util.indexOf,
-  prototypeOf: Object.getPrototypeOf || function(obj) {
+  prototypeOf: Object.getPrototypeOf || function getPrototypeOf(obj) {
       return obj.__proto__;
   },
-  setPrototypeOf: Object.setPrototypeOf || function(obj, proto) {
+  setPrototypeOf: Object.setPrototypeOf || function setPrototypeOf(obj, proto) {
       obj.__proto__ = proto;
   },
-  create: Object.create || (function() {
+  assign: Object.assign || function assign(target) {
+      let to = Object(target),
+        nextSource, key;
+      for (let i = 1, l = arguments.length; i < l; i++) {
+        nextSource = Object(arguments[i]);
+        for (key in nextSource) {
+          if (hasOwn.call(nextSource, key))
+            to[key] = nextSource[key];
+        }
+      }
+      return to;
+  },
+  assignIf(target) {
+    let to = Object(target),
+      nextSource, key;
+    for (let i = 1, l = arguments.length; i < l; i++) {
+      nextSource = Object(arguments[i]);
+      for (key in nextSource) {
+        if (hasOwn.call(nextSource, key) && !hasOwn.call(to, key))
+          to[key] = nextSource[key];
+      }
+    }
+    return to;
+  },
+  create: Object.create || (function create() {
       function Temp() {
       }
       return function(O, props) {
@@ -96,32 +120,35 @@ let util = {
   hasOwnProp(obj, prop) {
     return hasOwn.call(observer.obj(obj), prop);
   },
-  keys: Object.keys || function keys(obj) {
+  keys: Object.keys || function keys(obj, own) {
       let arr = [];
       for (let key in obj) {
-        arr.push(key);
+        if (own === false || hasOwn.call(obj, key))
+          arr.push(key);
       }
       return arr;
   },
-  eachKeys(obj, callback) {
+  eachKeys(obj, callback, own) {
     obj = observer.obj(obj);
     for (let key in obj) {
-      if (hasOwn.call(obj, key))
+      if (own === false || hasOwn.call(obj, key))
         if (callback(key) === false)
           return false;
     }
     return true;
   },
-  eachObj(obj, callback) {
+  eachObj(obj, callback, own) {
     obj = observer.obj(obj);
     for (let key in obj) {
-      if (hasOwn.call(obj, key))
+      if (own === false || hasOwn.call(obj, key))
         if (callback(obj[key], key) === false)
           return false;
     }
     return true;
   },
-  trim(str) {
+  trim: ''.trim ? function trim(str) {
+    return str.trim();
+  } : function trim(str) {
     return str.replace(trimReg, '');
   },
   capitalize(str) {

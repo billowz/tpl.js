@@ -38,26 +38,21 @@ export class AbstractExpressionDirective extends Directive {
   }
 
   bind() {
-    if (!super.bind())
-      return false;
-
+    super.bind();
     let identities = this.expression.identities;
     for (let i = 0, l = identities.length; i < l; i++)
       this.observe(identities[i], this.observeHandler);
 
     this.update(this.value());
-    return true;
   }
 
   unbind() {
-    if (!super.unbind())
-      return false;
+    super.unbind();
 
     let identities = this.expression.identities;
     for (let i = 0, l = identities.length; i < l; i++)
       this.unobserve(identities[i], this.observeHandler);
 
-    return true;
   }
 
   blankValue(val) {
@@ -91,7 +86,7 @@ const EVENT_CHANGE = 'change',
   TAG_TEXTAREA = 'TEXTAREA',
   RADIO = 'radio',
   CHECKBOX = 'checkbox',
-  expressions = {
+  directives = {
     text: {
       update(val) {
         dom.setText(this.el, this.blankValue(val))
@@ -192,13 +187,11 @@ const EVENT_CHANGE = 'change',
     },
     'if': {
       bind() {
-        if (!AbstractExpressionDirective.prototype.bind.call(this))
-          return false;
+        AbstractExpressionDirective.prototype.bind.call(this);
         if (!this.directives) {
           this.yieId = new YieId();
           return this.yieId;
         }
-        return true;
       },
       update(val) {
         if (!val) {
@@ -219,15 +212,13 @@ const EVENT_CHANGE = 'change',
         }
       },
       unbind() {
-        if (!AbstractExpressionDirective.prototype.unbind.call(this))
-          return false;
+        AbstractExpressionDirective.prototype.unbind.call(this);
         if (this.directives) {
           let directives = this.directives;
 
           for (let i = 0, l = directives.length; i < l; i++)
             directives[i].unbind();
         }
-        return true;
       },
       priority: 9,
       block: true
@@ -242,6 +233,13 @@ const EVENT_CHANGE = 'change',
     },
     selected: {
       update(val) {}
+    },
+    focus: {
+      update(val) {
+        if (!val)
+          return;
+        dom.focus(this.el);
+      }
     },
     input: {
       constructor(el) {
@@ -266,17 +264,13 @@ const EVENT_CHANGE = 'change',
       },
 
       bind() {
-        if (!AbstractExpressionDirective.prototype.bind.call(this))
-          return false;
+        AbstractExpressionDirective.prototype.bind.call(this);
         dom.on(this.el, this.event, this.onChange);
-        return true;
       },
 
       unbind() {
-        if (!AbstractExpressionDirective.prototype.unbind.call(this))
-          return false;
+        AbstractExpressionDirective.prototype.unbind.call(this);
         dom.off(this.el, this.event, this.onChange);
-        return true;
       },
 
       onChange() {
@@ -333,8 +327,7 @@ const EVENT_CHANGE = 'change',
     }
   };
 
-// register Expression Directive
-_.eachObj(expressions, (opt, name) => {
+_.eachObj(directives, (opt, name) => {
   opt.extend = AbstractExpressionDirective;
   registerDirective(name, opt);
 });

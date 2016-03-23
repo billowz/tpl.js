@@ -26,16 +26,15 @@ export class EachDirective extends Directive {
     this.valueAlias = aliasToken[2] || aliasToken[5];
     this.keyAlias = aliasToken[4] || aliasToken[7];
 
-    this.comment = document.createComment(' Directive:' + this.name + ' [' + this.expr + '] ');
-    dom.before(this.comment, this.el);
-    dom.removeAttr(this.el, this.attr);
-
     this.begin = document.createComment('each begin');
-    dom.after(this.begin, this.comment);
+    dom.before(this.begin, this.el);
     this.end = document.createComment('each end');
     dom.after(this.end, this.begin);
 
     dom.remove(this.el);
+    let div = document.createElement('div');
+    dom.append(div, this.el);
+    this.el = div;
   }
 
   update(data) {
@@ -66,7 +65,7 @@ export class EachDirective extends Directive {
       }
       sort[i] = scope;
       if (init) {
-        scope.$tpl = new TemplateInstance(dom.clone(this.el), scope, this.tpl.delimiterReg, this.tpl.directiveReg);
+        scope.$tpl = new TemplateInstance(dom.cloneNode(this.el), scope, this.tpl.delimiterReg, this.tpl.directiveReg);
         data[i] = scope[valueAlias];
         scope.$tpl.before(end);
       }
@@ -91,10 +90,10 @@ export class EachDirective extends Directive {
         sort[scope.$sort] = oldScope;
         scope = oldScope;
       } else {
-        scope.$tpl = new TemplateInstance(dom.clone(this.el), scope, this.tpl.delimiterReg, this.tpl.directiveReg);
+        scope.$tpl = new TemplateInstance(dom.cloneNode(this.el), scope, this.tpl.delimiterReg, this.tpl.directiveReg);
       }
       data[scope.$sort] = scope[valueAlias];
-      scope.$tpl.after(scope.$sort ? sort[scope.$sort - 1].$tpl.el : begin);
+      scope.$tpl.after(scope.$sort ? sort[scope.$sort - 1].$tpl.els : begin);
     }
 
     for (i = 0, l = removed.length; i < l; i++) {
@@ -122,20 +121,16 @@ export class EachDirective extends Directive {
   }
 
   bind() {
-    if (!super.bind())
-      return false;
+    super.bind();
     this.observe(this.scopeExpr, this.observeHandler);
     this.observe(this.scopeExpr + '.length', this.lengthObserveHandler);
     this.update(this.target());
-    return true;
   }
 
   unbind() {
-    if (!super.unbind())
-      return false;
+    super.unbind();
     this.unobserve(this.scopeExpr, this.observeHandler);
     this.unobserve(this.scopeExpr + '.length', this.lengthObserveHandler);
-    return true;
   }
 
   target() {

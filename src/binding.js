@@ -69,19 +69,9 @@ export class AbstractBinding {
     _.set(this.tpl.scope, expr, value);
   }
 
-  bind() {
-    if (this.binded)
-      return false;
-    this.binded = true;
-    return true;
-  }
+  bind() {}
 
-  unbind() {
-    if (!this.binded)
-      return false;
-    this.binded = false;
-    return true;
-  }
+  unbind() {}
 }
 
 const exprReg = /((?:'[^']*')*(?:(?:[^\|']+(?:'[^']*')*[^\|']*)+|[^\|]+))|^$/g;

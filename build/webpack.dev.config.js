@@ -43,7 +43,10 @@ var config = {
   },
   resolve: {
     modulesDirectories: [path.resolve(__dirname, '../node_modules')],
-    extensions: ['', '.js']
+    extensions: ['', '.js'],
+    alias: {
+      'observer': 'observer.js'
+    }
   },
   module: {
     loaders: [{
@@ -51,7 +54,8 @@ var config = {
       loader: 'babel'
     }]
   },
-  plugins: [new webpack.BannerPlugin(bannar)]
+  plugins: [new webpack.BannerPlugin(bannar)],
+  devtool: 'source-map'
 }
 
 module.exports = config;

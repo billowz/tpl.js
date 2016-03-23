@@ -18,7 +18,7 @@
     </div>
 </body>
 
-<script src="../node_modules/jQuery/dist/jquery.js"></script>
+<script src="../node_modules/jquery/jquery.js"></script>
 <script src="../node_modules/observer.js/dist/observer.js"></script>
 <script src="../dist/tpl.js"></script>
 <script type="text/javascript">
@@ -27,12 +27,12 @@ $(document).ready(function() {
     window.templ = template.complie({
         addTodo: function(scope, el, e) {
             if (e.which === 13 && (el = $(el)).val()) {
-                console.log('push todo:', el.val(), this);
                 this.todos.push({
                     title: el.val(),
                     completed: false
                 });
                 el.val('');
+                tpl.focus(el)
             }
         },
         editTodo: function(todo) {
@@ -44,23 +44,23 @@ $(document).ready(function() {
                 return;
             }
             var todo = this.editedTodo;
-            todo.title = $($el).val().trim();
+            todo.title = tpl.trim($($el).val());
             if (!todo.title) {
-                this.removeTodo(this.todos.indexOf(todo));
+                this.removeTodo.call(this, tpl.indexOf.call(this.todos, todo));
             }
-            console.log(todo)
             this.editedTodo = undefined;
         },
         removeTodo: function(idx) {
-            this.todos.splice(idx, 1);
+            this.todos.splice.call(this.todos, idx, 1);
         },
         completeTodo: function(todo) {
             if (!todo) {
                 var done = this.completedNum != this.todos.length;
-                _.each(this.todos, function(todo) {
-                    todo.completed = done;
-                }.bind(this));
-                this.completedNum = done ? this.todos.length : 0;
+                var todos = this.todos;
+                for(var i = 0, l = todos.length; i < l; i++){
+                  todos[i].completed = done;
+                }
+                this.completedNum = done ? todos.length : 0;
             } else {
                 todo.completed = !todo.completed;
                 if (todo.completed) {
@@ -69,8 +69,11 @@ $(document).ready(function() {
                     this.completedNum--;
                 }
             }
-
         },
+        removeCompleted: function(){
+          console.log('=========')
+        },
+        beforeEditCache: null,
         editedTodo: null,
         todos: [],
         completedNum: 0,
@@ -82,7 +85,7 @@ $(document).ready(function() {
 <script id="tpl/todo.html" type="text/template">
     <div class="header">
         <h1 tpl-text="title"></h1>
-        <input class="new-todo" autofocus autocomplete="off" placeholder="What needs to be done?" tpl-onkeyup="addTodo">
+        <input class="new-todo" autofocus autocomplete="off" placeholder="What needs to be done?" tpl-onkeydown="addTodo">
     </div>
     <div class="main" tpl-if="todos.length" tpl-class="title">
         <input class="toggle-all" type="checkbox" tpl-checked="completedNum == todos.length" tpl-onchange="completeTodo()">
@@ -99,14 +102,14 @@ $(document).ready(function() {
     </div>
     <div class="footer" tpl-if="todos.length">
         <span class="todo-count">
-                  <strong tpl-text="remaining"></strong> {remaining | pluralize 'item'} left
+                  <strong tpl-text="remaining | pluralize 'item'"></strong> left
               </span>
         <ul class="filters">
             <li><a href="#/all" tpl-class="{selected: visibility == 'all'}">All</a></li>
             <li><a href="#/active" tpl-class="{selected: visibility == 'active'}">Active</a></li>
             <li><a href="#/completed" tpl-class="{selected: visibility == 'completed'}">Completed</a></li>
         </ul>
-        <button class="clear-completed" tpl-on="click:removeCompleted" tpl-if="todos.length > remaining">
+        <button class="clear-completed" tpl-onclick="removeCompleted" tpl-if="todos.length > remaining">
             Clear completed
         </button>
     </div>

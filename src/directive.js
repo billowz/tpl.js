@@ -16,9 +16,7 @@ export class DirectiveGroup extends AbstractBinding {
   }
 
   bind() {
-    if (!super.bind())
-      return false;
-
+    super.bind();
     let directives = this.directives,
       directiveConfigs = this.directiveConfigs,
       tpl = this.tpl,
@@ -43,19 +41,15 @@ export class DirectiveGroup extends AbstractBinding {
       }
     }
     parse();
-    return true;
   }
 
   unbind() {
-    if (!super.unbind())
-      return false;
-
+    super.unbind();
     let directives = this.directives;
     for (let i = 0, l = this.bindedCount; i < l; i++) {
       directives[i].unbind();
     }
     this.bindedCount = 0;
-    return true;
   }
 }
 
@@ -64,16 +58,12 @@ export class Directive extends Binding {
     super(tpl, expr);
     this.el = el;
     this.attr = attr;
-  }
 
-  bind() {
-    if (!super.bind())
-      return false;
-    if (Binding.generateComments && !this.comment) {
+    dom.removeAttr(this.el, this.attr);
+    if (Binding.generateComments) {
       this.comment = document.createComment(' Directive:' + this.name + ' [' + this.expr + '] ');
       dom.before(this.comment, this.el);
     }
-    return true;
   }
 }
 Directive.prototype.abstract = false;

@@ -29,17 +29,13 @@ class AbstractEventDirective extends Directive {
   }
 
   bind() {
-    if (!super.bind())
-      return false;
+    super.bind();
     dom.on(this.el, this.eventType, this.handler)
-    return true;
   }
 
   unbind() {
-    if (!super.unbind())
-      return false;
+    super.unbind();
     dom.off(this.el, this.eventType, this.handler)
-    return true;
   }
 }
 module.exports = AbstractEventDirective;

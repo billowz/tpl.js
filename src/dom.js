@@ -1,129 +1,242 @@
-const _ = require('./util')
+const _ = require('./util'),
+  tmpDiv = document.createElement('div')
+if (!document.querySelectorAll) {
+  document.querySelectorAll = function querySelectorAll(selector) {
+    let doc = document,
+      head = doc.documentElement.firstChild,
+      styleTag = doc.createElement('STYLE');
 
-export function clone(el) {
-  return $(el).clone();
-}
-
-export function remove(el, coll) {
-  $(el).remove();
-}
-
-export function before(el, target) {
-  $(el).insertBefore(target)
-}
-
-export function after(el, target) {
-  $(el).insertAfter(target)
-}
-
-export function append(target, el) {
-  $(target).append(el)
-}
-
-export function appendTo(el, target) {
-  append(target, el);
-}
-
-export function prepend(target, el) {
-  if (target.firstChild) {
-    before(el, target.firstChild)
-  } else {
-    append(target, el)
+    head.appendChild(styleTag);
+    doc.__qsaels = [];
+    if (styleTag.styleSheet) { // for IE
+      styleTag.styleSheet.cssText = selector + "{x:expression(document.__qsaels.push(this))}";
+    } else { // others
+      let textnode = document.createTextNode(selector + "{x:expression(document.__qsaels.push(this))}");
+      styleTag.appendChild(textnode);
+    }
+    window.scrollBy(0, 0);
+    return doc.__qsaels;
   }
 }
-
-export function prependTo(el, target) {
-  prepend(target, el)
-}
-
-export function replace(target, el) {
-  var parent = target.parentNode
-  if (parent) {
-    parent.replaceChild(el, target)
+if (!document.querySelector) {
+  document.querySelector = function querySelector(selectors) {
+    let elements = document.querySelectorAll(selectors);
+    return elements.length ? elements[0] : null;
   }
 }
-
-export function on(el, event, cb, useCapture) {
-  $(el).on(event, cb)
+function insertAfter(parentEl, el, target) {
+  if (parentEl.lastChild == target)
+    parentEl.appendChild(el);
+  else
+    parentEl.insertBefore(el, target.nextSibling);
 }
 
-export function off(el, event, cb) {
-  $(el).off(event, cb)
-}
+let propFix = {
+    tabindex: "tabIndex",
+    readonly: "readOnly",
+    "for": "htmlFor",
+    "class": "className",
+    maxlength: "maxLength",
+    cellspacing: "cellSpacing",
+    cellpadding: "cellPadding",
+    rowspan: "rowSpan",
+    colspan: "colSpan",
+    usemap: "useMap",
+    frameborder: "frameBorder",
+    contenteditable: "contentEditable"
+  },
+  propHooks = {}
 
-export function setHtml(el, html) {
-  $(el).html(html);
-}
+let dom = {
+  prop: function(elem, name, value) {
+    name = propFix[name] || name;
+    hooks = propHooks[name];
+    if (arguments.length > 2) {
+      if (hooks && "set" in hooks && (ret = hooks.set(elem, value, name)) !== undefined) {
+        return ret;
 
-export function html(el) {
-  return $(el).html();
-}
+      } else {
+        return (elem[name] = value);
+      }
+    } else {
+      if (hooks && "get" in hooks && (ret = hooks.get(elem, name)) !== null)
+        return ret;
+      else
+        return elem[name];
+    }
+  },
+  query(selectors, all) {
+    if (typeof selectors == 'string')
+      return all ? document.querySelectorAll(selectors) : document.querySelector(selectors);
+    return selectors;
+  },
+  inDoc(node) {
+    let doc = document.documentElement,
+      parent = node && node.parentNode;
 
-export function setText(el, text) {
-  el.data = text;
-}
+    return doc === node || doc === parent ||
+      !!(parent && parent.nodeType === 1 && (doc.contains(parent)))
+  },
+  cloneNode(el, deep) {
+    if (el instanceof Array) {
+      let els = [];
+      for (let i = 0, l = el.length; i < l; i++)
+        els[i] = el.cloneNode(deep !== false);
+      return els;
+    } else
+      return el.cloneNode(deep !== false);
+  },
+  remove(el) {
+    if (el instanceof Array) {
+      let _el;
+      for (let i = 0, l = el.length; i < l; i++) {
+        _el = el[i];
+        _el.parentNode.removeChild(_el);
+      }
+    } else
+      el.parentNode.removeChild(el);
+  },
+  before(el, target) {
+    if (target instanceof Array)
+      target = target[0];
 
-export function text(el) {
-  return el.data;
-}
+    let parent = target.parentNode;
 
-export function setAttr(el, attr, val) {
-  el.setAttribute(attr, val);
-}
+    if (el instanceof Array) {
+      for (let i = 0, l = el.length; i < l; i++) {
+        parent.insertBefore(el[i], target);
+      }
+    } else
+      parent.insertBefore(el, target);
+  },
+  after(el, target) {
+    if (target instanceof Array)
+      target = target[target.length - 1];
 
-export function removeAttr(el, attr) {
-  el.removeAttribute(attr)
-}
+    let parent = target.parentNode;
 
-export function attr(el, attr) {
-  return el.getAttribute(attr)
-}
+    if (el instanceof Array) {
+      for (let i = 0, l = el.length; i < l; i++) {
+        insertAfter(parent, el[i], target);
+      }
+    } else
+      insertAfter(parent, el, target);
 
-export function style(el) {
-  return $(el).attr('style');
-}
-
-export function setStyle(el, style) {
-  $(el).attr('style', style);
-}
-
-export function css(el, name) {
-  return $(el).css(name);
-}
-
-export function setCss(el, name, val) {
-  return $(el).css(name, val);
-}
-
-export function val(el) {
-  return $(el).val();
-}
-
-export function setVal(el, val) {
-  return $(el).val(val);
-}
-
-export function checked(el) {
-  return $(el).prop('checked')
-}
-
-export function setChecked(el, val) {
-  return $(el).prop('checked', val)
-}
-
-export function setClass(el, cls) {
-  /* istanbul ignore if */
-  if (isIE9 && !/svg$/.test(el.namespaceURI)) {
-    el.className = cls
-  } else {
-    el.setAttribute('class', cls)
+  },
+  append(target, el) {
+    if (el instanceof Array) {
+      for (let i = 0, l = el.length; i < l; i++) {
+        target.appendChild(el[i]);
+      }
+    } else
+      target.appendChild(el);
+  },
+  appendTo(el, target) {
+    dom.append(target, el);
+  },
+  prepend(target, el) {
+    if (target.firstChild) {
+      dom.before(el, target.firstChild)
+    } else {
+      dom.append(target, el)
+    }
+  },
+  prependTo(el, target) {
+    dom.prepend(target, el)
+  },
+  on(el, event, cb) {
+    $(el).on(event, cb)
+  },
+  off(el, event, cb) {
+    $(el).off(event, cb)
+  },
+  html(el) {
+    return el.innerHTML;
+  },
+  setHtml(el, html) {
+    el.innerHTML = html;
+  },
+  text(el) {
+    return el.data;
+  },
+  setText(el, text) {
+    el.data = text;
+  },
+  attr(el, attr) {
+    return el.getAttribute(attr)
+  },
+  setAttr(el, attr, val) {
+    el.setAttribute(attr, val);
+  },
+  removeAttr(el, attr) {
+    el.removeAttribute(attr)
+  },
+  style(el) {
+    return dom.attr('style')
+  },
+  setStyle(el, style) {
+    return dom.setAttr('style', style)
+  },
+  css(el, name) {
+    return $(el).css(name);
+  },
+  setCss(el, name, val) {
+    $(el).css(name, val);
+  },
+  val(el) {
+    return $(el).val();
+  },
+  setVal(el, val) {
+    $(el).val(val);
+  },
+  checked(el) {
+    return $(el).prop('checked')
+  },
+  setChecked(el, val) {
+    $(el).prop('checked', val)
+  },
+  class(el, cls) {
+    return dom.attr('class')
+  },
+  setClass(el, cls) {
+    dom.setAttr(el, 'class', cls)
+  },
+  addClass(el, cls) {
+    if (el.classList) {
+      el.classList.add(cls)
+    } else {
+      var cur = ' ' + (dom.attr(el, 'class') || '') + ' '
+      if (cur.indexOf(' ' + cls + ' ') < 0) {
+        dom.setClass(el, _.trim(cur + cls))
+      }
+    }
+  },
+  removeClass(el, cls) {
+    if (el.classList) {
+      el.classList.remove(cls)
+    } else {
+      var cur = ' ' + (dom.attr(el, 'class') || '') + ' '
+      var tar = ' ' + cls + ' '
+      while (cur.indexOf(tar) >= 0) {
+        cur = cur.replace(tar, ' ')
+      }
+      dom.setClass(el, _.trim(cur))
+    }
+    if (!el.className)
+      dom.removeAttr(el, 'class')
+  },
+  focus(el) {
+    el.focus();
+  },
+  outerHtml(el) {
+    if (el.outerHTML) {
+      return el.outerHTML
+    } else {
+      var container = document.createElement('div')
+      container.appendChild(el.cloneNode(true))
+      return container.innerHTML
+    }
   }
 }
+module.exports = dom;
 
-export function addClass(el, cls) {
-  $(el).addClass(cls)
-}
-
-export function removeClass(el, cls) {
-  $(el).removeClass(cls)
-}

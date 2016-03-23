@@ -1,4 +1,5 @@
-const dom = require('./dom'),
+const _ = require('./util'),
+  dom = require('./dom'),
   {TemplateInstance} = require('./templateInstance');
 
 const parseDelimiterReg = function(delimiter) {
@@ -14,8 +15,17 @@ const parseDelimiterReg = function(delimiter) {
 
 export class Template {
   constructor(templ, cfg = {}) {
-    this.el = $(templ);
-
+    let el = document.createElement('div');
+    if (typeof templ == 'string') {
+      templ = _.trim(templ);
+      if (templ.charAt(0) == '<')
+        el.innerHTML = templ;
+      else
+        dom.append(el, dom.querySelector(templ));
+    } else {
+      dom.append(el, templ);
+    }
+    this.el = el;
     this.directivePrefix = cfg.directivePrefix || defaultCfg.directivePrefix;
     this.delimiter = cfg.delimiter || defaultCfg.delimiter;
     this.directiveReg = parseDirectiveReg(this.directivePrefix);
@@ -23,6 +33,6 @@ export class Template {
   }
 
   complie(scope) {
-    return new TemplateInstance(dom.clone(this.el), scope, this.delimiterReg, this.directiveReg);
+    return new TemplateInstance(dom.cloneNode(this.el), scope, this.delimiterReg, this.directiveReg);
   }
 }

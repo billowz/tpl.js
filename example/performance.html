@@ -13,7 +13,7 @@
 </body>
 <script src="../node_modules/observer.js/lib/ENV.js"></script>
 <script src="../node_modules/observer.js/lib/monitor.js"></script>
-<script src="../node_modules/jquery/dist/jquery.js"></script>
+<script src="../node_modules/jquery/jquery.js"></script>
 <script src="../node_modules/observer.js/dist/observer.js"></script>
 <script src="../dist/tpl.js"></script>
 <script>
@@ -22,7 +22,7 @@ $(document).ready(function() {
     var app = {
         databases: []
     }
-    observer.proxy.on(app, function(obj, proxy){
+    tpl.proxyChange(app, function(obj, proxy){
       app = proxy || obj;
     });
     var template = new tpl($(document.getElementById('tpl/tpl.html')).html());

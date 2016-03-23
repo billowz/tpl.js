@@ -10,6 +10,11 @@ class Text extends Binding {
     this.el = el;
     this.observeHandler = _.bind.call(this.observeHandler, this);
     this.expression = expression.parse(this.expr, expressionArgs);
+
+    if (Binding.generateComments) {
+      this.comment = document.createComment('Text Binding ' + this.expr);
+      dom.before(this.comment, this.el);
+    }
   }
 
   value() {
@@ -19,31 +24,19 @@ class Text extends Binding {
   }
 
   bind() {
-    if (!super.bind())
-      return false;
-
-    if (Binding.generateComments && !this.comment) {
-      this.comment = document.createComment('Text Binding ' + this.expr);
-      dom.before(this.comment, this.el);
-    }
-
+    super.bind();
     let identities = this.expression.identities;
     for (let i = 0, l = identities.length; i < l; i++)
       this.observe(identities[i], this.observeHandler);
 
     this.update(this.value());
-    return true;
   }
 
   unbind() {
-    if (!super.unbind())
-      return false;
-
+    super.unbind();
     let identities = this.expression.identities;
     for (let i = 0, l = identities.length; i < l; i++)
       this.unobserve(identities[i], this.observeHandler);
-
-    return true;
   }
 
   observeHandler(attr, val) {

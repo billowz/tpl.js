@@ -4,10 +4,16 @@ const observer = require('observer'),
   Text = require('./text'),
   {Directive, DirectiveGroup} = require('./directive');
 
+function cpyChildNodes(el) {
+  let els = [],
+    childNodes = el.childNodes;
+  for (let i = 0, l = childNodes.length; i < l; i++)
+    els[i] = childNodes[i];
+  return els;
+}
 
 export class TemplateInstance {
   constructor(el, scope, delimiterReg, directiveReg) {
-    this.el = el;
     this.delimiterReg = delimiterReg;
     this.directiveReg = directiveReg;
     this.scope = observer.proxy.proxy(scope) || scope;
@@ -16,25 +22,26 @@ export class TemplateInstance {
     this.bindings = this.parse(el, this);
     this.binded = false;
     this.bind();
+    this.els = cpyChildNodes(el);
   }
 
   before(target) {
-    dom.before(this.el, target);
+    dom.before(this.els, dom.query(target));
     return this;
   }
 
   after(target) {
-    dom.after(this.el, target);
+    dom.after(this.els, dom.query(target));
     return this;
   }
 
   prependTo(target) {
-    dom.prependTo(this.el, target);
+    dom.prependTo(this.els, dom.query(target));
     return this;
   }
 
   appendTo(target) {
-    dom.appendTo(this.el, target);
+    dom.appendTo(this.els, dom.query(target));
     return this;
   }
 
@@ -68,7 +75,7 @@ export class TemplateInstance {
         bindings[i].unbind();
       bindings[i].destroy();
     }
-    dom.remove(this.el);
+    dom.remove(this.els);
     this.bindings = undefined;
     this.scope = undefined;
   }
@@ -172,12 +179,7 @@ export class TemplateInstance {
   }
 
   parseChildNodes(el) {
-    let els = [],
-      childNodes = el.childNodes;
-    for (let i = 0, l = childNodes.length; i < l; i++) {
-      els[i] = childNodes[i];
-    }
-    return this.parse(els)
+    return this.parse(cpyChildNodes(el));
   }
 
   parseDirectiveName(name) {
