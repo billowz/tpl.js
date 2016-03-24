@@ -25,6 +25,10 @@ export class TemplateInstance {
     this.els = cpyChildNodes(el);
   }
 
+  parentEl() {
+    return this.els[0].parentNode;
+  }
+
   before(target) {
     dom.before(this.els, dom.query(target));
     return this;

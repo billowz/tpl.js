@@ -16,7 +16,8 @@ const defaultKeywords = {
   'encodeURI': true,
   'encodeURIComponent': true,
   'parseInt': true,
-  'parseFloat': true
+  'parseFloat': true,
+  '$scope': true
 };
 
 const wsReg = /\s/g
@@ -41,6 +42,7 @@ function translationRestoreProcessor(str, i) {
 
 let currentIdentities;
 let currentKeywords;
+let prevPropScope;
 function identityProcessor(raw, idx, str) {
   let l = raw.length,
     suffix = raw.charAt(l - 1),
@@ -49,12 +51,14 @@ function identityProcessor(raw, idx, str) {
 
   if (defaultKeywords[prop] || currentKeywords[prop])
     return raw;
-
-  currentIdentities[exp] = true;
+  if (prop === '$context')
+    return raw.replace(propReg, prevPropScope);
   if (suffix == '(') {
     suffix = (idx + l == str.length || str.charAt(idx + l) == ')') ? '' : ',';
-    return `$scope.${exp}.call(this.propScope('${prop}')${suffix}`;
+    prevPropScope = `this.propScope('${prop}')`;
+    return `$scope.${exp}.call(${prevPropScope}${suffix}`;
   }
+  currentIdentities[exp] = true;
   return `$scope.${exp}${suffix}`;
 }
 
@@ -65,6 +69,7 @@ function compileExecuter(exp, keywords) {
 
   currentIdentities = {};
   currentKeywords = {};
+  prevPropScope = undefined;
   if (keywords) {
     for (let i = 0, l = keywords.length; i < l; i++)
       currentKeywords[keywords[i]] = true;
@@ -88,11 +93,10 @@ function compileExecuter(exp, keywords) {
 
 function makeExecuter(body, args) {
   let _args = ['$scope'];
-  if (args)
-    _args.push.apply(_args, args);
-  _args.push(`return ${body};`);
+  args = args ? _args.concat(args) : _args;
+  args.push(`return ${body};`);
   try {
-    return Function.apply(Function, _args);
+    return Function.apply(Function, args);
   } catch (e) {
     throw Error(`Invalid expression. Generated function body: ${body}`);
   }

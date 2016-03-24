@@ -36,7 +36,6 @@ $(document).ready(function() {
             }
         },
         editTodo: function(todo) {
-            this.beforeEditCache = todo.title;
             this.editedTodo = todo;
         },
         editTodoFinish: function($scope, $el) {
@@ -46,12 +45,15 @@ $(document).ready(function() {
             var todo = this.editedTodo;
             todo.title = tpl.trim($($el).val());
             if (!todo.title) {
-                this.removeTodo.call(this, tpl.indexOf.call(this.todos, todo));
+                this.removeTodo(todo);
             }
             this.editedTodo = undefined;
         },
-        removeTodo: function(idx) {
-            this.todos.splice.call(this.todos, idx, 1);
+        removeTodo: function(todo) {
+            var idx = tpl.indexOf.call(this.todos, todo);
+            this.todos.splice(idx, 1);
+            if(todo.completed)
+              this.completedNum--;
         },
         completeTodo: function(todo) {
             if (!todo) {
@@ -73,7 +75,6 @@ $(document).ready(function() {
         removeCompleted: function(){
           console.log('=========')
         },
-        beforeEditCache: null,
         editedTodo: null,
         todos: [],
         completedNum: 0,
@@ -94,7 +95,7 @@ $(document).ready(function() {
                 <div class="view">
                     <input class="toggle" type="checkbox" tpl-checked="todo.completed" tpl-onchange="completeTodo(todo)">
                     <label tpl-ondblclick="editTodo(todo)">{idx}&nbsp; - &nbsp;{todo.title}</label>
-                    <button class="destroy" tpl-onclick="removeTodo(idx)"></button>
+                    <button class="destroy" tpl-onclick="removeTodo(todo)"></button>
                 </div>
                 <input class="edit" type="text" tpl-input="todo.title" tpl-focus="todo == editedTodo" tpl-onblur="editTodoFinish">
             </li>

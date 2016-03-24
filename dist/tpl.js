@@ -1,5 +1,5 @@
 /*!
- * tpl.js v0.0.8 built in Wed, 23 Mar 2016 15:21:07 GMT
+ * tpl.js v0.0.8 built in Thu, 24 Mar 2016 09:01:22 GMT
  * Copyright (c) 2016 Tao Zeng <tao.zeng.zt@gmail.com>
  * Based on observer.js v0.0.x
  * Released under the MIT license
@@ -384,7 +384,7 @@ return /******/ (function(modules) { // webpackBootstrap
 	var dom = {
 	  prop: function prop(elem, name, value) {
 	    name = propFix[name] || name;
-	    hook = propHooks[name];
+	    var hook = propHooks[name];
 	    if (arguments.length > 2) {
 	      if (hook && hook.set) return hook.set(elem, name, value);
 	      return elem[name] = value;
@@ -468,56 +468,44 @@ return /******/ (function(modules) { // webpackBootstrap
 	  off: function off(el, event, cb) {
 	    $(el).off(event, cb);
 	  },
-	  html: function html(el) {
+	  html: function html(el, _html) {
+	    if (arguments.length > 1) return el.innerHTML = _html;
 	    return el.innerHTML;
 	  },
-	  setHtml: function setHtml(el, html) {
-	    el.innerHTML = html;
+	  text: function text(el, _text) {
+	    if (el.nodeType == 3) {
+	      if (arguments.length > 1) return el.data = _text;
+	      return el.data;
+	    } else {
+	      return dom.html.apply(this, arguments);
+	    }
 	  },
-	  text: function text(el) {
-	    return el.data;
-	  },
-	  setText: function setText(el, text) {
-	    el.data = text;
-	  },
-	  attr: function attr(el, _attr) {
+	  attr: function attr(el, _attr, val) {
+	    if (arguments.length > 2) return el.setAttribute(_attr, val);
 	    return el.getAttribute(_attr);
-	  },
-	  setAttr: function setAttr(el, attr, val) {
-	    el.setAttribute(attr, val);
 	  },
 	  removeAttr: function removeAttr(el, attr) {
 	    el.removeAttribute(attr);
 	  },
-	  style: function style(el) {
-	    return dom.attr('style');
+	  style: function style(el, _style) {
+	    if (arguments.length > 1) return dom.prop(el, 'style', _style);
+	    return dom.prop(el, 'style');
 	  },
-	  setStyle: function setStyle(el, style) {
-	    return dom.setAttr('style', style);
-	  },
-	  css: function css(el, name) {
+	  css: function css(el, name, val) {
+	    if (arguments.length > 1) return $(el).css(name, val);
 	    return $(el).css(name);
 	  },
-	  setCss: function setCss(el, name, val) {
-	    $(el).css(name, val);
-	  },
-	  val: function val(el) {
+	  val: function val(el, _val) {
+	    if (arguments.length > 1) return $(el).val(_val);
 	    return $(el).val();
 	  },
-	  setVal: function setVal(el, val) {
-	    $(el).val(val);
-	  },
-	  checked: function checked(el) {
-	    return $(el).prop('checked');
-	  },
-	  setChecked: function setChecked(el, val) {
-	    $(el).prop('checked', val);
+	  checked: function checked(el, check) {
+	    if (arguments.length > 1) return dom.prop(el, 'checked', check);
+	    return dom.prop(el, 'checked');
 	  },
 	  'class': function _class(el, cls) {
+	    if (arguments.length > 1) return dom.prop(el, 'class', cls);
 	    return dom.prop(el, 'class');
-	  },
-	  setClass: function setClass(el, cls) {
-	    dom.prop(el, 'class', cls);
 	  },
 	  addClass: function addClass(el, cls) {
 	    if (el.classList) {
@@ -525,7 +513,7 @@ return /******/ (function(modules) { // webpackBootstrap
 	    } else {
 	      var cur = ' ' + (dom.prop(el, 'class') || '') + ' ';
 	      if (cur.indexOf(' ' + cls + ' ') < 0) {
-	        dom.setClass(el, _.trim(cur + cls));
+	        dom['class'](el, _.trim(cur + cls));
 	      }
 	    }
 	  },
@@ -538,7 +526,7 @@ return /******/ (function(modules) { // webpackBootstrap
 	      while (cur.indexOf(tar) >= 0) {
 	        cur = cur.replace(tar, ' ');
 	      }
-	      dom.setClass(el, _.trim(cur));
+	      dom['class'](el, _.trim(cur));
 	    }
 	  },
 	  focus: function focus(el) {
@@ -599,6 +587,10 @@ return /******/ (function(modules) { // webpackBootstrap
 	    this.bind();
 	    this.els = cpyChildNodes(el);
 	  }
+	
+	  TemplateInstance.prototype.parentEl = function parentEl() {
+	    return this.els[0].parentNode;
+	  };
 	
 	  TemplateInstance.prototype.before = function before(target) {
 	    dom.before(this.els, dom.query(target));
@@ -844,7 +836,7 @@ return /******/ (function(modules) { // webpackBootstrap
 	    if (val === undefined || val === null) {
 	      val = '';
 	    }
-	    if (val !== dom.text(this.el)) dom.setText(this.el, val);
+	    if (val !== dom.text(this.el)) dom.text(this.el, val);
 	  };
 	
 	  return Text;
@@ -1010,7 +1002,8 @@ return /******/ (function(modules) { // webpackBootstrap
 	  'encodeURI': true,
 	  'encodeURIComponent': true,
 	  'parseInt': true,
-	  'parseFloat': true
+	  'parseFloat': true,
+	  '$scope': true
 	};
 	
 	var wsReg = /\s/g;
@@ -1035,6 +1028,7 @@ return /******/ (function(modules) { // webpackBootstrap
 	
 	var currentIdentities = void 0;
 	var currentKeywords = void 0;
+	var prevPropScope = void 0;
 	function identityProcessor(raw, idx, str) {
 	  var l = raw.length,
 	      suffix = raw.charAt(l - 1),
@@ -1042,12 +1036,13 @@ return /******/ (function(modules) { // webpackBootstrap
 	      prop = exp.match(propReg)[0];
 	
 	  if (defaultKeywords[prop] || currentKeywords[prop]) return raw;
-	
-	  currentIdentities[exp] = true;
+	  if (prop === '$context') return raw.replace(propReg, prevPropScope);
 	  if (suffix == '(') {
 	    suffix = idx + l == str.length || str.charAt(idx + l) == ')' ? '' : ',';
-	    return '$scope.' + exp + '.call(this.propScope(\'' + prop + '\')' + suffix;
+	    prevPropScope = 'this.propScope(\'' + prop + '\')';
+	    return '$scope.' + exp + '.call(' + prevPropScope + suffix;
 	  }
+	  currentIdentities[exp] = true;
 	  return '$scope.' + exp + suffix;
 	}
 	
@@ -1058,6 +1053,7 @@ return /******/ (function(modules) { // webpackBootstrap
 	
 	  currentIdentities = {};
 	  currentKeywords = {};
+	  prevPropScope = undefined;
 	  if (keywords) {
 	    for (var i = 0, l = keywords.length; i < l; i++) {
 	      currentKeywords[keywords[i]] = true;
@@ -1082,10 +1078,10 @@ return /******/ (function(modules) { // webpackBootstrap
 	
 	function makeExecuter(body, args) {
 	  var _args = ['$scope'];
-	  if (args) _args.push.apply(_args, args);
-	  _args.push('return ' + body + ';');
+	  args = args ? _args.concat(args) : _args;
+	  args.push('return ' + body + ';');
 	  try {
-	    return Function.apply(Function, _args);
+	    return Function.apply(Function, args);
 	  } catch (e) {
 	    throw Error('Invalid expression. Generated function body: ' + body);
 	  }
@@ -1424,14 +1420,14 @@ return /******/ (function(modules) { // webpackBootstrap
 	    directives = {
 	  text: {
 	    update: function update(val) {
-	      dom.setText(this.el, this.blankValue(val));
+	      dom.text(this.el, this.blankValue(val));
 	    },
 	
 	    block: true
 	  },
 	  html: {
 	    update: function update(val) {
-	      dom.setHtml(this.blankValue(val));
+	      dom.html(this.el, this.blankValue(val));
 	    },
 	
 	    block: true
@@ -1489,7 +1485,7 @@ return /******/ (function(modules) { // webpackBootstrap
 	  'style': {
 	    update: function update(value) {
 	      if (value && typeof value == 'string') {
-	        dom.setStyle(this.el, value);
+	        dom.style(this.el, value);
 	      } else if (value && (typeof value === 'undefined' ? 'undefined' : _typeof(value)) == 'object') {
 	        this.handleObject(value);
 	      }
@@ -1499,23 +1495,23 @@ return /******/ (function(modules) { // webpackBootstrap
 	      var keys = this.prevKeys = [],
 	          el = this.el;
 	      for (var key in value) {
-	        dom.setCss(el, key, value[key]);
+	        dom.css(el, key, value[key]);
 	      }
 	    }
 	  },
 	  show: {
 	    update: function update(val) {
-	      dom.setCss(this.el, 'display', val ? '' : 'none');
+	      dom.css(this.el, 'display', val ? '' : 'none');
 	    }
 	  },
 	  hide: {
 	    update: function update(val) {
-	      dom.setCss(this.el, 'display', val ? 'none' : '');
+	      dom.css(this.el, 'display', val ? 'none' : '');
 	    }
 	  },
 	  value: {
 	    update: function update(val) {
-	      dom.setVal(this.el, this.blankValue(val));
+	      dom.val(this.el, this.blankValue(val));
 	    }
 	  },
 	  'if': {
@@ -1528,7 +1524,7 @@ return /******/ (function(modules) { // webpackBootstrap
 	    },
 	    update: function update(val) {
 	      if (!val) {
-	        dom.setCss(this.el, 'display', 'none');
+	        dom.css(this.el, 'display', 'none');
 	      } else {
 	        if (!this.directives) {
 	          var _directives = this.directives = this.tpl.parseChildNodes(this.el);
@@ -1540,7 +1536,7 @@ return /******/ (function(modules) { // webpackBootstrap
 	            delete this.yieId;
 	          }
 	        }
-	        dom.setCss(this.el, 'display', '');
+	        dom.css(this.el, 'display', '');
 	      }
 	    },
 	    unbind: function unbind() {
@@ -1559,7 +1555,7 @@ return /******/ (function(modules) { // webpackBootstrap
 	  },
 	  checked: {
 	    update: function update(val) {
-	      if (val instanceof Array) dom.setChecked(this.el, _.indexOf.call(val, dom.val(this.el)));else dom.setChecked(this.el, !!val);
+	      if (val instanceof Array) dom.checked(this.el, _.indexOf.call(val, dom.val(this.el)));else dom.checked(this.el, !!val);
 	    }
 	  },
 	  selected: {
@@ -1631,13 +1627,13 @@ return /******/ (function(modules) { // webpackBootstrap
 	
 	              checked = val == dom.val(this.el);
 	
-	              if (dom.checked(this.el) != checked) dom.setChecked(this.el, checked);
+	              if (dom.checked(this.el) != checked) dom.checked(this.el, checked);
 	            }
 	          } else {
 	            if (arguments.length == 0) {
 	              return dom.val(this.el);
 	            } else if (val != dom.val(this.el)) {
-	              dom.setVal(this.el, val);
+	              dom.val(this.el, val);
 	            }
 	          }
 	          break;
@@ -1705,8 +1701,8 @@ return /******/ (function(modules) { // webpackBootstrap
 	        fn = exp.execute.call(this, scope, this.el, e);
 	    if (exp.simplePath) {
 	      if (typeof fn != 'function') throw TypeError('Invalid Event Handler:' + this.expr + ' -> ' + fn);
-	
-	      fn.call(this.propScope(exp.path[0]), scope, this.el, e);
+	      var _scope = this.propScope(exp.path[0]);
+	      fn.call(_scope, scope, this.el, e, _scope);
 	    }
 	  };
 	

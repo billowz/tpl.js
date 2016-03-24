@@ -52,7 +52,7 @@ class Text extends Binding {
       val = '';
     }
     if (val !== dom.text(this.el))
-      dom.setText(this.el, val)
+      dom.text(this.el, val)
   }
 }
 module.exports = Text;

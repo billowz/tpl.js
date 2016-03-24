@@ -89,13 +89,13 @@ const EVENT_CHANGE = 'change',
   directives = {
     text: {
       update(val) {
-        dom.setText(this.el, this.blankValue(val))
+        dom.text(this.el, this.blankValue(val))
       },
       block: true
     },
     html: {
       update(val) {
-        dom.setHtml(this.blankValue(val))
+        dom.html(this.el, this.blankValue(val))
       },
       block: true
     },
@@ -155,7 +155,7 @@ const EVENT_CHANGE = 'change',
     'style': {
       update(value) {
         if (value && typeof value == 'string') {
-          dom.setStyle(this.el, value)
+          dom.style(this.el, value)
         } else if (value && typeof value == 'object') {
           this.handleObject(value);
         }
@@ -166,23 +166,23 @@ const EVENT_CHANGE = 'change',
         let keys = this.prevKeys = [],
           el = this.el;
         for (let key in value) {
-          dom.setCss(el, key, value[key]);
+          dom.css(el, key, value[key]);
         }
       }
     },
     show: {
       update(val) {
-        dom.setCss(this.el, 'display', val ? '' : 'none')
+        dom.css(this.el, 'display', val ? '' : 'none')
       }
     },
     hide: {
       update(val) {
-        dom.setCss(this.el, 'display', val ? 'none' : '')
+        dom.css(this.el, 'display', val ? 'none' : '')
       }
     },
     value: {
       update(val) {
-        dom.setVal(this.el, this.blankValue(val))
+        dom.val(this.el, this.blankValue(val))
       }
     },
     'if': {
@@ -195,7 +195,7 @@ const EVENT_CHANGE = 'change',
       },
       update(val) {
         if (!val) {
-          dom.setCss(this.el, 'display', 'none');
+          dom.css(this.el, 'display', 'none');
         } else {
           if (!this.directives) {
             let directives = this.directives = this.tpl.parseChildNodes(this.el);
@@ -208,7 +208,7 @@ const EVENT_CHANGE = 'change',
               delete this.yieId;
             }
           }
-          dom.setCss(this.el, 'display', '');
+          dom.css(this.el, 'display', '');
         }
       },
       unbind() {
@@ -226,9 +226,9 @@ const EVENT_CHANGE = 'change',
     checked: {
       update(val) {
         if (val instanceof Array)
-          dom.setChecked(this.el, _.indexOf.call(val, dom.val(this.el)))
+          dom.checked(this.el, _.indexOf.call(val, dom.val(this.el)))
         else
-          dom.setChecked(this.el, !!val);
+          dom.checked(this.el, !!val);
       }
     },
     selected: {
@@ -306,13 +306,13 @@ const EVENT_CHANGE = 'change',
                 checked = val == dom.val(this.el);
 
                 if (dom.checked(this.el) != checked)
-                  dom.setChecked(this.el, checked);
+                  dom.checked(this.el, checked);
               }
             } else {
               if (arguments.length == 0) {
                 return dom.val(this.el);
               } else if (val != dom.val(this.el)) {
-                dom.setVal(this.el, val)
+                dom.val(this.el, val)
               }
             }
             break;

@@ -50,7 +50,7 @@ let propFix = {
 let dom = {
   prop: function(elem, name, value) {
     name = propFix[name] || name;
-    hook = propHooks[name];
+    let hook = propHooks[name];
     if (arguments.length > 2) {
       if (hook && hook.set)
         return hook.set(elem, name, value);
@@ -117,7 +117,6 @@ let dom = {
       }
     } else
       insertAfter(parent, el, target);
-
   },
   append(target, el) {
     if (el instanceof Array) {
@@ -146,56 +145,52 @@ let dom = {
   off(el, event, cb) {
     $(el).off(event, cb)
   },
-  html(el) {
+  html(el, html) {
+    if (arguments.length > 1)
+      return (el.innerHTML = html);
     return el.innerHTML;
   },
-  setHtml(el, html) {
-    el.innerHTML = html;
+  text(el, text) {
+    if (el.nodeType == 3) {
+      if (arguments.length > 1)
+        return (el.data = text);
+      return el.data;
+    } else {
+      return dom.html.apply(this, arguments)
+    }
   },
-  text(el) {
-    return el.data;
-  },
-  setText(el, text) {
-    el.data = text;
-  },
-  attr(el, attr) {
+  attr(el, attr, val) {
+    if (arguments.length > 2)
+      return el.setAttribute(attr, val);
     return el.getAttribute(attr)
-  },
-  setAttr(el, attr, val) {
-    el.setAttribute(attr, val);
   },
   removeAttr(el, attr) {
     el.removeAttribute(attr)
   },
-  style(el) {
-    return dom.attr('style')
+  style(el, style) {
+    if (arguments.length > 1)
+      return dom.prop(el, 'style', style)
+    return dom.prop(el, 'style')
   },
-  setStyle(el, style) {
-    return dom.setAttr('style', style)
-  },
-  css(el, name) {
+  css(el, name, val) {
+    if (arguments.length > 1)
+      return $(el).css(name, val)
     return $(el).css(name);
   },
-  setCss(el, name, val) {
-    $(el).css(name, val);
-  },
-  val(el) {
+  val(el, val) {
+    if (arguments.length > 1)
+      return $(el).val(val)
     return $(el).val();
   },
-  setVal(el, val) {
-    $(el).val(val);
-  },
-  checked(el) {
-    return $(el).prop('checked')
-  },
-  setChecked(el, val) {
-    $(el).prop('checked', val)
+  checked(el, check) {
+    if (arguments.length > 1)
+      return dom.prop(el, 'checked', check)
+    return dom.prop(el, 'checked')
   },
   class(el, cls) {
+    if (arguments.length > 1)
+      return dom.prop(el, 'class', cls)
     return dom.prop(el, 'class')
-  },
-  setClass(el, cls) {
-    dom.prop(el, 'class', cls)
   },
   addClass(el, cls) {
     if (el.classList) {
@@ -203,7 +198,7 @@ let dom = {
     } else {
       var cur = ' ' + (dom.prop(el, 'class') || '') + ' '
       if (cur.indexOf(' ' + cls + ' ') < 0) {
-        dom.setClass(el, _.trim(cur + cls))
+        dom.class(el, _.trim(cur + cls))
       }
     }
   },
@@ -216,7 +211,7 @@ let dom = {
       while (cur.indexOf(tar) >= 0) {
         cur = cur.replace(tar, ' ')
       }
-      dom.setClass(el, _.trim(cur))
+      dom.class(el, _.trim(cur))
     }
   },
   focus(el) {
