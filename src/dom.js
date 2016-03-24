@@ -31,7 +31,10 @@ function insertAfter(parentEl, el, target) {
     parentEl.insertBefore(el, target.nextSibling);
 }
 
-let propFix = {
+
+let rfocusable = /^(?:input|select|textarea|button|object)$/i,
+  rclickable = /^(?:a|area)$/i,
+  propFix = {
     tabindex: "tabIndex",
     readonly: "readOnly",
     "for": "htmlFor",
@@ -45,7 +48,184 @@ let propFix = {
     frameborder: "frameBorder",
     contenteditable: "contentEditable"
   },
-  propHooks = {}
+  propHooks = {
+    tabIndex: {
+      get: function(elem) {
+        let attributeNode = elem.getAttributeNode("tabindex");
+
+        return attributeNode && attributeNode.specified ? parseInt(attributeNode.value, 10) :
+          rfocusable.test(elem.nodeName) || rclickable.test(elem.nodeName) && elem.href ?
+            0 : undefined;
+      }
+    }
+  },
+  valHooks = {
+    option: {
+      get: function(elem) {
+        var val = elem.attributes.value;
+        return !val || val.specified ? elem.value : elem.text;
+      }
+    },
+
+    select: {
+      get: function(elem) {
+        let signle = elem.type == 'select-one',
+          index = elem.selectedIndex;
+        if (index < 0)
+          return signle ? undefined : [];
+
+        let options = elem.options, option,
+          values = signle ? undefined : [];
+
+        for (let i = 0, l = options.length; i < l; i++) {
+          option = options[i];
+          if (option.selected || i == index) {
+            if (signle)
+              return dom.val(option);
+            values.push(dom.val(option));
+          }
+        }
+        return values;
+      },
+
+      set: function(elem, value) {
+        let signle = elem.type == 'select-one',
+          options = elem.options, option,
+          i, l;
+
+        elem.selectedIndex = -1;
+
+        if( (value instanceof Array) ) {
+          if (signle) {
+            value = value[0];
+          } else {
+            if (!value.length)
+              return;
+            let vals = {};
+            for (i = 0, l = value.length; i < l; i++)
+              vals[value[i]] = true;
+
+            for (i = 0, l = options.length; i < l; i++) {
+              option = options[i];
+              if (vals[dom.val(option)] === true)
+                option.selected = true;
+            }
+            return;
+          }
+        }
+        if (value !== undefined && value !== null) {
+          if (typeof value != 'string')
+            value = value + '';
+          for (i = 0, l = options.length; i < l; i++) {
+            option = options[i];
+            if (dom.val(option) == value) {
+              option.selected = true;
+              return;
+            }
+          }
+        }
+      }
+    }
+  },
+  ralpha = /alpha\([^)]*\)/i,
+  ropacity = /opacity\s*=\s*([^)]*)/,
+  rposition = /^(top|right|bottom|left)$/,
+  rdisplayswap = /^(none|table(?!-c[ea]).+)/,
+  rmargin = /^margin/,
+  rnumsplit = new RegExp("^(" + core_pnum + ")(.*)$", "i"),
+  rnumnonpx = new RegExp("^(" + core_pnum + ")(?!px)[a-z%]+$", "i"),
+  rrelNum = new RegExp("^([+-])=(" + core_pnum + ")", "i"),
+  rmsPrefix = /^-ms-/,
+  rdashAlpha = /-([\da-z])/gi,
+  cssProps = {},
+  cssHooks = {},
+  cssPrefixes = ["Webkit", "O", "Moz", "ms"]
+function fcamelCase(all, letter) {
+  return letter.toUpperCase();
+}
+function camelCase(string) {
+  return string.replace(rmsPrefix, "ms-").replace(rdashAlpha, fcamelCase);
+}
+function vendorPropName(style, name) {
+  if (name in style)
+    return name;
+
+  var capName = name.charAt(0).toUpperCase() + name.slice(1),
+    origName = name,
+    i = cssPrefixes.length;
+
+  while (i--) {
+    name = cssPrefixes[i] + capName;
+    if (name in style)
+      return name;
+  }
+  return origName;
+}
+
+if (window.getComputedStyle) {
+  function getStyles(elem) {
+    return window.getComputedStyle(elem, null);
+  }
+
+  function curCSS(elem, name, _computed) {
+    var width, minWidth, maxWidth,
+      computed = _computed || getStyles(elem),
+
+      ret = computed ? computed.getPropertyValue(name) || computed[name] : undefined,
+      style = elem.style;
+
+    if (computed) {
+      if (ret === "" && !jQuery.contains(elem.ownerDocument, elem))
+        ret = jQuery.style(elem, name);
+
+      if (rnumnonpx.test(ret) && rmargin.test(name)) {
+
+        width = style.width;
+        minWidth = style.minWidth;
+        maxWidth = style.maxWidth;
+
+        style.minWidth = style.maxWidth = style.width = ret;
+        ret = computed.width;
+
+        style.width = width;
+        style.minWidth = minWidth;
+        style.maxWidth = maxWidth;
+      }
+    }
+    return ret;
+  }
+} else if (document.documentElement.currentStyle) {
+  function getStyles(elem) {
+    return elem.currentStyle;
+  }
+
+  function curCSS(elem, name, _computed) {
+    var left, rs, rsLeft,
+      computed = _computed || getStyles(elem),
+      ret = computed ? computed[name] : undefined,
+      style = elem.style;
+
+    if (ret == null && style && style[name])
+      ret = style[name];
+
+    if (rnumnonpx.test(ret) && !rposition.test(name)) {
+
+      left = style.left;
+      rs = elem.runtimeStyle;
+      rsLeft = rs && rs.left;
+
+      if (rsLeft)
+        rs.left = elem.currentStyle.left;
+      style.left = name === "fontSize" ? "1em" : ret;
+      ret = style.pixelLeft + "px";
+
+      style.left = left;
+      if (rsLeft)
+        rs.left = rsLeft;
+    }
+    return ret === "" ? "auto" : ret;
+  }
+}
 
 let dom = {
   prop: function(elem, name, value) {
@@ -173,14 +353,50 @@ let dom = {
     return dom.prop(el, 'style')
   },
   css(el, name, val) {
-    if (arguments.length > 1)
+    if (arguments.length > 1) {
       return $(el).css(name, val)
-    return $(el).css(name);
+    } else {
+      var num, hook,
+        origName = camelCase(name);
+
+      name = cssProps[origName] || (cssProps[origName] = vendorPropName(elem.style, origName));
+
+      hook = cssHooks[name] || cssHooks[origName];
+
+      if (hook && hook.get)
+        val = hook.get(elem, true, extra);
+
+      if (val === undefined)
+        val = curCSS(elem, name, styles);
+
+      if (val === "normal" && name in cssNormalTransform)
+        val = cssNormalTransform[name];
+
+      if (extra === '' || extra) {
+        num = parseFloat(val);
+        return extra === true || _.isNumeric(num) ? num || 0 : val;
+      }
+      return val;
+    }
   },
   val(el, val) {
-    if (arguments.length > 1)
-      return $(el).val(val)
-    return $(el).val();
+    let hook = valHooks[el.type || el.tagName.toLowerCase()];
+    if (arguments.length > 1) {
+      if (hook && hook.set) {
+        hook.set(el, val);
+      } else {
+        if (val === undefined || val === null || val === NaN) {
+          val = '';
+        } else if (typeof val != 'string')
+          val = val + '';
+        el.value = val;
+      }
+    } else {
+      if (hook && hook.get) {
+        return hook.get(el);
+      } else
+        return el.value || '';
+    }
   },
   checked(el, check) {
     if (arguments.length > 1)

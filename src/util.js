@@ -159,6 +159,9 @@ let util = {
   },
   hump(str) {
     return str.replace(strHumpReg, strHumpProcessor);
+  },
+  isNumeric(n) {
+    return !isNaN(parseFloat(n)) && isFinite(n);
   }
 }
 function strUpperFirstProcessor(k) {
