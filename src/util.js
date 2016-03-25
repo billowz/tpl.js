@@ -146,6 +146,11 @@ let util = {
     }
     return true;
   },
+  each(arr, callback) {
+    for (let i = 0, l = arr.length; i < l; i++) {
+      callback(arr[i], i);
+    }
+  },
   trim: ''.trim ? function trim(str) {
     return str.trim();
   } : function trim(str) {

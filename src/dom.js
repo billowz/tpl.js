@@ -1,233 +1,10 @@
 const _ = require('./util'),
-  tmpDiv = document.createElement('div')
-if (!document.querySelectorAll) {
-  document.querySelectorAll = function querySelectorAll(selector) {
-    let doc = document,
-      head = doc.documentElement.firstChild,
-      styleTag = doc.createElement('STYLE');
-
-    head.appendChild(styleTag);
-    doc.__qsaels = [];
-    if (styleTag.styleSheet) { // for IE
-      styleTag.styleSheet.cssText = selector + "{x:expression(document.__qsaels.push(this))}";
-    } else { // others
-      let textnode = document.createTextNode(selector + "{x:expression(document.__qsaels.push(this))}");
-      styleTag.appendChild(textnode);
-    }
-    window.scrollBy(0, 0);
-    return doc.__qsaels;
-  }
-}
-if (!document.querySelector) {
-  document.querySelector = function querySelector(selectors) {
-    let elements = document.querySelectorAll(selectors);
-    return elements.length ? elements[0] : null;
-  }
-}
-function insertAfter(parentEl, el, target) {
-  if (parentEl.lastChild == target)
-    parentEl.appendChild(el);
-  else
-    parentEl.insertBefore(el, target.nextSibling);
-}
-
-
-let rfocusable = /^(?:input|select|textarea|button|object)$/i,
-  rclickable = /^(?:a|area)$/i,
-  propFix = {
-    tabindex: "tabIndex",
-    readonly: "readOnly",
-    "for": "htmlFor",
-    "class": "className",
-    maxlength: "maxLength",
-    cellspacing: "cellSpacing",
-    cellpadding: "cellPadding",
-    rowspan: "rowSpan",
-    colspan: "colSpan",
-    usemap: "useMap",
-    frameborder: "frameBorder",
-    contenteditable: "contentEditable"
-  },
-  propHooks = {
-    tabIndex: {
-      get: function(elem) {
-        let attributeNode = elem.getAttributeNode("tabindex");
-
-        return attributeNode && attributeNode.specified ? parseInt(attributeNode.value, 10) :
-          rfocusable.test(elem.nodeName) || rclickable.test(elem.nodeName) && elem.href ?
-            0 : undefined;
-      }
-    }
-  },
-  valHooks = {
-    option: {
-      get: function(elem) {
-        var val = elem.attributes.value;
-        return !val || val.specified ? elem.value : elem.text;
-      }
-    },
-
-    select: {
-      get: function(elem) {
-        let signle = elem.type == 'select-one',
-          index = elem.selectedIndex;
-        if (index < 0)
-          return signle ? undefined : [];
-
-        let options = elem.options, option,
-          values = signle ? undefined : [];
-
-        for (let i = 0, l = options.length; i < l; i++) {
-          option = options[i];
-          if (option.selected || i == index) {
-            if (signle)
-              return dom.val(option);
-            values.push(dom.val(option));
-          }
-        }
-        return values;
-      },
-
-      set: function(elem, value) {
-        let signle = elem.type == 'select-one',
-          options = elem.options, option,
-          i, l;
-
-        elem.selectedIndex = -1;
-
-        if( (value instanceof Array) ) {
-          if (signle) {
-            value = value[0];
-          } else {
-            if (!value.length)
-              return;
-            let vals = {};
-            for (i = 0, l = value.length; i < l; i++)
-              vals[value[i]] = true;
-
-            for (i = 0, l = options.length; i < l; i++) {
-              option = options[i];
-              if (vals[dom.val(option)] === true)
-                option.selected = true;
-            }
-            return;
-          }
-        }
-        if (value !== undefined && value !== null) {
-          if (typeof value != 'string')
-            value = value + '';
-          for (i = 0, l = options.length; i < l; i++) {
-            option = options[i];
-            if (dom.val(option) == value) {
-              option.selected = true;
-              return;
-            }
-          }
-        }
-      }
-    }
-  },
-  ralpha = /alpha\([^)]*\)/i,
-  ropacity = /opacity\s*=\s*([^)]*)/,
-  rposition = /^(top|right|bottom|left)$/,
-  rdisplayswap = /^(none|table(?!-c[ea]).+)/,
-  rmargin = /^margin/,
-  rnumsplit = new RegExp("^(" + core_pnum + ")(.*)$", "i"),
-  rnumnonpx = new RegExp("^(" + core_pnum + ")(?!px)[a-z%]+$", "i"),
-  rrelNum = new RegExp("^([+-])=(" + core_pnum + ")", "i"),
-  rmsPrefix = /^-ms-/,
-  rdashAlpha = /-([\da-z])/gi,
-  cssProps = {},
-  cssHooks = {},
-  cssPrefixes = ["Webkit", "O", "Moz", "ms"]
-function fcamelCase(all, letter) {
-  return letter.toUpperCase();
-}
-function camelCase(string) {
-  return string.replace(rmsPrefix, "ms-").replace(rdashAlpha, fcamelCase);
-}
-function vendorPropName(style, name) {
-  if (name in style)
-    return name;
-
-  var capName = name.charAt(0).toUpperCase() + name.slice(1),
-    origName = name,
-    i = cssPrefixes.length;
-
-  while (i--) {
-    name = cssPrefixes[i] + capName;
-    if (name in style)
-      return name;
-  }
-  return origName;
-}
-
-if (window.getComputedStyle) {
-  function getStyles(elem) {
-    return window.getComputedStyle(elem, null);
-  }
-
-  function curCSS(elem, name, _computed) {
-    var width, minWidth, maxWidth,
-      computed = _computed || getStyles(elem),
-
-      ret = computed ? computed.getPropertyValue(name) || computed[name] : undefined,
-      style = elem.style;
-
-    if (computed) {
-      if (ret === "" && !jQuery.contains(elem.ownerDocument, elem))
-        ret = jQuery.style(elem, name);
-
-      if (rnumnonpx.test(ret) && rmargin.test(name)) {
-
-        width = style.width;
-        minWidth = style.minWidth;
-        maxWidth = style.maxWidth;
-
-        style.minWidth = style.maxWidth = style.width = ret;
-        ret = computed.width;
-
-        style.width = width;
-        style.minWidth = minWidth;
-        style.maxWidth = maxWidth;
-      }
-    }
-    return ret;
-  }
-} else if (document.documentElement.currentStyle) {
-  function getStyles(elem) {
-    return elem.currentStyle;
-  }
-
-  function curCSS(elem, name, _computed) {
-    var left, rs, rsLeft,
-      computed = _computed || getStyles(elem),
-      ret = computed ? computed[name] : undefined,
-      style = elem.style;
-
-    if (ret == null && style && style[name])
-      ret = style[name];
-
-    if (rnumnonpx.test(ret) && !rposition.test(name)) {
-
-      left = style.left;
-      rs = elem.runtimeStyle;
-      rsLeft = rs && rs.left;
-
-      if (rsLeft)
-        rs.left = elem.currentStyle.left;
-      style.left = name === "fontSize" ? "1em" : ret;
-      ret = style.pixelLeft + "px";
-
-      style.left = left;
-      if (rsLeft)
-        rs.left = rsLeft;
-    }
-    return ret === "" ? "auto" : ret;
-  }
-}
+  tmpDiv = document.createElement('div'),
+  hasOwn = Object.prototype.hasOwnProperty,
+  W3C = window.dispatchEvent;
 
 let dom = {
+  W3C: W3C,
   prop: function(elem, name, value) {
     name = propFix[name] || name;
     let hook = propHooks[name];
@@ -246,12 +23,20 @@ let dom = {
       return all ? document.querySelectorAll(selectors) : document.querySelector(selectors);
     return selectors;
   },
-  inDoc(node) {
-    let doc = document.documentElement,
-      parent = node && node.parentNode;
+  inDoc(el, root) {
+    root = root || document.documentElement;
+    if (root.contains)
+      return root.contains(el);
 
-    return doc === node || doc === parent ||
-      !!(parent && parent.nodeType === 1 && (doc.contains(parent)))
+    try {
+      while ((el = el.parentNode)) {
+        if (el === root)
+          return true
+        return false
+      }
+    } catch (e) {
+      return false;
+    }
   },
   cloneNode(el, deep) {
     if (el instanceof Array) {
@@ -352,33 +137,52 @@ let dom = {
       return dom.prop(el, 'style', style)
     return dom.prop(el, 'style')
   },
-  css(el, name, val) {
-    if (arguments.length > 1) {
-      return $(el).css(name, val)
+  css(el, name, value) {
+    let prop = /[_-]/.test(name) ? camelize(name) : name,
+      hook;
+
+    name = cssName(prop) || prop;
+    hook = cssHooks[prop] || cssDefaultHook;
+    if (arguments.length == 2 || typeof value === 'boolean') {
+      let convert = value, num;
+
+      if (name === 'background')
+        name = 'backgroundColor';
+      value = hook.get(el, name);
+      return convert !== false && isFinite((num = parseFloat(value))) ? num : value;
+    } else if (value === '' || value === undefined || value === null) {
+      el.style[name] = ''
     } else {
-      var num, hook,
-        origName = camelCase(name);
-
-      name = cssProps[origName] || (cssProps[origName] = vendorPropName(elem.style, origName));
-
-      hook = cssHooks[name] || cssHooks[origName];
-
-      if (hook && hook.get)
-        val = hook.get(elem, true, extra);
-
-      if (val === undefined)
-        val = curCSS(elem, name, styles);
-
-      if (val === "normal" && name in cssNormalTransform)
-        val = cssNormalTransform[name];
-
-      if (extra === '' || extra) {
-        num = parseFloat(val);
-        return extra === true || _.isNumeric(num) ? num || 0 : val;
-      }
-      return val;
+      if (isFinite(value) && !cssNumber[prop])
+        value += 'px'
+      hook.set(el, name, value)
     }
   },
+  position: function(el) {
+    let _offsetParent, _offset,
+      parentOffset = {
+        top: 0,
+        left: 0
+      };
+    if (dom.css(el, 'position') === 'fixed') {
+      _offset = el.getBoundingClientRect();
+    } else {
+      _offsetParent = offsetParent(el);
+      _offset = offset(el);
+      if (_offsetParent.tagName !== 'HTML')
+        parentOffset = offset(_offsetParent);
+      parentOffset.top += dom.css(_offsetParent, 'borderTopWidth', true);
+      parentOffset.left += dom.css(_offsetParent, 'borderLeftWidth', true);
+
+      parentOffset.top -= dom.scrollTop(_offsetParent);
+      parentOffset.left -= dom.scrollLeft(_offsetParent);
+    }
+    return {
+      top: _offset.top - parentOffset.top - dom.css(el, 'marginTop', true),
+      left: _offset.left - parentOffset.left - dom.css(el, 'marginLeft', true)
+    }
+  },
+
   val(el, val) {
     let hook = valHooks[el.type || el.tagName.toLowerCase()];
     if (arguments.length > 1) {
@@ -441,7 +245,391 @@ let dom = {
       container.appendChild(el.cloneNode(true))
       return container.innerHTML
     }
+  },
+
+  scrollTop(el, val) {
+    let win = getWindow(el);
+    if (arguments.length == 1) {
+      return win ? 'scrollTop' in win ? win.scrollTop : root.pageYOffset : el.pageYOffset;
+    } else if (win) {
+      win.scrollTo(dom.scrollLeft(el), val);
+    } else {
+      el.pageYOffset = val;
+    }
+  },
+
+  scrollLeft(el, val) {
+    let win = getWindow(el);
+    if (arguments.length == 1) {
+      return win ? 'scrollLeft' in win ? win.scrollLeft : root.pageXOffset : el.pageXOffset;
+    } else if (win) {
+      win.scrollTo(val, dom.scrollTop(el));
+    } else {
+      el.pageXOffset = val;
+    }
+  },
+
+  scroll(el, left, top) {
+    let win = getWindow(el);
+    if (arguments.length == 1) {
+      return {
+        left: dom.scrollLeft(el),
+        top: dom.scrollTop(el)
+      }
+    } else if (win) {
+      win.scrollTo(left, top);
+    } else {
+      el.pageXOffset = left;
+      el.pageYOffset = top;
+    }
   }
 }
 module.exports = dom;
 
+
+//====================== Query =============================
+if (!document.querySelectorAll) {
+  document.querySelectorAll = function querySelectorAll(selector) {
+    let doc = document,
+      head = doc.documentElement.firstChild,
+      styleTag = doc.createElement('STYLE');
+
+    head.appendChild(styleTag);
+    doc.__qsaels = [];
+    if (styleTag.styleSheet) { // for IE
+      styleTag.styleSheet.cssText = selector + '{x:expression(document.__qsaels.push(this))}';
+    } else { // others
+      let textnode = document.createTextNode(selector + '{x:expression(document.__qsaels.push(this))}');
+      styleTag.appendChild(textnode);
+    }
+    window.scrollBy(0, 0);
+    return doc.__qsaels;
+  }
+}
+if (!document.querySelector) {
+  document.querySelector = function querySelector(selectors) {
+    let elements = document.querySelectorAll(selectors);
+    return elements.length ? elements[0] : null;
+  }
+}
+
+function insertAfter(parentEl, el, target) {
+  if (parentEl.lastChild == target)
+    parentEl.appendChild(el);
+  else
+    parentEl.insertBefore(el, target.nextSibling);
+}
+
+
+//====================== Prop =============================
+let rfocusable = /^(?:input|select|textarea|button|object)$/i,
+  rclickable = /^(?:a|area)$/i,
+  propFix = dom.propFix = {
+    tabindex: 'tabIndex',
+    readonly: 'readOnly',
+    'for': 'htmlFor',
+    'class': 'className',
+    maxlength: 'maxLength',
+    cellspacing: 'cellSpacing',
+    cellpadding: 'cellPadding',
+    rowspan: 'rowSpan',
+    colspan: 'colSpan',
+    usemap: 'useMap',
+    frameborder: 'frameBorder',
+    contenteditable: 'contentEditable'
+  },
+  propHooks = dom.propHooks = {
+    tabIndex: {
+      get: function(elem) {
+        let attributeNode = elem.getAttributeNode('tabindex');
+
+        return attributeNode && attributeNode.specified ? parseInt(attributeNode.value, 10) :
+          rfocusable.test(elem.nodeName) || rclickable.test(elem.nodeName) && elem.href ?
+            0 : undefined;
+      }
+    }
+  }
+
+//====================== Val =============================
+let valHooks = dom.valHooks = {
+  option: {
+    get: function(elem) {
+      var val = elem.attributes.value;
+      return !val || val.specified ? elem.value : elem.text;
+    }
+  },
+
+  select: {
+    get: function(elem) {
+      let signle = elem.type == 'select-one',
+        index = elem.selectedIndex;
+      if (index < 0)
+        return signle ? undefined : [];
+
+      let options = elem.options, option,
+        values = signle ? undefined : [];
+
+      for (let i = 0, l = options.length; i < l; i++) {
+        option = options[i];
+        if (option.selected || i == index) {
+          if (signle)
+            return dom.val(option);
+          values.push(dom.val(option));
+        }
+      }
+      return values;
+    },
+
+    set: function(elem, value) {
+      let signle = elem.type == 'select-one',
+        options = elem.options, option,
+        i, l;
+
+      elem.selectedIndex = -1;
+      if( (value instanceof Array) ) {
+        if (signle) {
+          value = value[0];
+        } else {
+          if (!value.length)
+            return;
+          let vals = {};
+          for (i = 0, l = value.length; i < l; i++)
+            vals[value[i]] = true;
+
+          for (i = 0, l = options.length; i < l; i++) {
+            option = options[i];
+            if (vals[dom.val(option)] === true)
+              option.selected = true;
+          }
+          return;
+        }
+      }
+      if (value !== undefined && value !== null) {
+        if (typeof value != 'string')
+          value = value + '';
+        for (i = 0, l = options.length; i < l; i++) {
+          option = options[i];
+          if (dom.val(option) == value) {
+            option.selected = true;
+            return;
+          }
+        }
+      }
+    }
+  }
+}
+
+//====================== Css =============================
+let cssFix = dom.cssFix = {
+    'float': W3C ? 'cssFloat' : 'styleFloat'
+  },
+  cssHooks = dom.cssHooks = {},
+  cssDefaultHook = {},
+  prefixes = ['', '-webkit-', '-o-', '-moz-', '-ms-'],
+  cssNumber = {
+    animationIterationCount: true,
+    columnCount: true,
+    order: true,
+    flex: true,
+    flexGrow: true,
+    flexShrink: true,
+    fillOpacity: true,
+    fontWeight: true,
+    lineHeight: true,
+    opacity: true,
+    orphans: true,
+    widows: true,
+    zIndex: true,
+    zoom: true
+  },
+  cssShow = {
+    position: 'absolute',
+    visibility: 'hidden',
+    display: 'block'
+  },
+  rdisplayswap = /^(none|table(?!-c[ea]).+)/,
+  root = document.documentElement,
+  css = dom.css;
+
+function camelize(target) {
+  if (!target || target.indexOf('-') < 0 && target.indexOf('_') < 0) {
+    return target
+  }
+  return target.replace(/[-_][^-_]/g, function(match) {
+    return match.charAt(1).toUpperCase()
+  });
+}
+function cssName(name, host, camelCase) {
+  if (cssFix[name])
+    return cssFix[name]
+  host = host || root.style
+  for (var i = 0, n = prefixes.length; i < n; i++) {
+    camelCase = camelize(prefixes[i] + name)
+    if (camelCase in host) {
+      return (cssFix[name] = camelCase)
+    }
+  }
+  return null
+}
+cssDefaultHook.set = function cssDefaultSet(el, name, value) {
+  try {
+    el.style[name] = value
+  } catch (e) {}
+}
+
+let cssDefaultGet;
+if (window.getComputedStyle) {
+  cssDefaultGet = cssDefaultHook.get = function cssDefaultGet(el, name) {
+    let val,
+      styles = getComputedStyle(el, null)
+
+    if (styles) {
+      val = name === 'filter' ? styles.getPropertyValue(name) : styles[name]
+      if (val === '')
+        val = el.style[name]
+    }
+    return val
+  }
+  cssHooks.opacity = {
+    get(el, name) {
+      let val = cssDefaultGet(el, name);
+      return val === '' ? '1' : ret;
+    }
+  }
+} else {
+  let rnumnonpx = /^-?(?:\d*\.)?\d+(?!px)[^\d\s]+$/i,
+    rposition = /^(top|right|bottom|left)$/,
+    ralpha = /alpha\([^)]*\)/i,
+    ie8 = !!window.XDomainRequest,
+    salpha = 'DXImageTransform.Microsoft.Alpha',
+    border = {
+      thin: ie8 ? '1px' : '2px',
+      medium: ie8 ? '3px' : '4px',
+      thick: ie8 ? '5px' : '6px'
+    }
+
+  cssDefaultGet = cssDefaultHook.get = function cssDefaultGet(el, name) {
+    let currentStyle = el.currentStyle,
+      val = currentStyle[name];
+
+    if ( (rnumnonpx.test(val) && !rposition.test(val)) ) {
+      let style = el.style,
+        left = style.left,
+        rsLeft = el.runtimeStyle.left;
+
+      el.runtimeStyle.left = currentStyle.left;
+      style.left = name === 'fontSize' ? '1em' : (val || 0);
+      val = style.pixelLeft + 'px';
+      style.left = left;
+      el.runtimeStyle.left = rsLeft;
+    }
+    if (val === 'medium') {
+      name = name.replace('Width', 'Style');
+      if (currentStyle[name] === 'none')
+        val = '0px';
+    }
+    return val === '' ? 'auto' : border[val] || val;
+  }
+  cssHooks.opacity = {
+    get(el, name) {
+      let alpha = el.filters.alpha || el.filters[salpha],
+        op = alpha && alpha.enabled ? alpha.opacity : 100;
+
+      return (op / 100) + ''
+    },
+    set(el, name, value) {
+      var style = el.style,
+        opacity = isFinite(value) && value <= 1 ? `alpha(opacity=${value * 100})` : '',
+        filter = style.filter || '';
+
+      style.zoom = 1;
+      style.filter = (ralpha.test(filter) ?
+        filter.replace(ralpha, opacity) : filter + ' ' + opacity).trim();
+      if (!style.filter)
+        style.removeAttribute('filter');
+    }
+  }
+}
+
+_.each(['top', 'left'], function(name) {
+  cssHooks[name] = {
+    get(el, name) {
+      let val = cssDefaultGet(el, name);
+      return /px$/.test(val) ? val : dom.position(el)[name] + 'px'
+    }
+  }
+})
+
+_.each(['Width', 'Height'], function(name) {
+  var method = name.toLowerCase(),
+    clientProp = 'client' + name,
+    scrollProp = 'scroll' + name,
+    offsetProp = 'offset' + name,
+    which = name == 'Width' ? ['Left', 'Right'] : ['Top', 'Bottom'];
+
+  function get(el, boxSizing) {
+    let val;
+
+    val = el[offsetProp] // border-box 0
+    if (boxSizing === 2) // margin-box 2
+      return val + css(el, 'margin' + which[0], true) + css(el, 'margin' + which[1], true);
+    if (boxSizing < 0) // padding-box  -2
+      val = val - css(el, 'border' + which[0] + 'Width', true) - css(el, 'border' + which[1] + 'Width', true);
+    if (boxSizing === -4) // content-box -4
+      val = val - css(el, 'padding' + which[0], true) - css(el, 'padding' + which[1], true);
+    return val
+  }
+
+  dom[method] = function(el) {
+    return get(el, -4);
+  }
+
+  dom['inner' + name] = function(el) {
+    return get(el, -2);
+  }
+  dom['outer' + name] = function(el, includeMargin) {
+    return get(el, includeMargin === true ? 2 : 0);
+  }
+})
+
+function offsetParent(el) {
+  var offsetParent = el.offsetParent
+  while (offsetParent && css(offsetParent, "position") === "static") {
+    offsetParent = offsetParent.offsetParent;
+  }
+  return offsetParent || root;
+}
+
+function offset(el) { //取得距离页面左右角的坐标
+  var box = {
+    left: 0,
+    top: 0
+  };
+
+  if (!el || !el.tagName || !el.ownerDocument)
+    return box;
+
+  var doc = el.ownerDocument,
+    body = doc.body,
+    root = doc.documentElement,
+    win = doc.defaultView || doc.parentWindow;
+
+  if (!dom.inDoc(el, root))
+    return box;
+
+  if (el.getBoundingClientRect)
+    box = el.getBoundingClientRect();
+
+  var clientTop = root.clientTop || body.clientTop,
+    clientLeft = root.clientLeft || body.clientLeft,
+    scrollTop = Math.max(win.pageYOffset || 0, root.scrollTop, body.scrollTop),
+    scrollLeft = Math.max(win.pageXOffset || 0, root.scrollLeft, body.scrollLeft);
+  return {
+    top: box.top + scrollTop - clientTop,
+    left: box.left + scrollLeft - clientLeft
+  }
+}
+
+function getWindow(node) {
+  return node.window && node.document ? node : node.nodeType === 9 ? node.defaultView || node.parentWindow : false;
+}
