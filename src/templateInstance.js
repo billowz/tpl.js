@@ -1,7 +1,7 @@
 const observer = require('observer'),
   _ = require('./util'),
   dom = require('./dom'),
-  Text = require('./text'),
+  {Text} = require('./text'),
   {Directive, DirectiveGroup} = require('./directive');
 
 function cpyChildNodes(el) {

@@ -1,7 +1,7 @@
-const _ = require('./util'),
-  dom = require('./dom'),
-  {Binding} = require('./binding'),
-  expression = require('./expression'),
+const _ = require('../util'),
+  dom = require('../dom'),
+  expression = require('../expression'),
+  Binding = require('./binding'),
   expressionArgs = ['$el'];
 
 export class Text extends Binding {

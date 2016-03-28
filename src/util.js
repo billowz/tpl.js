@@ -32,9 +32,74 @@ let hasOwn = Object.prototype.hasOwnProperty,
 
 let util = {
   YieId: YieId,
+  observe: observer.on,
+  unobserve: observer.un,
+  obj: observer.obj,
+  proxy: observer.proxy.proxy,
+  proxyChange: observer.proxy.on,
+  unProxyChange: observer.proxy.un,
   Map: observer.Map,
   bind: observer.util.bind,
   indexOf: observer.util.indexOf,
+  requestAnimationFrame: observer.util.requestAnimationFrame,
+  cancelAnimationFrame: observer.util.cancelAnimationFrame,
+  requestTimeoutFrame: observer.util.requestTimeoutFrame,
+  cancelTimeoutFrame: observer.util.cancelTimeoutFrame,
+  hasOwnProp(obj, prop) {
+    return hasOwn.call(observer.obj(obj), prop);
+  },
+  parseExpr: observer.util.parseExpr,
+  get: observer.util.get,
+  has(object, path) {
+    if (object) {
+      path = util.parseExpr(path);
+      var index = 0,
+        l = path.length - 1;
+
+      while (object && index < l) {
+        object = object[path[index++]];
+      }
+      return index == l && object && path[index++] in object;
+    }
+    return false;
+  },
+  set(object, path, value) {
+    if (object) {
+      path = util.parseExpr(path);
+      let obj = object,
+        attr = path[0];
+      for (let i = 0, l = path.length - 1; i < l; i++) {
+        if (!obj[attr])
+          obj = obj[attr] = {};
+        attr = path[i + 1];
+      }
+      obj[attr] = value;
+    }
+    return object;
+  },
+  eachKeys(obj, callback, own) {
+    obj = observer.obj(obj);
+    for (let key in obj) {
+      if (own === false || hasOwn.call(obj, key))
+        if (callback(key) === false)
+          return false;
+    }
+    return true;
+  },
+  eachObj(obj, callback, own) {
+    obj = observer.obj(obj);
+    for (let key in obj) {
+      if (own === false || hasOwn.call(obj, key))
+        if (callback(obj[key], key) === false)
+          return false;
+    }
+    return true;
+  },
+  each(arr, callback) {
+    for (let i = 0, l = arr.length; i < l; i++) {
+      callback(arr[i], i);
+    }
+  },
   prototypeOf: Object.getPrototypeOf || function getPrototypeOf(obj) {
       return obj.__proto__;
   },
@@ -84,42 +149,6 @@ let util = {
         return obj;
       };
     })(),
-  requestAnimationFrame: observer.util.requestAnimationFrame,
-  cancelAnimationFrame: observer.util.cancelAnimationFrame,
-  requestTimeoutFrame: observer.util.requestTimeoutFrame,
-  cancelTimeoutFrame: observer.util.cancelTimeoutFrame,
-  parseExpr: observer.util.parseExpr,
-  get: observer.util.get,
-  has(object, path) {
-    if (object) {
-      path = util.parseExpr(path);
-      var index = 0,
-        l = path.length - 1;
-
-      while (object && index < l) {
-        object = object[path[index++]];
-      }
-      return index == l && object && path[index++] in object;
-    }
-    return false;
-  },
-  set(object, path, value) {
-    if (object) {
-      path = util.parseExpr(path);
-      let obj = object,
-        attr = path[0];
-      for (let i = 0, l = path.length - 1; i < l; i++) {
-        if (!obj[attr])
-          obj = obj[attr] = {};
-        attr = path[i + 1];
-      }
-      obj[attr] = value;
-    }
-    return object;
-  },
-  hasOwnProp(obj, prop) {
-    return hasOwn.call(observer.obj(obj), prop);
-  },
   keys: Object.keys || function keys(obj, own) {
       let arr = [];
       for (let key in obj) {
@@ -127,29 +156,6 @@ let util = {
           arr.push(key);
       }
       return arr;
-  },
-  eachKeys(obj, callback, own) {
-    obj = observer.obj(obj);
-    for (let key in obj) {
-      if (own === false || hasOwn.call(obj, key))
-        if (callback(key) === false)
-          return false;
-    }
-    return true;
-  },
-  eachObj(obj, callback, own) {
-    obj = observer.obj(obj);
-    for (let key in obj) {
-      if (own === false || hasOwn.call(obj, key))
-        if (callback(obj[key], key) === false)
-          return false;
-    }
-    return true;
-  },
-  each(arr, callback) {
-    for (let i = 0, l = arr.length; i < l; i++) {
-      callback(arr[i], i);
-    }
   },
   trim: ''.trim ? function trim(str) {
     return str.trim();
@@ -177,7 +183,5 @@ function strHumpProcessor(k) {
     return k[1].toUpperCase();
   return k.toUpperCase();
 }
-module.exports = util;
 
-if (!Object.create)
-  Object.create = util.create
+module.exports = util;

@@ -7,8 +7,6 @@ export class AbstractBinding {
     this.binded = false;
   }
 
-  update() {}
-
   destroy() {}
 
   scope() {
