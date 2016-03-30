@@ -1,17 +1,8 @@
-let tpl = require('./template').Template,
-  util = require('./util'),
-  observer = require('observer');
+let tpl = require('./template'),
+  _ = require('./util');
 
-util.assign(tpl, util, require('./dom'));
-tpl.observe = observer.on;
-tpl.unobserve = observer.un;
-tpl.obj = observer.obj;
-tpl.proxy = observer.proxy.proxy;
-tpl.proxyChange = observer.proxy.on;
-tpl.unProxyChange = observer.proxy.un;
+_.assign(tpl, _, require('./dom'));
 tpl.expression = require('./expression');
-tpl.Directive = require('./directive').Directive;
+tpl.Directive = require('./binding').Directive;
 tpl.Directives = require('./directives');
-tpl.EventDirectives = require('./eventDirective');
-tpl.EachDirective = require('./eachDirective');
 module.exports = tpl;

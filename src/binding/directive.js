@@ -16,8 +16,8 @@ class Directive extends Binding {
     }
   }
 }
-Directive.prototype.abstract = false;
 Directive.prototype.name = 'Unkown';
+Directive.prototype.abstract = false;
 Directive.prototype.block = false;
 Directive.prototype.priority = 5;
 

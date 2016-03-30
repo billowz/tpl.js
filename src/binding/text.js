@@ -4,7 +4,7 @@ const _ = require('../util'),
   Binding = require('./binding'),
   expressionArgs = ['$el'];
 
-export class Text extends Binding {
+class Text extends Binding {
   constructor(el, tpl, expr) {
     super(tpl, expr);
     this.el = el;
@@ -55,3 +55,4 @@ export class Text extends Binding {
       dom.text(this.el, val)
   }
 }
+module.exports = Text;

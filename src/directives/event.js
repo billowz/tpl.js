@@ -5,11 +5,11 @@ const _ = require('../util'),
   expressionArgs = ['$el', '$event'];
 
 function registerDirective(name, opt) {
-  let cls = Directive.register(name, opt);;
+  let cls = Directive.register(name, opt);
   module.exports[cls.prototype.className] = cls;
 }
 
-export class AbstractEventDirective extends Directive {
+export class EventDirective extends Directive {
   constructor(el, tpl, expr, attr) {
     super(el, tpl, expr, attr);
     this.handler = _.bind.call(this.handler, this);
@@ -30,12 +30,12 @@ export class AbstractEventDirective extends Directive {
 
   bind() {
     super.bind();
-    dom.on(this.el, this.eventType, this.handler)
+    dom.on(this.el, this.eventType, this.handler);
   }
 
   unbind() {
     super.unbind();
-    dom.off(this.el, this.eventType, this.handler)
+    dom.off(this.el, this.eventType, this.handler);
   }
 }
 
@@ -50,6 +50,6 @@ _.each(events, (opt) => {
     eventType: opt
   };
   opt.name = opt.name || `on${opt.eventType}`
-  opt.extend = AbstractEventDirective;
+  opt.extend = EventDirective;
   registerDirective(opt.name, opt);
 })

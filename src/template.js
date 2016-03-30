@@ -1,6 +1,6 @@
 const _ = require('./util'),
   dom = require('./dom'),
-  {TemplateInstance} = require('./templateInstance');
+  TemplateInstance = require('./templateInstance');
 
 const parseDelimiterReg = function(delimiter) {
     return new RegExp([delimiter[0], '([^', delimiter[0], delimiter[0], ']*)', delimiter[1]].join(''), 'g')
@@ -13,7 +13,7 @@ const parseDelimiterReg = function(delimiter) {
     directivePrefix: 'tpl-'
   };
 
-export class Template {
+class Template {
   constructor(templ, cfg = {}) {
     let el = document.createElement('div');
     if (typeof templ == 'string') {
@@ -36,3 +36,4 @@ export class Template {
     return new TemplateInstance(dom.cloneNode(this.el), scope, this.delimiterReg, this.directiveReg);
   }
 }
+module.exports = Template;

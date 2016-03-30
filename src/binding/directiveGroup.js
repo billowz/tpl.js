@@ -1,4 +1,4 @@
-const AbstractBinding = require('./binding'),
+const AbstractBinding = require('./abstractBinding'),
   {YieId} = require('../util');
 
 class DirectiveGroup extends AbstractBinding {

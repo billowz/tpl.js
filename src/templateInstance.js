@@ -1,8 +1,7 @@
 const observer = require('observer'),
   _ = require('./util'),
   dom = require('./dom'),
-  {Text} = require('./text'),
-  {Directive, DirectiveGroup} = require('./directive');
+  {Text, Directive, DirectiveGroup} = require('./binding');
 
 function cpyChildNodes(el) {
   let els = [],
@@ -12,7 +11,7 @@ function cpyChildNodes(el) {
   return els;
 }
 
-export class TemplateInstance {
+class TemplateInstance {
   constructor(el, scope, delimiterReg, directiveReg) {
     this.delimiterReg = delimiterReg;
     this.directiveReg = directiveReg;
@@ -204,4 +203,6 @@ export class TemplateInstance {
     return undefined;
   }
 }
+
+module.exports = TemplateInstance;
 

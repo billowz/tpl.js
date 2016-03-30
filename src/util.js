@@ -28,7 +28,7 @@ class YieId {
 let hasOwn = Object.prototype.hasOwnProperty,
   trimReg = /^\s+|\s+$/g,
   strFirstLetterReg = /^[a-zA-Z]/,
-  strHumpReg = /(^[a-zA-Z])|(_[a-zA-Z])/g;
+  strHumpReg = /(^[a-zA-Z])|([_-][a-zA-Z])/g;
 
 let util = {
   YieId: YieId,
@@ -179,7 +179,7 @@ function strUpperFirstProcessor(k) {
   return k.toUpperCase();
 }
 function strHumpProcessor(k) {
-  if (k[0] == '_')
+  if (k[0] == '_' || k[0] == '-')
     return k[1].toUpperCase();
   return k.toUpperCase();
 }
