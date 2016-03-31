@@ -6,11 +6,43 @@ const _ = require('../util'),
 
 
 _.assign(dom, {
-  on(el, event, cb) {
-    bind(el, event, cb);
+  on(el, type, cb) {
+    if (!typeof cb == 'function')
+      throw TypeError('Invalid Event Handler');
+    if (!type)
+      throw TypeError('Invalid Event Type');
+    if (initEventListener(el, type, cb)) {
+      if (canBubbleUp[type]) {
+        console.log('bind delegate:', type, '/', eventFixType(type))
+        delegateEvent(type);
+      } else {
+        console.log('bind:', type, '/', eventFixType(type))
+        bind(el, eventFixType(type), dispatch, !!focusBlur[type]);
+      }
+    }
+    return cb;
   },
-  off(el, event, cb) {
-    unbind(el, event, cb);
+  off(el, type, cb) {
+    if (!typeof cb == 'function')
+      throw TypeError('Invalid Event Handler');
+    if (!type)
+      throw TypeError('Invalid Event Type');
+    let handlers = getEventListener(el, type);
+    if (handlers && handlers.length) {
+      for (let i = 0, l = handlers.length; i < l; i++) {
+        if (handlers[i] == cb) {
+          handlers.split(i, 1);
+          if (canBubbleUp[type]) {
+            undelegateEvent(type);
+          } else if (!handlers.length) {
+            unbind(el, eventFixType(type), dispatch);
+          }
+          if (!handlers.length)
+            cleanEventListener(el, type);
+          return;
+        }
+      }
+    }
   },
   dispatchEvent(el, type, opts) {
     let hackEvent;
@@ -124,7 +156,12 @@ let bind = W3C ? function(el, type, fn, capture) {
     dragend: true,
     datasetchanged: true
   },
+  focusBlur = {
+    focus: true,
+    blur: true
+  },
   eventHooks = {},
+  eventHookTypes = {},
   last = +new Date(),
   eventListeners = new Map(),
   delegateEvents = {};
@@ -132,10 +169,13 @@ if (!W3C) {
   delete canBubbleUp.change
   delete canBubbleUp.select
 }
-
+function eventFixType(type) {
+  let hook = eventHooks[type];
+  return hook ? hook.type || type : type;
+}
 function delegateEvent(type) {
   if (!delegateEvents[type]) {
-    bind(root, type, dispatch, !!focusBlur[type]);
+    bind(root, eventFixType(type), dispatch, !!focusBlur[type]);
     delegateEvents[type] = 1;
   } else {
     delegateEvents[type]++;
@@ -145,26 +185,50 @@ function undelegateEvent(type) {
   if (delegateEvents[type]) {
     delegateEvents[type]--;
     if (!delegateEvents[type])
-      unbind(root, type, dispatch);
+      unbind(root, eventFixType(type), dispatch);
   }
 }
 
-function initEventListener(el, type) {
+function initEventListener(el, type, cb) {
   let listens = eventListeners.get(el),
     handlers;
   if (!listens) {
-    listens = {};
+    listens = {
+      typeNR: 0,
+      handlers: {}
+    };
     eventListeners.set(el, listens);
   }
-  if (!(handlers = listens[type])) {
-    handlers = listens[type] = [];
+  if (!(handlers = listens.handlers[type])) {
+    handlers = listens.handlers[type] = [cb];
+    listens.typeNR++;
+    return true;
   }
-  return handlers;
+  handlers.push(cb);
+  return false;
+}
+
+function getEventListener(el, type) {
+  let listens = eventListeners.get(el),
+    handlers;
+  if (listens)
+    return listens.handlers[type];
+  return undefined;
+}
+
+function cleanEventListener(el, type) {
+  let listens = eventListeners.get(el),
+    handlers;
+  if (listens) {
+    delete listens.handlers[type];
+    listens.typeNR--;
+    if (!listens.typeNR)
+      eventListeners['delete'](el);
+  }
 }
 
 function dispatchElement(el, event, isMove) {
-  let listens = eventListeners.get(el),
-    handlers = listens ? listens[event.type] : undefined;
+  let handlers = getEventListener(el, event.type);
   if (handlers && handlers.length) {
     event.currentTarget = el;
     let handler, i, l;
@@ -184,8 +248,18 @@ function dispatchElement(el, event, isMove) {
 
 function dispatch(event) {
   event = new Event(event);
-  let type = event.type,
+  let type,
     el = event.target;
+
+  if( (type = eventHookTypes[event.type]) ) {
+    event.type = type;
+    let hook = eventHooks[type];
+    if (hook && hook.fix && hook.fix(el, event) === false)
+      return;
+  } else {
+    type = event.type;
+  }
+
   if (el.disabled !== true || type !== 'click') {
     let isMove = /move|scroll/.test(type);
     if (canBubbleUp[type]) {
@@ -195,9 +269,9 @@ function dispatch(event) {
       }
     } else
       dispatchElement(el, event, isMove);
+    console.log(event.type, event)
   }
 }
-
 
 //针对firefox, chrome修正mouseenter, mouseleave
 if (!('onmouseenter' in root)) {
@@ -207,15 +281,9 @@ if (!('onmouseenter' in root)) {
   }, function(origType, fixType) {
     eventHooks[origType] = {
       type: fixType,
-      fix: function(elem, fn) {
-        return function(e) {
-          var t = e.relatedTarget
-          if (!t || (t !== elem && !(elem.compareDocumentPosition(t) & 16))) {
-            delete e.type
-            e.type = origType
-            return fn.apply(elem, arguments)
-          }
-        }
+      fix: function(elem, event, fn) {
+        let t = event.relatedTarget;
+        return !t || (t !== elem && !(elem.compareDocumentPosition(t) & 16))
       }
     }
   })
@@ -236,13 +304,9 @@ _.eachObj({
 if (!('oninput' in document.createElement('input'))) {
   eventHooks.input = {
     type: 'propertychange',
-    fix: function(elem, fn) {
-      return function(e) {
-        if (e.propertyName === 'value') {
-          e.type = 'input'
-          return fn.apply(elem, arguments)
-        }
-      }
+    fix: function(elem, event) {
+      console.log(event.propertyName)
+      return event.propertyName === 'value';
     }
   }
 }
@@ -252,21 +316,18 @@ if (document.onmousewheel === void 0) {
    firefox wheel detlaY 下3 上-3
    IE9-11 wheel deltaY 下40 上-40
    chrome wheel deltaY 下100 上-100 */
-  var fixWheelType = document.onwheel !== void 0 ? 'wheel' : 'DOMMouseScroll'
-  var fixWheelDelta = fixWheelType === 'wheel' ? 'deltaY' : 'detail'
+  let fixWheelType = document.onwheel ? 'wheel' : 'DOMMouseScroll',
+    fixWheelDelta = fixWheelType === 'wheel' ? 'deltaY' : 'detail';
   eventHooks.mousewheel = {
     type: fixWheelType,
-    fix: function(elem, fn) {
-      return function(e) {
-        e.wheelDeltaY = e.wheelDelta = e[fixWheelDelta] > 0 ? -120 : 120
-        e.wheelDeltaX = 0
-        if (Object.defineProperty) {
-          Object.defineProperty(e, 'type', {
-            value: 'mousewheel'
-          })
-        }
-        return fn.apply(elem, arguments)
-      }
+    fix: function(elem, event) {
+      event.wheelDeltaY = event.wheelDelta = event[fixWheelDelta] > 0 ? -120 : 120;
+      event.wheelDeltaX = 0;
+      return true;
     }
   }
 }
+_.eachObj(eventHooks, function(hook, name) {
+  if (hook.type)
+    eventHookTypes[hook.type] = name;
+})

@@ -184,4 +184,5 @@ function strHumpProcessor(k) {
   return k.toUpperCase();
 }
 
+Object.create = util.create;
 module.exports = util;
