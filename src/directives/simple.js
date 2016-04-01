@@ -272,11 +272,12 @@ const EVENT_CHANGE = 'change',
         dom.off(this.el, this.event, this.onChange);
       },
 
-      onChange() {
+      onChange(e) {
         let val = this.elVal(), idx,
           _val = this.val;
         if (val != _val)
           this.setValue(val);
+        e.stopPropagation();
       },
 
       update(val) {

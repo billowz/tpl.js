@@ -26,6 +26,7 @@ export class EventDirective extends Directive {
       let _scope = this.propScope(exp.path[0]);
       fn.call(_scope, scope, this.el, e, _scope);
     }
+    e.stopPropagation();
   }
 
   bind() {

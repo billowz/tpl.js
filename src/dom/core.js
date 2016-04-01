@@ -68,31 +68,34 @@ let dom = {
     } else
       insertAfter(parent, el, target);
   },
-  append(target, el) {
-    if (el instanceof Array) {
-      for (let i = 0, l = el.length; i < l; i++) {
-        target.appendChild(el[i]);
+  append(el, target) {
+    if (target instanceof Array) {
+      for (let i = 0, l = target.length; i < l; i++) {
+        el.appendChild(target[i]);
       }
     } else
-      target.appendChild(el);
+      el.appendChild(target);
   },
-  appendTo(el, target) {
-    dom.append(target, el);
-  },
-  prepend(target, el) {
-    if (target.firstChild) {
-      dom.before(el, target.firstChild)
+  prepend(el, target) {
+    if (el.firstChild) {
+      dom.before(target, el.firstChild)
     } else {
-      dom.append(target, el)
+      dom.append(el, target)
     }
-  },
-  prependTo(el, target) {
-    dom.prepend(target, el)
   },
   html(el, html) {
     if (arguments.length > 1)
       return (el.innerHTML = html);
     return el.innerHTML;
+  },
+  outerHtml(el) {
+    if (el.outerHTML) {
+      return el.outerHTML
+    } else {
+      var container = document.createElement('div')
+      container.appendChild(el.cloneNode(true))
+      return container.innerHTML
+    }
   },
   text(el, text) {
     if (el.nodeType == 3) {
@@ -105,15 +108,6 @@ let dom = {
   },
   focus(el) {
     el.focus();
-  },
-  outerHtml(el) {
-    if (el.outerHTML) {
-      return el.outerHTML
-    } else {
-      var container = document.createElement('div')
-      container.appendChild(el.cloneNode(true))
-      return container.innerHTML
-    }
   }
 }
 module.exports = dom;

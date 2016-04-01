@@ -4,45 +4,20 @@ const _ = require('../util'),
   {W3C} = dom,
   root = document.documentElement;
 
-
 _.assign(dom, {
   on(el, type, cb) {
-    if (!typeof cb == 'function')
-      throw TypeError('Invalid Event Handler');
-    if (!type)
-      throw TypeError('Invalid Event Type');
-    if (initEventListener(el, type, cb)) {
-      if (canBubbleUp[type]) {
-        console.log('bind delegate:', type, '/', eventFixType(type))
-        delegateEvent(type);
-      } else {
-        console.log('bind:', type, '/', eventFixType(type))
-        bind(el, eventFixType(type), dispatch, !!focusBlur[type]);
-      }
+    if (eventListeners.addHandler(el, type, cb)) {
+      canBubbleUp[type] ? delegateEvent(type) : bandEvent(el, type);
+      return cb;
     }
-    return cb;
+    return false;
   },
   off(el, type, cb) {
-    if (!typeof cb == 'function')
-      throw TypeError('Invalid Event Handler');
-    if (!type)
-      throw TypeError('Invalid Event Type');
-    let handlers = getEventListener(el, type);
-    if (handlers && handlers.length) {
-      for (let i = 0, l = handlers.length; i < l; i++) {
-        if (handlers[i] == cb) {
-          handlers.split(i, 1);
-          if (canBubbleUp[type]) {
-            undelegateEvent(type);
-          } else if (!handlers.length) {
-            unbind(el, eventFixType(type), dispatch);
-          }
-          if (!handlers.length)
-            cleanEventListener(el, type);
-          return;
-        }
-      }
+    if (eventListeners.removeHandler(el, type, cb)) {
+      canBubbleUp[type] ? undelegateEvent(type) : unbandEvent(el, type);
+      return cb;
     }
+    return false;
   },
   dispatchEvent(el, type, opts) {
     let hackEvent;
@@ -63,7 +38,8 @@ _.assign(dom, {
 module.exports = dom;
 
 const rmouseEvent = /^(?:mouse|contextmenu|drag)|click/,
-  rvendor = /^(?:ms|webkit|moz)/
+  rvendor = /^(?:ms|webkit|moz)/;
+
 class Event {
   constructor(event) {
     for (let i in event) {
@@ -71,9 +47,8 @@ class Event {
         this[i] = event[i];
     }
     this.target = event.srcElement;
-
     if (event.type.indexOf('key') === 0) {
-      this.which = event.charCode != null ? event.charCode : event.keyCode;
+      this.which = event.which || event.keyCode || event.charCode;
     } else if (rmouseEvent.test(event.type) && !('pageX' in this)) {
       let doc = this.target.ownerDocument || document,
         box = doc.compatMode === 'BackCompat' ? doc.body : doc.documentElement;
@@ -112,7 +87,63 @@ class Event {
   }
 }
 
-let bind = W3C ? function(el, type, fn, capture) {
+const eventListeners = new Map();
+_.assign(eventListeners, {
+  addHandler(el, type, handler) {
+    if (!typeof handler == 'function')
+      throw TypeError('Invalid Event Handler');
+
+    let listens = eventListeners.get(el),
+      handlers;
+
+    if (!listens) {
+      listens = {
+        typeNR: 0,
+        handlers: {}
+      };
+      eventListeners.set(el, listens);
+    }
+    if (!(handlers = listens.handlers[type])) {
+      handlers = listens.handlers[type] = [handler];
+      listens.typeNR++;
+      return true;
+    }
+    handlers.push(handler);
+    return false;
+  },
+
+  removeHandler(el, type, handler) {
+    let listens = eventListeners.get(el),
+      handlers = listens ? listens.handlers[type] : undefined;
+
+    if (handlers) {
+      for (let i = 0, l = handlers.length; i < l; i++) {
+        if (handlers[i] == handler) {
+          handlers.split(i, 1);
+          if (!handlers.length) {
+            delete listens.handlers[type];
+            listens.typeNR--;
+            if (!listens.typeNR)
+              eventListeners['delete'](el);
+            return true;
+          }
+          return false;
+        }
+      }
+    }
+    return false;
+  },
+
+  getHandlers(el, type) {
+    let listens = eventListeners.get(el),
+      handlers;
+    if (listens)
+      return listens.handlers[type];
+    return undefined;
+  }
+});
+
+const bind = W3C ? function(el, type, fn, capture) {
     el.addEventListener(type, fn, capture)
   } : function(el, type, fn) {
     el.attachEvent('on' + type, fn)
@@ -122,40 +153,12 @@ let bind = W3C ? function(el, type, fn, capture) {
   } : function(el, type, fn) {
     el.detachEvent('on' + type, fn)
   },
-  canBubbleUp = {
-    click: true,
-    dblclick: true,
-    keydown: true,
-    keypress: true,
-    keyup: true,
-    mousedown: true,
-    mousemove: true,
-    mouseup: true,
-    mouseover: true,
-    mouseout: true,
-    wheel: true,
-    mousewheel: true,
-    input: true,
-    change: true,
-    beforeinput: true,
-    compositionstart: true,
-    compositionupdate: true,
-    compositionend: true,
-    select: true,
-    cut: true,
-    copy: true,
-    paste: true,
-    beforecut: true,
-    beforecopy: true,
-    beforepaste: true,
-    focusin: true,
-    focusout: true,
-    DOMFocusIn: true,
-    DOMFocusOut: true,
-    DOMActivate: true,
-    dragend: true,
-    datasetchanged: true
-  },
+  canBubbleUpArray = ['click', 'dblclick', 'keydown', 'keypress', 'keyup',
+    'mousedown', 'mousemove', 'mouseup', 'mouseover', 'mouseout', 'wheel', 'mousewheel',
+    'input', 'change', 'beforeinput', 'compositionstart', 'compositionupdate', 'compositionend',
+    'select', 'cut', 'copy', 'paste', 'beforecut', 'beforecopy', 'beforepaste', 'focusin',
+    'focusout', 'DOMFocusIn', 'DOMFocusOut', 'DOMActivate', 'dragend', 'datasetchanged'],
+  canBubbleUp = {},
   focusBlur = {
     focus: true,
     blur: true
@@ -165,17 +168,37 @@ let bind = W3C ? function(el, type, fn, capture) {
   last = +new Date(),
   eventListeners = new Map(),
   delegateEvents = {};
+
+_.each(canBubbleUpArray, (name) => {
+  canBubbleUp[name] = true;
+});
 if (!W3C) {
   delete canBubbleUp.change
   delete canBubbleUp.select
 }
+
 function eventFixType(type) {
   let hook = eventHooks[type];
   return hook ? hook.type || type : type;
 }
+
+function bandEvent(el, type) {
+  let fixType = eventFixType(type);
+  for (let i = 0; i < fixType.length; i++) {
+    bind(el, fixType[i], dispatch, !!focusBlur[type]);
+  }
+}
+
+function unbandEvent(el, type) {
+  let fixType = eventFixType(type);
+  for (let i = 0; i < fixType.length; i++) {
+    unbind(el, fixType[i], dispatch, !!focusBlur[type]);
+  }
+}
+
 function delegateEvent(type) {
   if (!delegateEvents[type]) {
-    bind(root, eventFixType(type), dispatch, !!focusBlur[type]);
+    bandEvent(root, type);
     delegateEvents[type] = 1;
   } else {
     delegateEvents[type]++;
@@ -185,50 +208,13 @@ function undelegateEvent(type) {
   if (delegateEvents[type]) {
     delegateEvents[type]--;
     if (!delegateEvents[type])
-      unbind(root, eventFixType(type), dispatch);
-  }
-}
-
-function initEventListener(el, type, cb) {
-  let listens = eventListeners.get(el),
-    handlers;
-  if (!listens) {
-    listens = {
-      typeNR: 0,
-      handlers: {}
-    };
-    eventListeners.set(el, listens);
-  }
-  if (!(handlers = listens.handlers[type])) {
-    handlers = listens.handlers[type] = [cb];
-    listens.typeNR++;
-    return true;
-  }
-  handlers.push(cb);
-  return false;
-}
-
-function getEventListener(el, type) {
-  let listens = eventListeners.get(el),
-    handlers;
-  if (listens)
-    return listens.handlers[type];
-  return undefined;
-}
-
-function cleanEventListener(el, type) {
-  let listens = eventListeners.get(el),
-    handlers;
-  if (listens) {
-    delete listens.handlers[type];
-    listens.typeNR--;
-    if (!listens.typeNR)
-      eventListeners['delete'](el);
+      unbandEvent(root, type);
   }
 }
 
 function dispatchElement(el, event, isMove) {
-  let handlers = getEventListener(el, event.type);
+  let handlers = eventListeners.getHandlers(el, event.type);
+
   if (handlers && handlers.length) {
     event.currentTarget = el;
     let handler, i, l;
@@ -246,20 +232,7 @@ function dispatchElement(el, event, isMove) {
   }
 }
 
-function dispatch(event) {
-  event = new Event(event);
-  let type,
-    el = event.target;
-
-  if( (type = eventHookTypes[event.type]) ) {
-    event.type = type;
-    let hook = eventHooks[type];
-    if (hook && hook.fix && hook.fix(el, event) === false)
-      return;
-  } else {
-    type = event.type;
-  }
-
+function dispatchEvent(el, type, event) {
   if (el.disabled !== true || type !== 'click') {
     let isMove = /move|scroll/.test(type);
     if (canBubbleUp[type]) {
@@ -269,7 +242,23 @@ function dispatch(event) {
       }
     } else
       dispatchElement(el, event, isMove);
-    console.log(event.type, event)
+    console.log('dispatch:', event.type, event)
+  }
+}
+
+function dispatch(event) {
+  event = new Event(event);
+  let type = event.type,
+    el = event.target;
+
+  dispatchEvent(el, type, event);
+
+  if( (type = eventHookTypes[type]) ) {
+    event.type = type;
+    let hook = eventHooks[type];
+    if (hook && hook.fix && hook.fix(el, event) === false)
+      return;
+    dispatchEvent(el, type, event);
   }
 }
 
@@ -305,9 +294,12 @@ if (!('oninput' in document.createElement('input'))) {
   eventHooks.input = {
     type: 'propertychange',
     fix: function(elem, event) {
-      console.log(event.propertyName)
+      console.log('propertychange:', event.type, ',', event.propertyName)
       return event.propertyName === 'value';
     }
+  }
+  eventHooks.change = {
+    type: 'click'
   }
 }
 if (document.onmousewheel === void 0) {

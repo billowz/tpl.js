@@ -39,12 +39,12 @@ class TemplateInstance {
   }
 
   prependTo(target) {
-    dom.prependTo(this.els, dom.query(target));
+    dom.prepend(dom.query(target), this.els);
     return this;
   }
 
   appendTo(target) {
-    dom.appendTo(this.els, dom.query(target));
+    dom.append(dom.query(target), this.els);
     return this;
   }
 
