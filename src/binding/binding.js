@@ -11,6 +11,7 @@ class Binding extends AbstractBinding {
     this.expr = pipes.shift();
 
     this.filterExprs = pipes;
+    console.log(pipes)
     this.filters = [];
   }
 

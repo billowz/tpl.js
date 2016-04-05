@@ -5,16 +5,19 @@ const _ = require('../util'),
   root = document.documentElement;
 
 _.assign(dom, {
-  on(el, type, cb) {
-    if (eventListeners.addHandler(el, type, cb)) {
-      canBubbleUp[type] ? delegateEvent(type) : bandEvent(el, type);
+  on(el, type, cb, once) {
+    if (eventListeners.addHandler(el, type, cb, once === true)) {
+      canBubbleUp[type] ? delegateEvent(type, cb) : bandEvent(el, type, cb);
       return cb;
     }
     return false;
   },
+  once(el, type, cb) {
+    return dom.on(el, type, cb, true);
+  },
   off(el, type, cb) {
     if (eventListeners.removeHandler(el, type, cb)) {
-      canBubbleUp[type] ? undelegateEvent(type) : unbandEvent(el, type);
+      canBubbleUp[type] ? undelegateEvent(type, cb) : unbandEvent(el, type, cb);
       return cb;
     }
     return false;
@@ -37,29 +40,74 @@ _.assign(dom, {
 
 module.exports = dom;
 
-const rmouseEvent = /^(?:mouse|contextmenu|drag)|click/,
-  rvendor = /^(?:ms|webkit|moz)/;
+const mouseEventReg = /^(?:mouse|contextmenu|drag)|click/,
+  keyEventReg = /^key/,
+  eventProps = ['altKey', 'bubbles', 'cancelable', 'ctrlKey', 'currentTarget', 'propertyName',
+    'eventPhase', 'metaKey', 'relatedTarget', 'shiftKey', 'target', 'view', 'which'],
+  eventFixHooks = {},
+  keyEventFixHook = {
+    props: ['char', 'charCode', 'key', 'keyCode'],
+    fix: function(event, original) {
+      if (event.which == null)
+        event.which = original.charCode != null ? original.charCode : original.keyCode;
+    }
+  },
+  mouseEventFixHook = {
+    props: ['button', 'buttons', 'clientX', 'clientY', 'offsetX', 'offsetY', 'pageX', 'pageY', 'screenX', 'screenY', 'toElement'],
+    fix: function(event, original) {
+      var eventDoc, doc, body,
+        button = original.button;
+
+      if (event.pageX == null && original.clientX != null) {
+        eventDoc = event.target.ownerDocument || document;
+        doc = eventDoc.documentElement;
+        body = eventDoc.body;
+        event.pageX = original.clientX + (doc && doc.scrollLeft || body && body.scrollLeft || 0) - (doc && doc.clientLeft || body && body.clientLeft || 0);
+        event.pageY = original.clientY + (doc && doc.scrollTop || body && body.scrollTop || 0) - (doc && doc.clientTop || body && body.clientTop || 0);
+      }
+      if (!event.which && button !== undefined)
+        event.which = (button & 1 ? 1 : (button & 2 ? 3 : (button & 4 ? 2 : 0)));
+    }
+  };
 
 class Event {
   constructor(event) {
-    for (let i in event) {
-      if (!rvendor.test(i) && typeof event[i] !== 'function')
-        this[i] = event[i];
-    }
-    this.target = event.srcElement;
-    if (event.type.indexOf('key') === 0) {
-      this.which = event.which || event.keyCode || event.charCode;
-    } else if (rmouseEvent.test(event.type) && !('pageX' in this)) {
-      let doc = this.target.ownerDocument || document,
-        box = doc.compatMode === 'BackCompat' ? doc.body : doc.documentElement;
-      this.pageX = event.clientX + (box.scrollLeft >> 0) - (box.clientLeft >> 0);
-      this.pageY = event.clientY + (box.scrollTop >> 0) - (box.clientTop >> 0);
-      this.wheelDeltaY = this.wheelDelta;
-      this.wheelDeltaX = 0;
-    }
-    this.timeStamp = new Date() - 0;
+    let type = event.type,
+      fixHook = eventFixHooks[type],
+      i, prop;
+
     this.originalEvent = event;
+    this.type = event.type;
+    this.returnValue = !(event.defaultPrevented || event.returnValue === false || event.getPreventDefault && event.getPreventDefault());
+    this.timeStamp = event && event.timeStamp || (new Date() + 0);
+
+    i = eventProps.length;
+    while (i--) {
+      prop = eventProps[i];
+      this[prop] = event[prop];
+    }
+
+    if (!fixHook)
+      eventFixHooks[type] = fixHook = mouseEventReg.test(type) ? mouseEventFixHook : keyEventReg.test(type) ? keyEventFixHook : {};
+
+    if (fixHook.props) {
+      let props = fixHook.props;
+      i = props.length;
+      while (i--) {
+        prop = props[i];
+        this[prop] = event[prop];
+      }
+    }
+
+    if (!this.target)
+      this.target = event.srcElement || document;
+    if (this.target.nodeType == 3)
+      this.target = this.target.parentNode;
+
+    if (fixHook.fix)
+      fixHook.fix(this, event);
   }
+
   preventDefault() {
     let e = this.originalEvent;
     this.returnValue = false;
@@ -69,6 +117,7 @@ class Event {
         e.preventDefault();
     }
   }
+
   stopPropagation() {
     let e = this.originalEvent
     this.cancelBubble = true;
@@ -78,6 +127,7 @@ class Event {
         e.stopPropagation();
     }
   }
+
   stopImmediatePropagation() {
     let e = this.originalEvent;
     this.isImmediatePropagationStopped = true;
@@ -89,7 +139,7 @@ class Event {
 
 const eventListeners = new Map();
 _.assign(eventListeners, {
-  addHandler(el, type, handler) {
+  addHandler(el, type, handler, once) {
     if (!typeof handler == 'function')
       throw TypeError('Invalid Event Handler');
 
@@ -104,11 +154,17 @@ _.assign(eventListeners, {
       eventListeners.set(el, listens);
     }
     if (!(handlers = listens.handlers[type])) {
-      handlers = listens.handlers[type] = [handler];
+      handlers = listens.handlers[type] = [{
+        handler: handler,
+        once: once
+      }];
       listens.typeNR++;
       return true;
     }
-    handlers.push(handler);
+    handlers.push({
+      handler: handler,
+      once: once
+    });
     return false;
   },
 
@@ -118,8 +174,8 @@ _.assign(eventListeners, {
 
     if (handlers) {
       for (let i = 0, l = handlers.length; i < l; i++) {
-        if (handlers[i] == handler) {
-          handlers.split(i, 1);
+        if (handlers[i].handler == handler) {
+          handlers.splice(i, 1);
           if (!handlers.length) {
             delete listens.handlers[type];
             listens.typeNR--;
@@ -136,11 +192,18 @@ _.assign(eventListeners, {
 
   getHandlers(el, type) {
     let listens = eventListeners.get(el),
-      handlers;
-    if (listens)
-      return listens.handlers[type];
-    return undefined;
+      handlers = listens ? listens.handlers[type] : undefined;
+
+    if (handlers)
+      handlers = handlers.slice();
+    return handlers;
+  },
+
+  hasHandler(el, type) {
+    let listens = eventListeners.get(el);
+    return listens ? listens.handlers[type] || false : false;
   }
+
 });
 
 const bind = W3C ? function(el, type, fn, capture) {
@@ -165,8 +228,6 @@ const bind = W3C ? function(el, type, fn, capture) {
   },
   eventHooks = {},
   eventHookTypes = {},
-  last = +new Date(),
-  eventListeners = new Map(),
   delegateEvents = {};
 
 _.each(canBubbleUpArray, (name) => {
@@ -177,45 +238,40 @@ if (!W3C) {
   delete canBubbleUp.select
 }
 
-function eventFixType(type) {
+function bandEvent(el, type, cb) {
   let hook = eventHooks[type];
-  return hook ? hook.type || type : type;
+  if (!hook || !hook.bind || hook.bind(el, type, cb) !== false)
+    bind(el, hook ? hook.type || type : type, dispatch, !!focusBlur[type]);
 }
 
-function bandEvent(el, type) {
-  let fixType = eventFixType(type);
-  for (let i = 0; i < fixType.length; i++) {
-    bind(el, fixType[i], dispatch, !!focusBlur[type]);
-  }
+function unbandEvent(el, type, cb) {
+  let hook = eventHooks[type];
+  if (!hook || !hook.unbind || hook.unbind(el, type, cb) !== false)
+    unbind(el, hook ? hook.type || type : type, dispatch);
 }
 
-function unbandEvent(el, type) {
-  let fixType = eventFixType(type);
-  for (let i = 0; i < fixType.length; i++) {
-    unbind(el, fixType[i], dispatch, !!focusBlur[type]);
-  }
-}
-
-function delegateEvent(type) {
+function delegateEvent(type, cb) {
   if (!delegateEvents[type]) {
-    bandEvent(root, type);
+    bandEvent(root, type, cb);
     delegateEvents[type] = 1;
   } else {
     delegateEvents[type]++;
   }
 }
-function undelegateEvent(type) {
+
+function undelegateEvent(type, cb) {
   if (delegateEvents[type]) {
     delegateEvents[type]--;
     if (!delegateEvents[type])
-      unbandEvent(root, type);
+      unbandEvent(root, type, cb);
   }
 }
 
+let last = new Date();
 function dispatchElement(el, event, isMove) {
   let handlers = eventListeners.getHandlers(el, event.type);
 
-  if (handlers && handlers.length) {
+  if (handlers) {
     event.currentTarget = el;
     let handler, i, l;
     for (i = 0, l = handlers.length; i < l && !event.isImmediatePropagationStopped; i++) {
@@ -223,11 +279,14 @@ function dispatchElement(el, event, isMove) {
       if (isMove) {
         let now = new Date();
         if (now - last > 16) {
-          handler.call(el, event);
+          handler.handler.call(el, event);
           last = now;
         }
       } else
-        handler.call(el, event);
+        handler.handler.call(el, event);
+
+      if (handler.once)
+        dom.off(el, event.type, handler.handler);
     }
   }
 }
@@ -242,7 +301,6 @@ function dispatchEvent(el, type, event) {
       }
     } else
       dispatchElement(el, event, isMove);
-    console.log('dispatch:', event.type, event)
   }
 }
 
@@ -250,14 +308,13 @@ function dispatch(event) {
   event = new Event(event);
   let type = event.type,
     el = event.target;
-
-  dispatchEvent(el, type, event);
-
   if( (type = eventHookTypes[type]) ) {
-    event.type = type;
     let hook = eventHooks[type];
     if (hook && hook.fix && hook.fix(el, event) === false)
       return;
+    event.type = type;
+    dispatchEvent(el, type, event);
+  } else {
     dispatchEvent(el, type, event);
   }
 }
@@ -270,7 +327,7 @@ if (!('onmouseenter' in root)) {
   }, function(origType, fixType) {
     eventHooks[origType] = {
       type: fixType,
-      fix: function(elem, event, fn) {
+      fix(elem, event, fn) {
         let t = event.relatedTarget;
         return !t || (t !== elem && !(elem.compareDocumentPosition(t) & 16))
       }
@@ -291,17 +348,57 @@ _.eachObj({
 
 //针对IE6-8修正input
 if (!('oninput' in document.createElement('input'))) {
+  delete canBubbleUp.input;
   eventHooks.input = {
     type: 'propertychange',
-    fix: function(elem, event) {
-      console.log('propertychange:', event.type, ',', event.propertyName)
-      return event.propertyName === 'value';
+    fix(elem, event) {
+      return event.propertyName == 'value';
     }
   }
   eventHooks.change = {
-    type: 'click'
+    bind(elem) {
+      if (elem.type == 'checkbox' || elem.type == 'radio') {
+        if (!elem.$onchange) {
+          elem.$onchange = function(event) {
+            event.type = 'change';
+            dispatchEvent(elem, 'change', event);
+          }
+          dom.on(elem, 'click', elem.$onchange);
+        }
+        return false;
+      }
+    },
+    unbind(elem) {
+      if (elem.type == 'checkbox' || elem.type == 'radio') {
+        dom.off(elem, 'click', elem.$onchange);
+        return false;
+      }
+    }
   }
+} else if (navigator.userAgent.indexOf('MSIE 9') !== -1) {
+  eventHooks.input = {
+    type: 'input',
+    fix(elem) {
+      elem.oldValue = elem.value;
+    }
+  }
+  // http://stackoverflow.com/questions/6382389/oninput-in-ie9-doesnt-fire-when-we-hit-backspace-del-do-cut
+  document.addEventListener('selectionchange', function(event) {
+    var actEl = document.activeElement;
+    if (actEl.tagName === 'TEXTAREA' || (actEl.tagName === 'INPUT' && actEl.type === 'text')) {
+      if (actEl.value == actEl.oldValue)
+        return;
+      actEl.oldValue = actEl.value;
+      if (eventListeners.hasHandler(actEl, 'input')) {
+        event = new Event(event);
+        event.type = 'input';
+        dispatchEvent(actEl, 'input', event);
+      }
+    }
+  });
 }
+
+
 if (document.onmousewheel === void 0) {
   /* IE6-11 chrome mousewheel wheelDetla 下 -120 上 120
    firefox DOMMouseScroll detail 下3 上-3
@@ -312,14 +409,13 @@ if (document.onmousewheel === void 0) {
     fixWheelDelta = fixWheelType === 'wheel' ? 'deltaY' : 'detail';
   eventHooks.mousewheel = {
     type: fixWheelType,
-    fix: function(elem, event) {
+    fix(elem, event) {
       event.wheelDeltaY = event.wheelDelta = event[fixWheelDelta] > 0 ? -120 : 120;
       event.wheelDeltaX = 0;
       return true;
     }
   }
 }
-_.eachObj(eventHooks, function(hook, name) {
-  if (hook.type)
-    eventHookTypes[hook.type] = name;
+_.eachObj(eventHooks, function(hook, type) {
+  eventHookTypes[hook.type || type] = type;
 })

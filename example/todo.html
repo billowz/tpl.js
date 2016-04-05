@@ -86,7 +86,7 @@ $(document).ready(function() {
 <script id="tpl/todo.html" type="text/template">
     <div class="header">
         <h1 tpl-text="title"></h1>
-        <input class="new-todo" autofocus autocomplete="off" placeholder="What needs to be done?" tpl-onkeydown="addTodo">
+        <input class="new-todo" autofocus autocomplete="off" placeholder="What needs to be done?" tpl-onkeydown="addTodo | key 13">
     </div>
     <div class="main" tpl-if="todos.length" tpl-class="title">
         <input class="toggle-all" type="checkbox" tpl-checked="completedNum == todos.length" tpl-onchange="completeTodo()">
@@ -103,8 +103,8 @@ $(document).ready(function() {
     </div>
     <div class="footer" tpl-if="todos.length">
         <span class="todo-count">
-                  <strong tpl-text="remaining | pluralize 'item'"></strong> left
-              </span>
+            <strong tpl-text="remaining | pluralize 'item'"></strong> left
+        </span>
         <ul class="filters">
             <li><a href="#/all" tpl-class="{selected: visibility == 'all'}">All</a></li>
             <li><a href="#/active" tpl-class="{selected: visibility == 'active'}">Active</a></li>

@@ -20,6 +20,7 @@ export class EventDirective extends Directive {
     let scope = this.scope(),
       exp = this.expression,
       fn = exp.execute.call(this, scope, this.el, e);
+
     if (exp.simplePath) {
       if (typeof fn != 'function')
         throw TypeError('Invalid Event Handler:' + this.expr + ' -> ' + fn);
