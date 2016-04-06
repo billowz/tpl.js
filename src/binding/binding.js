@@ -5,13 +5,7 @@ const AbstractBinding = require('./abstractBinding'),
 class Binding extends AbstractBinding {
   constructor(tpl, expr) {
     super(tpl);
-
-    this.fullExpr = expr;
-    let pipes = expr.match(exprReg);
-    this.expr = pipes.shift();
-
-    this.filterExprs = pipes;
-    console.log(pipes)
+    this.expr = expr;
     this.filters = [];
   }
 

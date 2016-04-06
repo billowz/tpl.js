@@ -22,7 +22,7 @@ const defaultKeywords = {
 
 const wsReg = /\s/g
 const newlineReg = /\n/g
-const translationReg = /[\{,]\s*[\w\$_]+\s*:|('(?:[^'\\]|\\.)*'|"(?:[^"\\]|\\.)*"|`(?:[^`\\]|\\.)*\$\{|\}(?:[^`\\]|\\.)*`|`(?:[^`\\]|\\.)*`)|new |typeof |void /g
+const translationReg = /[\{,]\s*[\w\$_]+\s*:|('(?:[^'\\]|\\.)*'|"(?:[^"\\]|\\.)*"|`(?:[^`\\]|\\.)*\$\{|\}(?:[^`\\]|\\.)*`|`(?:[^`\\]|\\.)*`)|new |typeof |void |(\|\|)/g
 const translationRestoreReg = /"(\d+)"/g
 const pathTestReg = /^[A-Za-z_$][\w$]*(?:\.[A-Za-z_$][\w$]*|\['.*?'\]|\[".*?"\]|\[\d+\]|\[[A-Za-z_$][\w$]*\])*$/
 const booleanLiteralReg = /^(?:true|false)$/
@@ -62,10 +62,8 @@ function identityProcessor(raw, idx, str) {
   return `$scope.${exp}${suffix}`;
 }
 
-function compileExecuter(exp, keywords) {
-
-  let body = exp.replace(translationReg, translationProcessor).replace(wsReg, ''),
-    identities;
+function complileExpr(body, keywords) {
+  let identities;
 
   currentIdentities = {};
   currentKeywords = {};
@@ -75,20 +73,92 @@ function compileExecuter(exp, keywords) {
       currentKeywords[keywords[i]] = true;
   }
 
-  body = (body + ' ').replace(identityReg, identityProcessor)
-
-  body = body.replace(translationRestoreReg, translationRestoreProcessor);
-
+  body = (body + ' ').replace(identityReg, identityProcessor);
   identities = _.keys(currentIdentities);
 
-  translations.length = 0;
   currentKeywords = undefined;
   currentIdentities = undefined;
-
   return {
-    fn: makeExecuter(body, keywords),
+    body: body,
     identities: identities
   }
+}
+
+function compileFilterArgs(argExprs) {
+  let args = [], i, l, argExpr, arg, type;
+  for (i = 0, l = argExprs.length; i < l; i++) {
+    argExpr = argExprs[i].replace(translationRestoreReg, translationRestoreProcessor);
+    if (argExpr == 'undefined' || argExpr == 'null') {
+      type = 'null';
+      arg = null;
+    } else if (/^((".*")|('.*'))$/.test(argExpr)) {
+      type = 'string';
+      arg = argExpr.substr(1, argExpr.length - 2);
+    } else if (booleanLiteralReg.test(argExpr)) {
+      type = 'boolean';
+      arg = argExpr == 'true';
+    } else if (/^([+-]?\d+(\.\d+)?)$/.test(argExpr)) {
+      type = 'number';
+      arg = parseFloat(argExpr);
+    } else {
+      type = 'variable';
+      arg = argExpr;
+    }
+    args.push({
+      arg: arg,
+      type: type
+    });
+  }
+  return args;
+}
+
+function compileFilter(filterExprs) {
+  if (!filterExprs || !filterExprs.length)
+    return [];
+
+  let filters = [], filterExpr, i, l, name, argExprs;
+
+  for (i = 0, l = filterExprs.length; i < l; i++) {
+    if ( (filterExpr = _.trim(filterExprs[i])) ) {
+      argExprs = filterExpr.replace(/,?\s+/g, ',').split(',');
+      filters.push({
+        name: argExprs.shift().replace(translationRestoreReg, translationRestoreProcessor),
+        args: compileFilterArgs(argExprs)
+      });
+    }
+  }
+  console.log(filters)
+  return filters;
+}
+
+function compileExecuter(exp, keywords) {
+  let filterExprs, ret,
+    isSimple = isSimplePath(exp);
+  if (!isSimple) {
+    filterExprs = exp.replace(translationReg, translationProcessor).split('|');
+    exp = filterExprs.shift().replace(wsReg, '');
+    isSimple = isSimplePath(exp);
+  }
+  if (isSimple) {
+    if (translations.length)
+      exp = exp.replace(translationRestoreReg, translationRestoreProcessor);
+    ret = {
+      execute: makeExecuter(`$scope.${exp}`, keywords),
+      identities: [exp],
+      path: _.parseExpr(exp)
+    }
+  } else {
+    let expObj = complileExpr(exp, keywords);
+    exp = expObj.body.replace(translationRestoreReg, translationRestoreProcessor);
+    ret = {
+      execute: makeExecuter(exp, keywords),
+      identities: expObj.identities
+    }
+  }
+  ret.filters = compileFilter(filterExprs);
+  ret.simplePath = isSimple;
+  translations.length = 0;
+  return ret;
 }
 
 function makeExecuter(body, args) {
@@ -102,7 +172,7 @@ function makeExecuter(body, args) {
   }
 }
 
-export function isSimplePath(exp) {
+function isSimplePath(exp) {
   return pathTestReg.test(exp) &&
     !booleanLiteralReg.test(exp)
 }
@@ -112,24 +182,8 @@ let cache = {};
 export function parse(exp, args) {
   exp = _.trim(exp);
   let res;
-  if( (res = cache[exp]) ) {
+  if( (res = cache[exp]) )
     return res;
-  }
-  res = {
-    exp: exp
-  }
-  if (isSimplePath(exp)) {
-    res.execute = makeExecuter(`$scope.${exp}`, args);
-    res.identities = [exp];
-    res.simplePath = true;
-    res.path = _.parseExpr(exp);
-  } else {
-    let exe = compileExecuter(exp, args);
-
-    res.simplePath = false;
-    res.execute = exe.fn;
-    res.identities = exe.identities;
-  }
-  cache[exp] = res;
+  cache[exp] = res = compileExecuter(exp, args);
   return res
 }
