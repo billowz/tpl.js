@@ -62,57 +62,23 @@ function identityProcessor(raw, idx, str) {
   return `$scope.${exp}${suffix}`;
 }
 
-function complileExpr(body, keywords) {
-  let identities;
-
-  currentIdentities = {};
-  currentKeywords = {};
+function complileExpr(body) {
   prevPropScope = undefined;
-  if (keywords) {
-    for (let i = 0, l = keywords.length; i < l; i++)
-      currentKeywords[keywords[i]] = true;
-  }
-
-  body = (body + ' ').replace(identityReg, identityProcessor);
-  identities = _.keys(currentIdentities);
-
-  currentKeywords = undefined;
-  currentIdentities = undefined;
-  return {
-    body: body,
-    identities: identities
-  }
+  return (body + ' ').replace(identityReg, identityProcessor)
+    .replace(translationRestoreReg, translationRestoreProcessor);
 }
 
-function compileFilterArgs(argExprs) {
-  let args = [], i, l, argExpr, arg, type;
+function compileFilterArgs(argExprs, keywords) {
+  let i, l;
+
   for (i = 0, l = argExprs.length; i < l; i++) {
-    argExpr = argExprs[i].replace(translationRestoreReg, translationRestoreProcessor);
-    if (argExpr == 'undefined' || argExpr == 'null') {
-      type = 'null';
-      arg = null;
-    } else if (/^((".*")|('.*'))$/.test(argExpr)) {
-      type = 'string';
-      arg = argExpr.substr(1, argExpr.length - 2);
-    } else if (booleanLiteralReg.test(argExpr)) {
-      type = 'boolean';
-      arg = argExpr == 'true';
-    } else if (/^([+-]?\d+(\.\d+)?)$/.test(argExpr)) {
-      type = 'number';
-      arg = parseFloat(argExpr);
-    } else {
-      type = 'variable';
-      arg = argExpr;
-    }
-    args.push({
-      arg: arg,
-      type: type
-    });
+    argExprs[i] = makeExecuter(complileExpr(argExprs[i]), keywords);
+    console.log(argExprs[i].toString())
   }
-  return args;
+  return argExprs;
 }
 
-function compileFilter(filterExprs) {
+function compileFilter(filterExprs, keywords) {
   if (!filterExprs || !filterExprs.length)
     return [];
 
@@ -123,40 +89,47 @@ function compileFilter(filterExprs) {
       argExprs = filterExpr.replace(/,?\s+/g, ',').split(',');
       filters.push({
         name: argExprs.shift().replace(translationRestoreReg, translationRestoreProcessor),
-        args: compileFilterArgs(argExprs)
+        args: compileFilterArgs(argExprs, keywords)
       });
     }
   }
-  console.log(filters)
   return filters;
 }
 
 function compileExecuter(exp, keywords) {
   let filterExprs, ret,
     isSimple = isSimplePath(exp);
+
+  currentIdentities = {};
+  currentKeywords = {};
+  if (keywords) {
+    for (let i = 0, l = keywords.length; i < l; i++)
+      currentKeywords[keywords[i]] = true;
+  }
+
   if (!isSimple) {
     filterExprs = exp.replace(translationReg, translationProcessor).split('|');
     exp = filterExprs.shift().replace(wsReg, '');
     isSimple = isSimplePath(exp);
   }
   if (isSimple) {
-    if (translations.length)
-      exp = exp.replace(translationRestoreReg, translationRestoreProcessor);
+    exp = exp.replace(translationRestoreReg, translationRestoreProcessor);
+    currentIdentities[exp] = true;
     ret = {
       execute: makeExecuter(`$scope.${exp}`, keywords),
-      identities: [exp],
       path: _.parseExpr(exp)
     }
   } else {
-    let expObj = complileExpr(exp, keywords);
-    exp = expObj.body.replace(translationRestoreReg, translationRestoreProcessor);
     ret = {
-      execute: makeExecuter(exp, keywords),
-      identities: expObj.identities
+      execute: makeExecuter(complileExpr(exp), keywords)
     }
   }
-  ret.filters = compileFilter(filterExprs);
+  ret.filters = compileFilter(filterExprs, keywords);
   ret.simplePath = isSimple;
+  ret.identities = _.keys(currentIdentities);
+
+  currentKeywords = undefined;
+  currentIdentities = undefined;
   translations.length = 0;
   return ret;
 }
@@ -185,5 +158,6 @@ export function parse(exp, args) {
   if( (res = cache[exp]) )
     return res;
   cache[exp] = res = compileExecuter(exp, args);
+  console.log(res)
   return res
 }
