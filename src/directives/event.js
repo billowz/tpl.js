@@ -1,5 +1,6 @@
 const _ = require('../util'),
   dom = require('../dom'),
+  filter = rquire('../filter'),
   {Directive} = require('../binding'),
   expression = require('../expression'),
   expressionArgs = ['$el', '$event'];
@@ -19,15 +20,17 @@ export class EventDirective extends Directive {
   handler(e) {
     let scope = this.scope(),
       exp = this.expression,
-      fn = exp.execute.call(this, scope, this.el, e);
-
+      fn;
+    e.stopPropagation();
+    if (filter.applyExpression(exp, e, this, [scope, this.el, e], 'event', false) === false)
+      return;
+    fn = exp.execute.call(this, scope, this.el, e);
     if (exp.simplePath) {
       if (typeof fn != 'function')
         throw TypeError('Invalid Event Handler:' + this.expr + ' -> ' + fn);
       let _scope = this.propScope(exp.path[0]);
       fn.call(_scope, scope, this.el, e, _scope);
     }
-    e.stopPropagation();
   }
 
   bind() {

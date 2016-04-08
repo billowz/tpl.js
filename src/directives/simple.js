@@ -1,5 +1,6 @@
 const _ = require('../util'),
   dom = require('../dom'),
+  filter = require('../filter'),
   {Directive} = require('../binding'),
   expression = require('../expression'),
   {YieId} = _,
@@ -29,11 +30,11 @@ export class SimpleDirective extends Directive {
   }
 
   setValue(val) {
-    return this.setRealValue(this.unfilter(val));
+    return filter.applyExpression(this.expression, val, this, [scope, this.el], 'normal', true);
   }
 
   value() {
-    return this.filter(this.realValue());
+    return filter.applyExpression(this.expression, this.realValue(), this, [scope, this.el], 'normal', false);
   }
 
   bind() {
