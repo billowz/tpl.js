@@ -23,9 +23,28 @@
 <script src="../dist/tpl.js"></script>
 <script type="text/javascript">
 $(document).ready(function() {
+  var filters = {
+    all: function (todos) {
+      return todos;
+    },
+    active: function (todos) {
+      return todos.filter(function (todo) {
+        return !todo.completed;
+      });
+    },
+    completed: function (todos) {
+      return todos.filter(function (todo) {
+        return todo.completed;
+      });
+    }
+  };
     window.template = new tpl($(document.getElementById('tpl/todo.html')).html());
     window.templ = template.complie({
+        filteredTodos: function () {
+          return filters[this.visibility](this.todos);
+        },
         addTodo: function(scope, el, e) {
+          console.log(e.which)
             if (e.which === 13 && (el = $(el)).val()) {
                 this.todos.push({
                     title: el.val(),
@@ -79,7 +98,7 @@ $(document).ready(function() {
         todos: [],
         completedNum: 0,
         title: 'Todo MVC',
-        remaining: 0
+        visibility: 'all'
     }).appendTo('.todoapp');
 })
 </script>
@@ -103,14 +122,14 @@ $(document).ready(function() {
     </div>
     <div class="footer" tpl-if="todos.length">
         <span class="todo-count">
-            <strong tpl-text="remaining | pluralize 'item'"></strong> left
+            {completedNum}<strong>{completedNum | pluralize 'item'}</strong> left
         </span>
         <ul class="filters">
-            <li><a href="#/all" tpl-class="{selected: visibility == 'all'}">All</a></li>
-            <li><a href="#/active" tpl-class="{selected: visibility == 'active'}">Active</a></li>
-            <li><a href="#/completed" tpl-class="{selected: visibility == 'completed'}">Completed</a></li>
+            <li><a href="#" tpl-click="visibility = 'all'" tpl-class="{selected: visibility == 'all'}">All</a></li>
+            <li><a href="#" tpl-click="visibility = 'active'" tpl-class="{selected: visibility == 'active'}">Active</a></li>
+            <li><a href="#" tpl-click="visibility = 'completed'" tpl-class="{selected: visibility == 'completed'}">Completed</a></li>
         </ul>
-        <button class="clear-completed" tpl-onclick="removeCompleted" tpl-if="todos.length > remaining">
+        <button class="clear-completed" tpl-onclick="removeCompleted" tpl-if="todos.length > completedNum">
             Clear completed
         </button>
     </div>

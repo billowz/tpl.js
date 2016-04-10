@@ -1,5 +1,5 @@
 /*!
- * tpl.js v0.0.11 built in Tue, 05 Apr 2016 08:21:53 GMT
+ * tpl.js v0.0.12 built in Sun, 10 Apr 2016 06:15:15 GMT
  * Copyright (c) 2016 Tao Zeng <tao.zeng.zt@gmail.com>
  * Based on observer.js v0.0.x
  * Released under the MIT license
@@ -71,7 +71,7 @@ return /******/ (function(modules) { // webpackBootstrap
 	_.assign(tpl, _, __webpack_require__(12));
 	tpl.expression = __webpack_require__(26);
 	tpl.Directive = __webpack_require__(19).Directive;
-	tpl.Directives = __webpack_require__(27);
+	tpl.Directives = __webpack_require__(28);
 	module.exports = tpl;
 
 /***/ },
@@ -3206,28 +3206,9 @@ return /******/ (function(modules) { // webpackBootstrap
 	
 	    var _this = _possibleConstructorReturn(this, _AbstractBinding.call(this, tpl));
 	
-	    _this.fullExpr = expr;
-	    var pipes = expr.match(exprReg);
-	    _this.expr = pipes.shift();
-	
-	    _this.filterExprs = pipes;
-	    _this.filters = [];
+	    _this.expr = expr;
 	    return _this;
 	  }
-	
-	  Binding.prototype.filter = function filter(val) {
-	    for (var i = 0; i < this.filters.length; i++) {
-	      val = this.filters[i].apply(val);
-	    }
-	    return val;
-	  };
-	
-	  Binding.prototype.unfilter = function unfilter(val) {
-	    for (var i = 0; i < this.filters.length; i++) {
-	      val = this.filters[i].unapply(val);
-	    }
-	    return val;
-	  };
 	
 	  return Binding;
 	}(AbstractBinding);
@@ -3467,9 +3448,7 @@ return /******/ (function(modules) { // webpackBootstrap
 	  }
 	
 	  Text.prototype.value = function value() {
-	    var scope = this.scope();
-	
-	    return this.filter(this.expression.execute.call(this, scope, this.el));
+	    return this.expression.executeAll.call(this, this.scope(), this.el);
 	  };
 	
 	  Text.prototype.bind = function bind() {
@@ -3490,7 +3469,7 @@ return /******/ (function(modules) { // webpackBootstrap
 	
 	  Text.prototype.observeHandler = function observeHandler(attr, val) {
 	    if (this.expression.simplePath) {
-	      this.update(this.filter(val));
+	      this.update(this.expression.applyFilter(val, this, [this.scope(), this.el]));
 	    } else {
 	      this.update(this.value());
 	    }
@@ -3515,9 +3494,9 @@ return /******/ (function(modules) { // webpackBootstrap
 	'use strict';
 	
 	exports.__esModule = true;
-	exports.isSimplePath = isSimplePath;
 	exports.parse = parse;
-	var _ = __webpack_require__(2);
+	var _ = __webpack_require__(2),
+	    filter = __webpack_require__(27);
 	var defaultKeywords = {
 	  'Math': true,
 	  'Date': true,
@@ -3541,7 +3520,7 @@ return /******/ (function(modules) { // webpackBootstrap
 	
 	var wsReg = /\s/g;
 	var newlineReg = /\n/g;
-	var translationReg = /[\{,]\s*[\w\$_]+\s*:|('(?:[^'\\]|\\.)*'|"(?:[^"\\]|\\.)*"|`(?:[^`\\]|\\.)*\$\{|\}(?:[^`\\]|\\.)*`|`(?:[^`\\]|\\.)*`)|new |typeof |void /g;
+	var translationReg = /[\{,]\s*[\w\$_]+\s*:|('(?:[^'\\]|\\.)*'|"(?:[^"\\]|\\.)*"|`(?:[^`\\]|\\.)*\$\{|\}(?:[^`\\]|\\.)*`|`(?:[^`\\]|\\.)*`)|new |typeof |void |(\|\|)/g;
 	var translationRestoreReg = /"(\d+)"/g;
 	var pathTestReg = /^[A-Za-z_$][\w$]*(?:\.[A-Za-z_$][\w$]*|\['.*?'\]|\[".*?"\]|\[\d+\]|\[[A-Za-z_$][\w$]*\])*$/;
 	var booleanLiteralReg = /^(?:true|false)$/;
@@ -3579,34 +3558,111 @@ return /******/ (function(modules) { // webpackBootstrap
 	  return '$scope.' + exp + suffix;
 	}
 	
-	function compileExecuter(exp, keywords) {
+	function complileExpr(body) {
+	  prevPropScope = undefined;
+	  return (body + ' ').replace(identityReg, identityProcessor).replace(translationRestoreReg, translationRestoreProcessor);
+	}
 	
-	  var body = exp.replace(translationReg, translationProcessor).replace(wsReg, ''),
-	      identities = void 0;
+	function compileFilterArgs(argExprs, keywords) {
+	  var i = void 0,
+	      l = void 0;
+	
+	  for (i = 0, l = argExprs.length; i < l; i++) {
+	    argExprs[i] = makeExecuter(complileExpr(argExprs[i]), keywords);
+	    console.log(argExprs[i].toString());
+	  }
+	  return argExprs;
+	}
+	
+	function compileFilter(filterExprs, keywords) {
+	  if (!filterExprs || !filterExprs.length) return [];
+	
+	  var filters = [],
+	      filterExpr = void 0,
+	      i = void 0,
+	      l = void 0,
+	      name = void 0,
+	      argExprs = void 0;
+	
+	  for (i = 0, l = filterExprs.length; i < l; i++) {
+	    if (filterExpr = _.trim(filterExprs[i])) {
+	      argExprs = filterExpr.replace(/,?\s+/g, ',').split(',');
+	      filters.push({
+	        name: argExprs.shift().replace(translationRestoreReg, translationRestoreProcessor),
+	        args: compileFilterArgs(argExprs, keywords)
+	      });
+	    }
+	  }
+	  return filters;
+	}
+	
+	function compileExecuter(exp, keywords) {
+	  var filterExprs = void 0,
+	      ret = void 0,
+	      isSimple = isSimplePath(exp);
 	
 	  currentIdentities = {};
 	  currentKeywords = {};
-	  prevPropScope = undefined;
 	  if (keywords) {
 	    for (var i = 0, l = keywords.length; i < l; i++) {
 	      currentKeywords[keywords[i]] = true;
 	    }
 	  }
 	
-	  body = (body + ' ').replace(identityReg, identityProcessor);
+	  if (!isSimple) {
+	    filterExprs = exp.replace(translationReg, translationProcessor).split('|');
+	    exp = filterExprs.shift().replace(wsReg, '');
+	    isSimple = isSimplePath(exp);
+	  }
+	  if (isSimple) {
+	    exp = exp.replace(translationRestoreReg, translationRestoreProcessor);
+	    currentIdentities[exp] = true;
+	    ret = {
+	      execute: makeExecuter('$scope.' + exp, keywords),
+	      path: _.parseExpr(exp)
+	    };
+	  } else {
+	    ret = {
+	      execute: makeExecuter(complileExpr(exp), keywords)
+	    };
+	  }
+	  ret.filters = compileFilter(filterExprs, keywords);
+	  ret.simplePath = isSimple;
+	  ret.identities = _.keys(currentIdentities);
 	
-	  body = body.replace(translationRestoreReg, translationRestoreProcessor);
-	
-	  identities = _.keys(currentIdentities);
-	
-	  translations.length = 0;
 	  currentKeywords = undefined;
 	  currentIdentities = undefined;
+	  translations.length = 0;
+	  ret.applyFilter = function (data, argScope, args, apply) {
+	    var fs = ret.filters,
+	        f = void 0,
+	        _args = void 0,
+	        rs = void 0;
 	
-	  return {
-	    fn: makeExecuter(body, keywords),
-	    identities: identities
+	    for (var _i = 0, _l = fs.length; _i < _l; _i++) {
+	      f = fs[_i];
+	      _args = parseFilterArgs(f.args, argScope, args);
+	      rs = (apply !== false ? filter.apply : filter.unapply)(f.name, data, _args);
+	      if (rs.stop) {
+	        return rs.data;
+	      } else if (rs.replaceData) data = rs.data;
+	    }
+	    return data;
 	  };
+	  ret.executeAll = function () {
+	    var val = ret.execute.apply(this, arguments);
+	    val = ret.applyFilter(val, this, arguments);
+	    return val;
+	  };
+	  return ret;
+	}
+	
+	function parseFilterArgs(executors, scope, args) {
+	  var _args = [];
+	  for (var i = 0, l = executors.length; i < l; i++) {
+	    _args[i] = executors[i].apply(scope, args);
+	  }
+	  return _args;
 	}
 	
 	function makeExecuter(body, args) {
@@ -3629,25 +3685,9 @@ return /******/ (function(modules) { // webpackBootstrap
 	function parse(exp, args) {
 	  exp = _.trim(exp);
 	  var res = void 0;
-	  if (res = cache[exp]) {
-	    return res;
-	  }
-	  res = {
-	    exp: exp
-	  };
-	  if (isSimplePath(exp)) {
-	    res.execute = makeExecuter('$scope.' + exp, args);
-	    res.identities = [exp];
-	    res.simplePath = true;
-	    res.path = _.parseExpr(exp);
-	  } else {
-	    var exe = compileExecuter(exp, args);
-	
-	    res.simplePath = false;
-	    res.execute = exe.fn;
-	    res.identities = exe.identities;
-	  }
-	  cache[exp] = res;
+	  if (res = cache[exp]) return res;
+	  cache[exp] = res = compileExecuter(exp, args);
+	  console.log(res);
 	  return res;
 	}
 
@@ -3657,12 +3697,148 @@ return /******/ (function(modules) { // webpackBootstrap
 
 	'use strict';
 	
-	var _ = __webpack_require__(2);
+	exports.__esModule = true;
+	var _ = __webpack_require__(2),
+	    slice = Array.prototype.slice,
+	    filters = {};
+	function apply(name, data, args, apply) {
+	  var f = filters[name],
+	      type = f ? f.type : undefined,
+	      fn = void 0;
 	
-	module.exports = _.assign({}, __webpack_require__(28), __webpack_require__(29), __webpack_require__(30));
+	  fn = f ? apply !== false ? f.apply : f.unapply : undefined;
+	  if (!fn) {
+	    console.warn('filter[' + name + '].' + (apply !== false ? 'apply' : 'unapply') + ' is undefined');
+	  } else {
+	    if (typeof args == 'function') args = args();
+	    data = fn.apply(f, [data].concat(args));
+	  }
+	  return {
+	    stop: type == 'event' && data === false,
+	    data: data,
+	    replaceData: type !== 'event'
+	  };
+	}
+	var filter = {
+	  register: function register(name, filter) {
+	    if (filters[name]) throw Error('Filter is existing');
+	    if (typeof filter == 'function') filter = {
+	      apply: filter
+	    };
+	    filter.type = filter.type || 'normal';
+	    filters[name] = filter;
+	  },
+	  get: function get(name) {
+	    return filters[name];
+	  },
+	
+	
+	  apply: apply,
+	
+	  unapply: function unapply(name, data, args) {
+	    return apply(name, data, args, false);
+	  }
+	};
+	
+	module.exports = filter;
+	
+	var keyCodes = exports.keyCodes = {
+	  esc: 27,
+	  tab: 9,
+	  enter: 13,
+	  space: 32,
+	  'delete': [8, 46],
+	  up: 38,
+	  left: 37,
+	  right: 39,
+	  down: 40
+	};
+	var eventFilters = {
+	  key: function key(e) {
+	    var keys = slice.call(arguments, 1),
+	        codes = {},
+	        key = void 0;
+	
+	    for (var i = 0, l = keys.length; i < l; i++) {
+	      key = keys[i];
+	      codes[keyCodes[key] || key] = true;
+	    }
+	    return codes[e.which] || false;
+	  },
+	  stop: function stop(e) {
+	    e.stopPropagation();
+	  },
+	  prevent: function prevent(e) {
+	    e.preventDefault();
+	  },
+	  self: function self(e) {
+	    return e.target === e.currentTarget;
+	  }
+	};
+	_.eachObj(eventFilters, function (fn, name) {
+	  filter.register(name, {
+	    type: 'event',
+	    apply: fn
+	  });
+	});
+	var nomalFilters = {
+	  json: {
+	    apply: function apply(value, indent) {
+	      return typeof value === 'string' ? value : JSON.stringify(value, null, Number(indent) || 2);
+	    },
+	    unapply: function unapply(value) {
+	      try {
+	        return JSON.parse(value);
+	      } catch (e) {
+	        return value;
+	      }
+	    }
+	  },
+	
+	  capitalize: function capitalize(value) {
+	    if (!value && value !== 0) return '';
+	    value = value.toString();
+	    return value.charAt(0).toUpperCase() + value.slice(1);
+	  },
+	  uppercase: function uppercase(value) {
+	    return value || value === 0 ? value.toString().toUpperCase() : '';
+	  },
+	  lowercase: function lowercase(value) {
+	    return value || value === 0 ? value.toString().toLowerCase() : '';
+	  },
+	  currency: function currency(value, _currency) {
+	    value = parseFloat(value);
+	    if (!isFinite(value) || !value && value !== 0) return '';
+	    _currency = _currency != null ? _currency : '$';
+	    var stringified = Math.abs(value).toFixed(2);
+	    var _int = stringified.slice(0, -3);
+	    var i = _int.length % 3;
+	    var head = i > 0 ? _int.slice(0, i) + (_int.length > 3 ? ',' : '') : '';
+	    var _float = stringified.slice(-3);
+	    var sign = value < 0 ? '-' : '';
+	    return sign + _currency + head + _int.slice(i).replace(digitsRE, '$1,') + _float;
+	  },
+	  pluralize: function pluralize(value) {
+	    var args = slice.call(arguments, 1);
+	    return args.length > 1 ? args[value % 10 - 1] || args[args.length - 1] : args[0] + (value === 1 ? '' : 's');
+	  }
+	};
+	_.eachObj(nomalFilters, function (f, name) {
+	  filter.register(name, f);
+	});
 
 /***/ },
 /* 28 */
+/***/ function(module, exports, __webpack_require__) {
+
+	'use strict';
+	
+	var _ = __webpack_require__(2);
+	
+	module.exports = _.assign({}, __webpack_require__(29), __webpack_require__(30), __webpack_require__(31));
+
+/***/ },
+/* 29 */
 /***/ function(module, exports, __webpack_require__) {
 
 	'use strict';
@@ -3838,7 +4014,7 @@ return /******/ (function(modules) { // webpackBootstrap
 	Directive.register('each', EachDirective);
 
 /***/ },
-/* 29 */
+/* 30 */
 /***/ function(module, exports, __webpack_require__) {
 
 	'use strict';
@@ -3883,13 +4059,16 @@ return /******/ (function(modules) { // webpackBootstrap
 	  EventDirective.prototype.handler = function handler(e) {
 	    var scope = this.scope(),
 	        exp = this.expression,
-	        fn = exp.execute.call(this, scope, this.el, e);
+	        fn = void 0;
+	    e.stopPropagation();
+	
+	    if (this.expression.applyFilter(e, this, [scope, this.el, e]) === false) return;
+	    fn = exp.execute.call(this, scope, this.el, e);
 	    if (exp.simplePath) {
 	      if (typeof fn != 'function') throw TypeError('Invalid Event Handler:' + this.expr + ' -> ' + fn);
 	      var _scope = this.propScope(exp.path[0]);
 	      fn.call(_scope, scope, this.el, e, _scope);
 	    }
-	    e.stopPropagation();
 	  };
 	
 	  EventDirective.prototype.bind = function bind() {
@@ -3920,7 +4099,7 @@ return /******/ (function(modules) { // webpackBootstrap
 	});
 
 /***/ },
-/* 30 */
+/* 31 */
 /***/ function(module, exports, __webpack_require__) {
 
 	'use strict';
@@ -3969,17 +4148,15 @@ return /******/ (function(modules) { // webpackBootstrap
 	  };
 	
 	  SimpleDirective.prototype.realValue = function realValue() {
-	    var scope = this.scope();
-	
-	    return this.expression.execute.call(this, scope, this.el);
+	    return this.expression.execute.call(this, this.scope(), this.el);
 	  };
 	
 	  SimpleDirective.prototype.setValue = function setValue(val) {
-	    return this.setRealValue(this.unfilter(val));
+	    return this.expression.applyFilter(val, this, [this.scope(), this.el], false);
 	  };
 	
 	  SimpleDirective.prototype.value = function value() {
-	    return this.filter(this.realValue());
+	    return this.expression.executeAll.call(this, this.scope(), this.el);
 	  };
 	
 	  SimpleDirective.prototype.bind = function bind() {
@@ -4011,7 +4188,7 @@ return /******/ (function(modules) { // webpackBootstrap
 	
 	  SimpleDirective.prototype.observeHandler = function observeHandler(expr, val) {
 	    if (this.expression.simplePath) {
-	      this.update(this.filter(val));
+	      this.update(this.expression.applyFilter(val, this, [this.scope(), this.el]));
 	    } else {
 	      this.update(this.value());
 	    }

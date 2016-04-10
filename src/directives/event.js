@@ -1,6 +1,5 @@
 const _ = require('../util'),
   dom = require('../dom'),
-  filter = rquire('../filter'),
   {Directive} = require('../binding'),
   expression = require('../expression'),
   expressionArgs = ['$el', '$event'];
@@ -22,7 +21,8 @@ export class EventDirective extends Directive {
       exp = this.expression,
       fn;
     e.stopPropagation();
-    if (filter.applyExpression(exp, e, this, [scope, this.el, e], 'event', false) === false)
+
+    if (this.expression.applyFilter(e, this, [scope, this.el, e]) === false)
       return;
     fn = exp.execute.call(this, scope, this.el, e);
     if (exp.simplePath) {

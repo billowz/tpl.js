@@ -1,4 +1,5 @@
-const _ = require('./util');
+const _ = require('./util'),
+  filter = require('./filter');
 const defaultKeywords = {
   'Math': true,
   'Date': true,
@@ -131,7 +132,35 @@ function compileExecuter(exp, keywords) {
   currentKeywords = undefined;
   currentIdentities = undefined;
   translations.length = 0;
+  ret.applyFilter = function(data, argScope, args, apply) {
+    let fs = ret.filters, f, _args, rs;
+
+    for (let i = 0, l = fs.length; i < l; i++) {
+      f = fs[i];
+      _args = parseFilterArgs(f.args, argScope, args);
+      rs = (apply !== false ? filter.apply : filter.unapply)(f.name, data, _args);
+      if (rs.stop) {
+        return rs.data;
+      } else if (rs.replaceData)
+        data = rs.data;
+    }
+    return data;
+  }
+  ret.executeAll = function() {
+    let val = ret.execute.apply(this, arguments);
+    val = ret.applyFilter(val, this, arguments);
+    return val;
+  }
   return ret;
+}
+
+function parseFilterArgs(executors, scope, args) {
+  let _args = [];
+  for (let i = 0,
+      l = executors.length; i < l; i++) {
+    _args[i] = executors[i].apply(scope, args);
+  }
+  return _args;
 }
 
 function makeExecuter(body, args) {

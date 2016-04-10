@@ -1,6 +1,5 @@
 const _ = require('../util'),
   dom = require('../dom'),
-  filter = require('../filter'),
   {Directive} = require('../binding'),
   expression = require('../expression'),
   {YieId} = _,
@@ -24,17 +23,15 @@ export class SimpleDirective extends Directive {
   }
 
   realValue() {
-    let scope = this.scope();
-
-    return this.expression.execute.call(this, scope, this.el);
+    return this.expression.execute.call(this, this.scope(), this.el);
   }
 
   setValue(val) {
-    return filter.applyExpression(this.expression, val, this, [scope, this.el], 'normal', true);
+    return this.expression.applyFilter(val, this, [this.scope(), this.el], false);
   }
 
   value() {
-    return filter.applyExpression(this.expression, this.realValue(), this, [scope, this.el], 'normal', false);
+    return this.expression.executeAll.call(this, this.scope(), this.el);
   }
 
   bind() {
@@ -67,7 +64,7 @@ export class SimpleDirective extends Directive {
 
   observeHandler(expr, val) {
     if (this.expression.simplePath) {
-      this.update(this.filter(val));
+      this.update(this.expression.applyFilter(val, this, [this.scope(), this.el]));
     } else {
       this.update(this.value());
     }
