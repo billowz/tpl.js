@@ -1,5 +1,5 @@
 /*!
- * tpl.js v0.0.12 built in Sun, 10 Apr 2016 06:15:15 GMT
+ * tpl.js v0.0.12 built in Sun, 10 Apr 2016 08:11:59 GMT
  * Copyright (c) 2016 Tao Zeng <tao.zeng.zt@gmail.com>
  * Based on observer.js v0.0.x
  * Released under the MIT license
@@ -69,9 +69,10 @@ return /******/ (function(modules) { // webpackBootstrap
 	    _ = __webpack_require__(2);
 	
 	_.assign(tpl, _, __webpack_require__(12));
-	tpl.expression = __webpack_require__(26);
-	tpl.Directive = __webpack_require__(19).Directive;
-	tpl.Directives = __webpack_require__(28);
+	tpl.filter = __webpack_require__(28);
+	tpl.expression = __webpack_require__(27);
+	tpl.Directive = __webpack_require__(20).Directive;
+	tpl.Directives = __webpack_require__(29);
 	module.exports = tpl;
 
 /***/ },
@@ -84,7 +85,7 @@ return /******/ (function(modules) { // webpackBootstrap
 	
 	var _ = __webpack_require__(2),
 	    dom = __webpack_require__(12),
-	    TemplateInstance = __webpack_require__(18);
+	    TemplateInstance = __webpack_require__(19);
 	
 	var parseDelimiterReg = function parseDelimiterReg(delimiter) {
 	  return new RegExp([delimiter[0], '([^', delimiter[0], delimiter[0], ']*)', delimiter[1]].join(''), 'g');
@@ -1788,6 +1789,7 @@ return /******/ (function(modules) { // webpackBootstrap
 	__webpack_require__(15);
 	__webpack_require__(16);
 	__webpack_require__(17);
+	__webpack_require__(18);
 	module.exports = dom;
 
 /***/ },
@@ -2436,6 +2438,7 @@ return /******/ (function(modules) { // webpackBootstrap
 	var Map = _.Map;
 	var W3C = dom.W3C;
 	var root = document.documentElement;
+	var domReady = false;
 	
 	_.assign(dom, {
 	  on: function on(el, type, cb, once) {
@@ -2841,13 +2844,64 @@ return /******/ (function(modules) { // webpackBootstrap
 
 	'use strict';
 	
+	var dom = __webpack_require__(17),
+	    readyList = [],
+	    isReady = void 0,
+	    root = document.documentElement;
+	
+	function fireReady(fn) {
+	  isReady = true;
+	  while (fn = readyList.shift()) {
+	    fn();
+	  }
+	}
+	
+	function doScrollCheck() {
+	  try {
+	    root.doScroll('left');
+	    fireReady();
+	  } catch (e) {
+	    setTimeout(doScrollCheck);
+	  }
+	}
+	
+	if (document.readyState === 'complete') {
+	  setTimeout(fireReady);
+	} else if (document.addEventListener) {
+	  document.addEventListener('DOMContentLoaded', fireReady);
+	} else if (document.attachEvent) {
+	  document.attachEvent('onreadystatechange', function () {
+	    if (document.readyState === 'complete') fireReady();
+	  });
+	  try {
+	    var isTop = window.frameElement === null;
+	  } catch (e) {}
+	  if (root.doScroll && isTop && window.external) doScrollCheck();
+	}
+	
+	if (window.document) dom.on(window, 'load', fireReady);
+	
+	dom.ready = function (fn) {
+	  if (!isReady) {
+	    readyList.push(fn);
+	  } else {
+	    fn(avalon);
+	  }
+	};
+
+/***/ },
+/* 19 */
+/***/ function(module, exports, __webpack_require__) {
+
+	'use strict';
+	
 	function _classCallCheck(instance, Constructor) { if (!(instance instanceof Constructor)) { throw new TypeError("Cannot call a class as a function"); } }
 	
 	var observer = __webpack_require__(3);
 	var _ = __webpack_require__(2);
 	var dom = __webpack_require__(12);
 	
-	var _require = __webpack_require__(19);
+	var _require = __webpack_require__(20);
 	
 	var Text = _require.Text;
 	var Directive = _require.Directive;
@@ -3055,33 +3109,33 @@ return /******/ (function(modules) { // webpackBootstrap
 	module.exports = TemplateInstance;
 
 /***/ },
-/* 19 */
+/* 20 */
 /***/ function(module, exports, __webpack_require__) {
 
 	'use strict';
 	
 	var _ = __webpack_require__(2);
 	_.each(['abstractBinding', 'binding', 'text', 'directive', 'directiveGroup', 'text'], function (name) {
-	  module.exports[_.upperFirst(name)] = __webpack_require__(20)("./" + name);
+	  module.exports[_.upperFirst(name)] = __webpack_require__(21)("./" + name);
 	});
 
 /***/ },
-/* 20 */
+/* 21 */
 /***/ function(module, exports, __webpack_require__) {
 
 	var map = {
-		"./abstractBinding": 21,
-		"./abstractBinding.js": 21,
-		"./binding": 22,
-		"./binding.js": 22,
-		"./directive": 23,
-		"./directive.js": 23,
-		"./directiveGroup": 24,
-		"./directiveGroup.js": 24,
-		"./index": 19,
-		"./index.js": 19,
-		"./text": 25,
-		"./text.js": 25
+		"./abstractBinding": 22,
+		"./abstractBinding.js": 22,
+		"./binding": 23,
+		"./binding.js": 23,
+		"./directive": 24,
+		"./directive.js": 24,
+		"./directiveGroup": 25,
+		"./directiveGroup.js": 25,
+		"./index": 20,
+		"./index.js": 20,
+		"./text": 26,
+		"./text.js": 26
 	};
 	function webpackContext(req) {
 		return __webpack_require__(webpackContextResolve(req));
@@ -3094,11 +3148,11 @@ return /******/ (function(modules) { // webpackBootstrap
 	};
 	webpackContext.resolve = webpackContextResolve;
 	module.exports = webpackContext;
-	webpackContext.id = 20;
+	webpackContext.id = 21;
 
 
 /***/ },
-/* 21 */
+/* 22 */
 /***/ function(module, exports, __webpack_require__) {
 
 	'use strict';
@@ -3183,7 +3237,7 @@ return /******/ (function(modules) { // webpackBootstrap
 	module.exports = AbstractBinding;
 
 /***/ },
-/* 22 */
+/* 23 */
 /***/ function(module, exports, __webpack_require__) {
 
 	'use strict';
@@ -3194,7 +3248,7 @@ return /******/ (function(modules) { // webpackBootstrap
 	
 	function _inherits(subClass, superClass) { if (typeof superClass !== "function" && superClass !== null) { throw new TypeError("Super expression must either be null or a function, not " + typeof superClass); } subClass.prototype = Object.create(superClass && superClass.prototype, { constructor: { value: subClass, enumerable: false, writable: true, configurable: true } }); if (superClass) Object.setPrototypeOf ? Object.setPrototypeOf(subClass, superClass) : subClass.__proto__ = superClass; }
 	
-	var AbstractBinding = __webpack_require__(21),
+	var AbstractBinding = __webpack_require__(22),
 	    exprReg = /((?:'[^']*')*(?:(?:[^\|']+(?:'[^']*')*[^\|']*)+|[^\|]+))|^$/g,
 	    filterReg = /^$/g;
 	
@@ -3218,7 +3272,7 @@ return /******/ (function(modules) { // webpackBootstrap
 	module.exports = Binding;
 
 /***/ },
-/* 23 */
+/* 24 */
 /***/ function(module, exports, __webpack_require__) {
 
 	'use strict';
@@ -3233,7 +3287,7 @@ return /******/ (function(modules) { // webpackBootstrap
 	
 	var _ = __webpack_require__(2),
 	    dom = __webpack_require__(12),
-	    Binding = __webpack_require__(22),
+	    Binding = __webpack_require__(23),
 	    SUPER_CLASS_OPTION = 'extend',
 	    directives = {};
 	
@@ -3338,7 +3392,7 @@ return /******/ (function(modules) { // webpackBootstrap
 	module.exports = Directive;
 
 /***/ },
-/* 24 */
+/* 25 */
 /***/ function(module, exports, __webpack_require__) {
 
 	'use strict';
@@ -3349,7 +3403,7 @@ return /******/ (function(modules) { // webpackBootstrap
 	
 	function _inherits(subClass, superClass) { if (typeof superClass !== "function" && superClass !== null) { throw new TypeError("Super expression must either be null or a function, not " + typeof superClass); } subClass.prototype = Object.create(superClass && superClass.prototype, { constructor: { value: subClass, enumerable: false, writable: true, configurable: true } }); if (superClass) Object.setPrototypeOf ? Object.setPrototypeOf(subClass, superClass) : subClass.__proto__ = superClass; }
 	
-	var AbstractBinding = __webpack_require__(21);
+	var AbstractBinding = __webpack_require__(22);
 	
 	var _require = __webpack_require__(2);
 	
@@ -3411,7 +3465,7 @@ return /******/ (function(modules) { // webpackBootstrap
 	module.exports = DirectiveGroup;
 
 /***/ },
-/* 25 */
+/* 26 */
 /***/ function(module, exports, __webpack_require__) {
 
 	'use strict';
@@ -3424,8 +3478,8 @@ return /******/ (function(modules) { // webpackBootstrap
 	
 	var _ = __webpack_require__(2),
 	    dom = __webpack_require__(12),
-	    expression = __webpack_require__(26),
-	    Binding = __webpack_require__(22),
+	    expression = __webpack_require__(27),
+	    Binding = __webpack_require__(23),
 	    expressionArgs = ['$el'];
 	
 	var Text = function (_Binding) {
@@ -3488,7 +3542,7 @@ return /******/ (function(modules) { // webpackBootstrap
 	module.exports = Text;
 
 /***/ },
-/* 26 */
+/* 27 */
 /***/ function(module, exports, __webpack_require__) {
 
 	'use strict';
@@ -3496,7 +3550,7 @@ return /******/ (function(modules) { // webpackBootstrap
 	exports.__esModule = true;
 	exports.parse = parse;
 	var _ = __webpack_require__(2),
-	    filter = __webpack_require__(27);
+	    filter = __webpack_require__(28);
 	var defaultKeywords = {
 	  'Math': true,
 	  'Date': true,
@@ -3692,7 +3746,7 @@ return /******/ (function(modules) { // webpackBootstrap
 	}
 
 /***/ },
-/* 27 */
+/* 28 */
 /***/ function(module, exports, __webpack_require__) {
 
 	'use strict';
@@ -3828,17 +3882,17 @@ return /******/ (function(modules) { // webpackBootstrap
 	});
 
 /***/ },
-/* 28 */
+/* 29 */
 /***/ function(module, exports, __webpack_require__) {
 
 	'use strict';
 	
 	var _ = __webpack_require__(2);
 	
-	module.exports = _.assign({}, __webpack_require__(29), __webpack_require__(30), __webpack_require__(31));
+	module.exports = _.assign({}, __webpack_require__(30), __webpack_require__(31), __webpack_require__(32));
 
 /***/ },
-/* 29 */
+/* 30 */
 /***/ function(module, exports, __webpack_require__) {
 
 	'use strict';
@@ -3854,10 +3908,10 @@ return /******/ (function(modules) { // webpackBootstrap
 	var _ = __webpack_require__(2);
 	var dom = __webpack_require__(12);
 	
-	var _require = __webpack_require__(19);
+	var _require = __webpack_require__(20);
 	
 	var Directive = _require.Directive;
-	var TemplateInstance = __webpack_require__(18);
+	var TemplateInstance = __webpack_require__(19);
 	var eachReg = /^\s*([\s\S]+)\s+in\s+([\S]+)(\s+track\s+by\s+([\S]+))?\s*$/;
 	var eachAliasReg = /^(\(\s*([^,\s]+)(\s*,\s*([\S]+))?\s*\))|([^,\s]+)(\s*,\s*([\S]+))?$/;
 	var EachDirective = exports.EachDirective = function (_Directive) {
@@ -4014,7 +4068,7 @@ return /******/ (function(modules) { // webpackBootstrap
 	Directive.register('each', EachDirective);
 
 /***/ },
-/* 30 */
+/* 31 */
 /***/ function(module, exports, __webpack_require__) {
 
 	'use strict';
@@ -4032,10 +4086,10 @@ return /******/ (function(modules) { // webpackBootstrap
 	var _ = __webpack_require__(2);
 	var dom = __webpack_require__(12);
 	
-	var _require = __webpack_require__(19);
+	var _require = __webpack_require__(20);
 	
 	var Directive = _require.Directive;
-	var expression = __webpack_require__(26);
+	var expression = __webpack_require__(27);
 	var expressionArgs = ['$el', '$event'];
 	
 	function registerDirective(name, opt) {
@@ -4099,7 +4153,7 @@ return /******/ (function(modules) { // webpackBootstrap
 	});
 
 /***/ },
-/* 31 */
+/* 32 */
 /***/ function(module, exports, __webpack_require__) {
 
 	'use strict';
@@ -4117,10 +4171,10 @@ return /******/ (function(modules) { // webpackBootstrap
 	var _ = __webpack_require__(2);
 	var dom = __webpack_require__(12);
 	
-	var _require = __webpack_require__(19);
+	var _require = __webpack_require__(20);
 	
 	var Directive = _require.Directive;
-	var expression = __webpack_require__(26);
+	var expression = __webpack_require__(27);
 	var YieId = _.YieId;
 	var expressionArgs = ['$el'];
 	var hasOwn = Object.prototype.hasOwnProperty;

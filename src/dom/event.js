@@ -2,7 +2,8 @@ const _ = require('../util'),
   dom = require('./core'),
   {Map} = _,
   {W3C} = dom,
-  root = document.documentElement;
+  root = document.documentElement,
+  domReady = false;
 
 _.assign(dom, {
   on(el, type, cb, once) {
