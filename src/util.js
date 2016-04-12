@@ -100,8 +100,8 @@ let util = {
       callback(arr[i], i);
     }
   },
-  prototypeOf: Object.getPrototypeOf || function getPrototypeOf(obj) {
-      return obj.__proto__;
+  prototypeOf: Object.setPrototypeOf ? Object.getPrototypeOf : function getPrototypeOf(obj) {
+    return obj.__proto__;
   },
   setPrototypeOf: Object.setPrototypeOf || function setPrototypeOf(obj, proto) {
       obj.__proto__ = proto;
@@ -173,6 +173,72 @@ let util = {
   },
   isNumeric(n) {
     return !isNaN(parseFloat(n)) && isFinite(n);
+  },
+  isExtendOf(cls, parent) {
+    let type = typeof cls,
+      proto = cls;
+
+    if (type != 'function')
+      return (cls instanceof parent);
+
+    while ((proto = util.prototypeOf(proto))) {
+      if (proto === parent)
+        return true;
+    }
+    return false;
+  },
+  createClass(opt, parent, options) {
+    let type = typeof opt,
+      cls = undefined;
+
+    if (type == 'function') {
+      if (!util.isExtendOf(opt, parent))
+        throw TypeError(`Invalid Class Constructor, ${opt.name} is not extendof ${parent.name}`);
+      cls = opt;
+    } else if (opt && type == 'object') {
+      options = options || {};
+      let constructor = opt[options.constructor || 'constructor'],
+        dparent = options.extend;
+
+      if (typeof constructor != 'function' || constructor === Object)
+        constructor = undefined;
+
+      if (dparent && (dparent = opt[dparent])) {
+        if (!util.isExtendOf(dparent, parent))
+          throw TypeError(`Invalid Class Option, ${dparent.name} is not extendof ${parent.name}`);
+        parent = dparent;
+      }
+
+      cls = (function(constructor, SuperClass) {
+        function DynamicClass() {
+          if (!(this instanceof SuperClass))
+            throw new TypeError('Cannot call a class as a function');
+          if (constructor) {
+            constructor.apply(this, arguments);
+          } else {
+            SuperClass.apply(this, arguments);
+          }
+        }
+        DynamicClass.prototype = util.create(SuperClass.prototype, {
+          constructor: {
+            value: DynamicClass,
+            enumerable: false,
+            writable: true,
+            configurable: true
+          }
+        });
+        util.setPrototypeOf(DynamicClass, SuperClass);
+        return DynamicClass;
+      })(constructor, parent);
+
+      util.eachObj(opt, (val, key) => {
+        if (key !== 'constructor')
+          cls.prototype[key] = val;
+      });
+    } else {
+      throw TypeError(`Invalid Class Option: ${opt}`);
+    }
+    return cls;
   }
 }
 function strUpperFirstProcessor(k) {

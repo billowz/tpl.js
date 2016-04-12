@@ -118,11 +118,13 @@ function compileExecuter(exp, keywords) {
     currentIdentities[exp] = true;
     ret = {
       execute: makeExecuter(`$scope.${exp}`, keywords),
-      path: _.parseExpr(exp)
+      path: _.parseExpr(exp),
+      expr: exp
     }
   } else {
     ret = {
-      execute: makeExecuter(complileExpr(exp), keywords)
+      execute: makeExecuter(complileExpr(exp), keywords),
+      expr: exp
     }
   }
   ret.filters = compileFilter(filterExprs, keywords);

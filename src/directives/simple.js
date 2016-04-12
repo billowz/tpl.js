@@ -8,7 +8,7 @@ const _ = require('../util'),
 
 function registerDirective(name, opt) {
   let cls = Directive.register(name, opt);
-  module.exports[cls.prototype.className] = cls;
+  module.exports[cls.className] = cls;
 }
 
 export class SimpleDirective extends Directive {
@@ -18,16 +18,8 @@ export class SimpleDirective extends Directive {
     this.expression = expression.parse(this.expr, expressionArgs);
   }
 
-  setRealValue(val) {
-    this.set(this.expr, val);
-  }
-
   realValue() {
     return this.expression.execute.call(this, this.scope(), this.el);
-  }
-
-  setValue(val) {
-    return this.expression.applyFilter(val, this, [this.scope(), this.el], false);
   }
 
   value() {
@@ -242,8 +234,10 @@ const EVENT_CHANGE = 'change',
       constructor(el) {
         SimpleDirective.apply(this, arguments);
 
-        this.onChange = _.bind.call(this.onChange, this);
+        if (!this.expression.simplePath)
+          throw TypeError(`Invalid Expression[${this.expression.expr}] on InputDirective`);
 
+        this.onChange = _.bind.call(this.onChange, this);
         let tag = this.tag = el.tagName;
         switch (tag) {
           case TAG_SELECT:
@@ -268,6 +262,14 @@ const EVENT_CHANGE = 'change',
       unbind() {
         SimpleDirective.prototype.unbind.call(this);
         dom.off(this.el, this.event, this.onChange);
+      },
+
+      setRealValue(val) {
+        this.set(this.expression.path, val);
+      },
+
+      setValue(val) {
+        this.setRealValue(this.expression.applyFilter(val, this, [this.scope(), this.el], false));
       },
 
       onChange(e) {

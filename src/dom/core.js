@@ -1,5 +1,6 @@
 const _ = require('../util'),
-  W3C = window.dispatchEvent;
+  W3C = window.dispatchEvent,
+  textContent = typeof document.createElement('div').textContent == 'string' ? 'textContent' : 'innerText';
 
 let dom = {
   W3C: W3C,
@@ -103,7 +104,9 @@ let dom = {
         return (el.data = text);
       return el.data;
     } else {
-      return dom.html.apply(this, arguments)
+      if (arguments.length > 1)
+        return (el[textContent] = text);
+      return el[textContent];
     }
   },
   focus(el) {

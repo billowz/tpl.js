@@ -6,7 +6,7 @@ const _ = require('../util'),
 
 function registerDirective(name, opt) {
   let cls = Directive.register(name, opt);
-  module.exports[cls.prototype.className] = cls;
+  module.exports[cls.className] = cls;
 }
 
 export class EventDirective extends Directive {

@@ -1,5 +1,5 @@
 /*!
- * tpl.js v0.0.12 built in Sun, 10 Apr 2016 08:11:59 GMT
+ * tpl.js v0.0.12 built in Tue, 12 Apr 2016 08:32:39 GMT
  * Copyright (c) 2016 Tao Zeng <tao.zeng.zt@gmail.com>
  * Based on observer.js v0.0.x
  * Released under the MIT license
@@ -240,7 +240,7 @@ return /******/ (function(modules) { // webpackBootstrap
 	    }
 	  },
 	
-	  prototypeOf: Object.getPrototypeOf || function getPrototypeOf(obj) {
+	  prototypeOf: Object.setPrototypeOf ? Object.getPrototypeOf : function getPrototypeOf(obj) {
 	    return obj.__proto__;
 	  },
 	  setPrototypeOf: Object.setPrototypeOf || function setPrototypeOf(obj, proto) {
@@ -310,6 +310,65 @@ return /******/ (function(modules) { // webpackBootstrap
 	  },
 	  isNumeric: function isNumeric(n) {
 	    return !isNaN(parseFloat(n)) && isFinite(n);
+	  },
+	  isExtendOf: function isExtendOf(cls, parent) {
+	    var type = typeof cls === 'undefined' ? 'undefined' : _typeof(cls),
+	        proto = cls;
+	
+	    if (type != 'function') return cls instanceof parent;
+	
+	    while (proto = util.prototypeOf(proto)) {
+	      if (proto === parent) return true;
+	    }
+	    return false;
+	  },
+	  createClass: function createClass(opt, parent, options) {
+	    var type = typeof opt === 'undefined' ? 'undefined' : _typeof(opt),
+	        cls = undefined;
+	
+	    if (type == 'function') {
+	      if (!util.isExtendOf(opt, parent)) throw TypeError('Invalid Class Constructor, ' + opt.name + ' is not extendof ' + parent.name);
+	      cls = opt;
+	    } else if (opt && type == 'object') {
+	      options = options || {};
+	      var _constructor = opt[options.constructor || 'constructor'],
+	          dparent = options.extend;
+	
+	      if (typeof _constructor != 'function' || _constructor === Object) _constructor = undefined;
+	
+	      if (dparent && (dparent = opt[dparent])) {
+	        if (!util.isExtendOf(dparent, parent)) throw TypeError('Invalid Class Option, ' + dparent.name + ' is not extendof ' + parent.name);
+	        parent = dparent;
+	      }
+	
+	      cls = function (constructor, SuperClass) {
+	        function DynamicClass() {
+	          if (!(this instanceof SuperClass)) throw new TypeError('Cannot call a class as a function');
+	          if (constructor) {
+	            constructor.apply(this, arguments);
+	          } else {
+	            SuperClass.apply(this, arguments);
+	          }
+	        }
+	        DynamicClass.prototype = util.create(SuperClass.prototype, {
+	          constructor: {
+	            value: DynamicClass,
+	            enumerable: false,
+	            writable: true,
+	            configurable: true
+	          }
+	        });
+	        util.setPrototypeOf(DynamicClass, SuperClass);
+	        return DynamicClass;
+	      }(_constructor, parent);
+	
+	      util.eachObj(opt, function (val, key) {
+	        if (key !== 'constructor') cls.prototype[key] = val;
+	      });
+	    } else {
+	      throw TypeError('Invalid Class Option: ' + opt);
+	    }
+	    return cls;
 	  }
 	};
 	function strUpperFirstProcessor(k) {
@@ -350,7 +409,8 @@ return /******/ (function(modules) { // webpackBootstrap
 	'use strict';
 	
 	var _ = __webpack_require__(2),
-	    W3C = window.dispatchEvent;
+	    W3C = window.dispatchEvent,
+	    textContent = typeof document.createElement('div').textContent == 'string' ? 'textContent' : 'innerText';
 	
 	var dom = {
 	  W3C: W3C,
@@ -442,7 +502,8 @@ return /******/ (function(modules) { // webpackBootstrap
 	      if (arguments.length > 1) return el.data = _text;
 	      return el.data;
 	    } else {
-	      return dom.html.apply(this, arguments);
+	      if (arguments.length > 1) return el[textContent] = _text;
+	      return el[textContent];
 	    }
 	  },
 	  focus: function focus(el) {
@@ -1828,8 +1889,6 @@ return /******/ (function(modules) { // webpackBootstrap
 
 	'use strict';
 	
-	var _typeof = typeof Symbol === "function" && typeof Symbol.iterator === "symbol" ? function (obj) { return typeof obj; } : function (obj) { return obj && typeof Symbol === "function" && obj.constructor === Symbol ? "symbol" : typeof obj; };
-	
 	function _classCallCheck(instance, Constructor) { if (!(instance instanceof Constructor)) { throw new TypeError("Cannot call a class as a function"); } }
 	
 	function _possibleConstructorReturn(self, call) { if (!self) { throw new ReferenceError("this hasn't been initialised - super() hasn't been called"); } return call && (typeof call === "object" || typeof call === "function") ? call : self; }
@@ -1839,7 +1898,10 @@ return /******/ (function(modules) { // webpackBootstrap
 	var _ = __webpack_require__(2),
 	    dom = __webpack_require__(4),
 	    Binding = __webpack_require__(15),
-	    SUPER_CLASS_OPTION = 'extend',
+	    dynamicDirectiveOptions = {
+	  extend: 'extend',
+	  constructor: 'constructor'
+	},
 	    directives = {};
 	
 	var Directive = function (_Binding) {
@@ -1863,83 +1925,30 @@ return /******/ (function(modules) { // webpackBootstrap
 	  return Directive;
 	}(Binding);
 	
-	Directive.prototype.name = 'Unkown';
 	Directive.prototype.abstract = false;
 	Directive.prototype.block = false;
 	Directive.prototype.priority = 5;
 	
-	var isDirective = Directive.isDirective = function isDirective(object) {
-	  // TODO IE Shim
-	  return true;
-	  var type = typeof object === 'undefined' ? 'undefined' : _typeof(object);
-	  if (!object || type != 'function' && type != 'object') {
-	    return false;
+	_.assign(Directive, {
+	  getDirective: function getDirective(name) {
+	    return directives[name];
+	  },
+	  isDirective: function isDirective(object) {
+	    return _.isExtendOf(object, Directive);
+	  },
+	  register: function register(name, option) {
+	    var directive = _.createClass(option, Directive, dynamicDirectiveOptions);
+	
+	    if (!directive.className) directive.prototype.className = directive.className = _.hump(name) + 'Directive';
+	
+	    name = name.toLowerCase();
+	
+	    if (name in directives) console.warn('Directive[' + name + '] is defined');
+	
+	    directives[name] = directive;
+	    return directive;
 	  }
-	  var proto = object;
-	  while (proto = _.prototypeOf(proto)) {
-	    if (proto === Directive) return true;
-	  }
-	  return false;
-	};
-	
-	Directive.getDirective = function getDirective(name) {
-	  return directives[name];
-	};
-	
-	Directive.register = function register(name, option) {
-	  if (name in directives) {
-	    console.warn('Directive[' + name + '] is defined');
-	  }
-	  var directive = void 0;
-	  if (typeof option == 'function') {
-	    if (!isDirective(option)) throw TypeError('Invalid Directive constructor ' + option);
-	    directive = option;
-	    directive.prototype.className = directive.prototype.className || directive.name;
-	  } else if (option && (typeof option === 'undefined' ? 'undefined' : _typeof(option)) == 'object') {
-	
-	    directive = function (opt, SuperClass) {
-	      var userSuperClass = opt[SUPER_CLASS_OPTION];
-	      if (false) throw TypeError('Invalid Directive SuperClass ' + userSuperClass);
-	      SuperClass = userSuperClass || SuperClass;
-	
-	      var constructor = typeof opt.constructor == 'function' ? opt.constructor : undefined,
-	          Directive = function DynamicDirective() {
-	        if (!(this instanceof SuperClass)) throw new TypeError('Cannot call a class as a function');
-	
-	        SuperClass.apply(this, arguments);
-	        if (constructor) constructor.apply(this, arguments);
-	      };
-	
-	      Directive.prototype = _.create(SuperClass.prototype, {
-	        constructor: {
-	          value: Directive,
-	          enumerable: false,
-	          writable: true,
-	          configurable: true
-	        }
-	      });
-	
-	      delete opt.constructor;
-	      delete opt[SUPER_CLASS_OPTION];
-	
-	      _.eachObj(opt, function (val, key) {
-	        Directive.prototype[key] = val;
-	      });
-	
-	      _.setPrototypeOf(Directive, SuperClass);
-	      return Directive;
-	    }(option, Directive);
-	
-	    directive.prototype.className = _.hump(name) + 'Directive';
-	  } else throw TypeError('Invalid Directive Object ' + option);
-	
-	  name = name.toLowerCase();
-	  directive.prototype.name = name;
-	
-	  directives[name] = directive;
-	  return directive;
-	};
-	
+	});
 	module.exports = Directive;
 
 /***/ },
@@ -2224,11 +2233,13 @@ return /******/ (function(modules) { // webpackBootstrap
 	    currentIdentities[exp] = true;
 	    ret = {
 	      execute: makeExecuter('$scope.' + exp, keywords),
-	      path: _.parseExpr(exp)
+	      path: _.parseExpr(exp),
+	      expr: exp
 	    };
 	  } else {
 	    ret = {
-	      execute: makeExecuter(complileExpr(exp), keywords)
+	      execute: makeExecuter(complileExpr(exp), keywords),
+	      expr: exp
 	    };
 	  }
 	  ret.filters = compileFilter(filterExprs, keywords);
@@ -2645,7 +2656,7 @@ return /******/ (function(modules) { // webpackBootstrap
 	
 	function registerDirective(name, opt) {
 	  var cls = Directive.register(name, opt);
-	  module.exports[cls.prototype.className] = cls;
+	  module.exports[cls.className] = cls;
 	}
 	
 	var EventDirective = exports.EventDirective = function (_Directive) {
@@ -2732,7 +2743,7 @@ return /******/ (function(modules) { // webpackBootstrap
 	
 	function registerDirective(name, opt) {
 	  var cls = Directive.register(name, opt);
-	  module.exports[cls.prototype.className] = cls;
+	  module.exports[cls.className] = cls;
 	}
 	
 	var SimpleDirective = exports.SimpleDirective = function (_Directive) {
@@ -2748,16 +2759,8 @@ return /******/ (function(modules) { // webpackBootstrap
 	    return _this;
 	  }
 	
-	  SimpleDirective.prototype.setRealValue = function setRealValue(val) {
-	    this.set(this.expr, val);
-	  };
-	
 	  SimpleDirective.prototype.realValue = function realValue() {
 	    return this.expression.execute.call(this, this.scope(), this.el);
-	  };
-	
-	  SimpleDirective.prototype.setValue = function setValue(val) {
-	    return this.expression.applyFilter(val, this, [this.scope(), this.el], false);
 	  };
 	
 	  SimpleDirective.prototype.value = function value() {
@@ -2968,8 +2971,9 @@ return /******/ (function(modules) { // webpackBootstrap
 	    constructor: function constructor(el) {
 	      SimpleDirective.apply(this, arguments);
 	
-	      this.onChange = _.bind.call(this.onChange, this);
+	      if (!this.expression.simplePath) throw TypeError('Invalid Expression[' + this.expression.expr + '] on InputDirective');
 	
+	      this.onChange = _.bind.call(this.onChange, this);
 	      var tag = this.tag = el.tagName;
 	      switch (tag) {
 	        case TAG_SELECT:
@@ -2993,6 +2997,12 @@ return /******/ (function(modules) { // webpackBootstrap
 	    unbind: function unbind() {
 	      SimpleDirective.prototype.unbind.call(this);
 	      dom.off(this.el, this.event, this.onChange);
+	    },
+	    setRealValue: function setRealValue(val) {
+	      this.set(this.expression.path, val);
+	    },
+	    setValue: function setValue(val) {
+	      this.setRealValue(this.expression.applyFilter(val, this, [this.scope(), this.el], false));
 	    },
 	    onChange: function onChange(e) {
 	      var val = this.elVal(),
