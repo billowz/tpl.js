@@ -1,46 +1,42 @@
 let dom = require('./event'),
-  readyList = [], isReady,
-  root = document.documentElement;
+  readyList = [],
+  isReady,
+  root = document.documentElement
 
 function fireReady(fn) {
   isReady = true
-  while (fn = readyList.shift()) {
-    fn();
-  }
-}
-
-function doScrollCheck() {
-  try {
-    root.doScroll('left')
-    fireReady()
-  } catch (e) {
-    setTimeout(doScrollCheck)
-  }
+  while (fn = readyList.shift())
+    fn()
 }
 
 if (document.readyState === 'complete') {
-  setTimeout(fireReady);
+  setTimeout(fireReady)
 } else if (document.addEventListener) {
   document.addEventListener('DOMContentLoaded', fireReady)
 } else if (document.attachEvent) {
   document.attachEvent('onreadystatechange', function() {
     if (document.readyState === 'complete')
-      fireReady();
+      fireReady()
   })
-  try {
-    var isTop = window.frameElement === null
-  } catch (e) {}
-  if (root.doScroll && isTop && window.external)
+  if (root.doScroll && window.frameElement === null && window.external) {
+    function doScrollCheck() {
+      try {
+        root.doScroll('left')
+        fireReady()
+      } catch (e) {
+        setTimeout(doScrollCheck)
+      }
+    }
     doScrollCheck()
+  }
 }
 
-if (window.document)
-  dom.on(window, 'load', fireReady);
+dom.on(window, 'load', fireReady);
 
 dom.ready = function(fn) {
   if (!isReady) {
     readyList.push(fn)
   } else {
-    fn(avalon)
+    fn()
   }
 }

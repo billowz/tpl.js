@@ -3,7 +3,7 @@ var path = require('path'),
   pkg = require('../package.json'),
   bannar = `${pkg.name} v${pkg.version} built in ${new Date().toUTCString()}
 Copyright (c) 2016 ${pkg.author}
-Based on observer.js v0.0.x
+Based on observer.js v0.2.x
 Released under the ${pkg.license} license
 support IE6+ and other browsers
 support ES6 Proxy and Object.observe
