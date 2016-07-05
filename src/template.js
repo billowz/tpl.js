@@ -3,7 +3,7 @@ const _ = require('./util'),
   TemplateInstance = require('./templateInstance');
 
 const parseDelimiterReg = function(delimiter) {
-    return new RegExp([delimiter[0], '([^', delimiter[0], delimiter[0], ']*)', delimiter[1]].join(''), 'g')
+    return new RegExp([delimiter[0], '([^', delimiter[0],']*)', delimiter[1]].join(''), 'g')
   },
   parseDirectiveReg = function(prefix) {
     return new RegExp('^' + prefix);

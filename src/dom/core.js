@@ -20,26 +20,23 @@ let dom = {
     }
   },
   query(selectors, all) {
-    if (typeof selectors == 'string')
+    if (_.isString(selectors))
       return all ? document.querySelectorAll(selectors) : document.querySelector(selectors);
     return selectors;
   },
   cloneNode(el, deep) {
     if (el instanceof Array) {
-      let els = [];
-      for (let i = 0, l = el.length; i < l; i++)
-        els[i] = el.cloneNode(deep !== false);
-      return els;
+      return _.map(el, (e) => {
+        e.cloneNode(deep !== false);
+      })
     } else
       return el.cloneNode(deep !== false);
   },
   remove(el) {
     if (el instanceof Array) {
-      let _el;
-      for (let i = 0, l = el.length; i < l; i++) {
-        _el = el[i];
-        _el.parentNode.removeChild(_el);
-      }
+      _.each(el, (e) => {
+        e.parentNode.removeChild(e)
+      })
     } else
       el.parentNode.removeChild(el);
   },
@@ -50,9 +47,9 @@ let dom = {
     let parent = target.parentNode;
 
     if (el instanceof Array) {
-      for (let i = 0, l = el.length; i < l; i++) {
-        parent.insertBefore(el[i], target);
-      }
+      _.each(el, (e) => {
+        parent.insertBefore(e, target)
+      })
     } else
       parent.insertBefore(el, target);
   },
@@ -63,17 +60,17 @@ let dom = {
     let parent = target.parentNode;
 
     if (el instanceof Array) {
-      for (let i = 0, l = el.length; i < l; i++) {
-        insertAfter(parent, el[i], target);
-      }
+      _.each(el, (e) => {
+        insertAfter(parent, e, target);
+      })
     } else
       insertAfter(parent, el, target);
   },
   append(el, target) {
     if (target instanceof Array) {
-      for (let i = 0, l = target.length; i < l; i++) {
-        el.appendChild(target[i]);
-      }
+      _.each(target, (t) => {
+        el.appendChild(t);
+      })
     } else
       el.appendChild(target);
   },

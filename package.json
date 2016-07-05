@@ -29,12 +29,13 @@
   },
   "dependencies": {
     "jquery": "1.9.1",
-    "observer.js": "~0.0.6",
+    "observer.js": "^0.2.0",
     "todomvc-common": "^1.0.2",
     "todomvc-app-css": "^2.0.4"
   },
   "devDependencies": {
     "run-sequence":"^1.1.5",
+    "through2":"^2.0.0",
     "minimist":"^1.2.0",
     "gulp-bump":"^2.0.1",
     "gulp-git":"^1.7.0",

@@ -1,5 +1,4 @@
-var path = require('path'),
-  gulp = require('gulp'),
+var gulp = require('gulp'),
   clean = require('gulp-clean'),
   run = require('gulp-run'),
   webpack = require('webpack'),
@@ -7,46 +6,30 @@ var path = require('path'),
   gulpWebpack = require('gulp-webpack'),
   WebpackDevServer = require('webpack-dev-server'),
   karma = require('karma').Server,
-  webpackCfg = require('./build/webpack.dev.config.js'),
   minimist = require('minimist'),
   codecov = require('gulp-codecov'),
   bump = require('gulp-bump'),
   git = require('gulp-git'),
-  pkg = require('./package.json'),
-  dist = './dist'
+  through = require('through2'),
+  dist = './dist',
+  pkg = require('./package.json')
 
-function miniConfig(webpackCfg) {
+gulp.task('build', ['clean'], function() {
+  var webpackCfg = require('./build/webpack.dev.config.js')
   var miniCfg = Object.assign({}, webpackCfg);
-  miniCfg.output = Object.assign({}, webpackCfg.output, {
-    filename: webpackCfg.output.filename.replace(/js$/, 'min.js')
-  })
+  miniCfg.output = Object.assign({}, webpackCfg.output)
+  miniCfg.output.filename = miniCfg.output.filename.replace(/js$/, 'min.js')
   miniCfg.plugins = (miniCfg.plugins || [])
     .concat(new webpack.optimize.UglifyJsPlugin({
       compress: {
         warnings: false
       }
     }));
-  delete miniCfg.devtool;
-  return miniCfg;
-}
-function allConfig(webpackCfg) {
-  var cfg = Object.assign({}, webpackCfg);
-  cfg.output = Object.assign({}, webpackCfg.output, {
-    filename: webpackCfg.output.filename.replace(/js$/, 'all.js')
-  })
-  cfg.externals = Object.assign({}, webpackCfg.externals)
-  delete cfg.externals.observer
-  return cfg;
-}
-gulp.task('build', ['clean'], function() {
+  webpackCfg.devtool = 'source-map'
   return gulp.src('./')
     .pipe(gulpWebpack(webpackCfg))
     .pipe(gulp.dest(dist))
-    .pipe(gulpWebpack(miniConfig(webpackCfg)))
-    .pipe(gulp.dest(dist))
-    .pipe(gulpWebpack(allConfig(webpackCfg)))
-    .pipe(gulp.dest(dist))
-    .pipe(gulpWebpack(miniConfig(allConfig(webpackCfg))))
+    .pipe(gulpWebpack(miniCfg))
     .pipe(gulp.dest(dist))
 });
 
@@ -62,9 +45,9 @@ gulp.task('watch', function(event) {
 });
 
 gulp.task('server', function() {
-  webpackCfg.hot = false;
+  var webpackCfg = require('./build/webpack.dev.config.js')
   var devServer = new WebpackDevServer(webpack(webpackCfg), {
-    contentBase: path.join('./'),
+    contentBase: webpackCfg.output.contentBase,
     publicPath: webpackCfg.output.publicPath,
     hot: false,
     noInfo: false,
@@ -87,6 +70,7 @@ gulp.task('test', function(done) {
     configFile: __dirname + '/build/karma.unit.config.js'
   }, done).start();
 });
+
 gulp.task('cover', function(done) {
   new karma({
     configFile: __dirname + '/build/karma.cover.config.js'
@@ -105,8 +89,6 @@ gulp.task('cover-ci', ['cover'], function() {
 });
 
 gulp.task('ci', ['cover-ci', 'sauce']);
-
-
 
 gulp.task('_commit', function() {
   var args = minimist(process.argv.slice(2));
@@ -139,20 +121,38 @@ gulp.task('push', function(callback) {
     });
 });
 
+gulp.task('publish', function() {
+  return run('npm publish').exec();
+});
+
 gulp.task('_version', function() {
   var args = minimist(process.argv.slice(2));
   return gulp.src('./package.json')
     .pipe(bump({
       type: args.type || 'patch'
-    }).on('error', function(err) {
-      console.log(err)
     }))
-    .pipe(gulp.dest('./'))
-    .pipe(run('npm publish'));
+    .pipe(through.obj(function(file, enc, cb) {
+      var oldVer = pkg.version
+      pkg.version = JSON.parse(String(file.contents)).version
+      console.log('update version: ' + oldVer + ' to ' + pkg.version)
+      cb(null, file);
+    }))
+    .pipe(gulp.dest('./'));
 });
 
+/*
+  MAJOR ("major") version when you make incompatible API changes
+  MINOR ("minor") version when you add functionality in a backwards-compatible manner
+  PATCH ("patch") version when you make backwards-compatible bug fixes.
+  PRERELEASE ("prerelease") a pre-release version
+  Version example
+  major: 1.0.0
+  minor: 0.1 .0
+  patch: 0.0.2
+  prerelease: 0.0.1-2
+ */
 gulp.task('version', function(callback) {
-  runSequence('build', '_version', '_commit', '_push',
+  runSequence('_version', 'build', 'publish', '_commit', '_push',
     function(error) {
       if (error)
         console.log(error.message);
@@ -172,8 +172,9 @@ gulp.task('tag', function(cb) {
 
 gulp.task('release', function(callback) {
   runSequence(
-    'build',
     '_version',
+    'build',
+    'publish',
     '_commit',
     '_push',
     'tag',

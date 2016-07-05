@@ -12,11 +12,11 @@ function cpyChildNodes(el) {
 }
 
 class TemplateInstance {
-  constructor(el, scope, delimiterReg, directiveReg) {
+  constructor(el, scope, delimiterReg, directiveReg, autoBind) {
     this.delimiterReg = delimiterReg;
     this.directiveReg = directiveReg;
     this.scope = observer.proxy.proxy(scope) || scope;
-    this._scopeProxyListen = _.bind.call(this._scopeProxyListen, this);
+    this._scopeProxyListen = this._scopeProxyListen.bind(this);
     observer.proxy.on(this.scope, this._scopeProxyListen);
     this.bindings = this.parse(el, this);
     this.binded = false;
@@ -174,8 +174,12 @@ class TemplateInstance {
           block = true;
       }
     }
-    if (directiveConsts.length)
+    if (directiveConsts.length == 1) {
+      let cfg = directiveConsts[0];
+      directives.push(new cfg.const(el, this, cfg.expression, cfg.attr));
+    } else if (directiveConsts.length) {
       directives.push(new DirectiveGroup(el, this, directiveConsts));
+    }
     if (!block)
       directives.push.apply(directives, this.parseChildNodes(el));
     return directives;

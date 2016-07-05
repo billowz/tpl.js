@@ -1,13 +1,12 @@
 const _ = require('../util'),
   dom = require('./core'),
-  {Map} = _,
   {W3C} = dom,
   root = document.documentElement,
   domReady = false;
 
 _.assign(dom, {
   on(el, type, cb, once) {
-    if (eventListeners.addHandler(el, type, cb, once === true)) {
+    if (listen.addHandler(el, type, cb, once === true)) {
       canBubbleUp[type] ? delegateEvent(type, cb) : bandEvent(el, type, cb);
       return cb;
     }
@@ -17,7 +16,7 @@ _.assign(dom, {
     return dom.on(el, type, cb, true);
   },
   off(el, type, cb) {
-    if (eventListeners.removeHandler(el, type, cb)) {
+    if (listen.removeHandler(el, type, cb)) {
       canBubbleUp[type] ? undelegateEvent(type, cb) : unbandEvent(el, type, cb);
       return cb;
     }
@@ -138,21 +137,21 @@ class Event {
   }
 }
 
-const eventListeners = new Map();
-_.assign(eventListeners, {
+const listenKey = '__LISTEN__'
+
+const listen = {
   addHandler(el, type, handler, once) {
     if (!typeof handler == 'function')
       throw TypeError('Invalid Event Handler');
 
-    let listens = eventListeners.get(el),
+    let listens = el[listenKey],
       handlers;
 
     if (!listens) {
-      listens = {
+      el[listenKey] = listens = {
         typeNR: 0,
         handlers: {}
       };
-      eventListeners.set(el, listens);
     }
     if (!(handlers = listens.handlers[type])) {
       handlers = listens.handlers[type] = [{
@@ -170,7 +169,7 @@ _.assign(eventListeners, {
   },
 
   removeHandler(el, type, handler) {
-    let listens = eventListeners.get(el),
+    let listens = el[listenKey],
       handlers = listens ? listens.handlers[type] : undefined;
 
     if (handlers) {
@@ -181,7 +180,7 @@ _.assign(eventListeners, {
             delete listens.handlers[type];
             listens.typeNR--;
             if (!listens.typeNR)
-              eventListeners['delete'](el);
+              delete el[listenKey];
             return true;
           }
           return false;
@@ -192,7 +191,7 @@ _.assign(eventListeners, {
   },
 
   getHandlers(el, type) {
-    let listens = eventListeners.get(el),
+    let listens = el[listenKey],
       handlers = listens ? listens.handlers[type] : undefined;
 
     if (handlers)
@@ -201,11 +200,11 @@ _.assign(eventListeners, {
   },
 
   hasHandler(el, type) {
-    let listens = eventListeners.get(el);
+    let listens = el[listenKey];
     return listens ? listens.handlers[type] || false : false;
   }
 
-});
+}
 
 const bind = W3C ? function(el, type, fn, capture) {
     el.addEventListener(type, fn, capture)
@@ -270,7 +269,7 @@ function undelegateEvent(type, cb) {
 
 let last = new Date();
 function dispatchElement(el, event, isMove) {
-  let handlers = eventListeners.getHandlers(el, event.type);
+  let handlers = listen.getHandlers(el, event.type);
 
   if (handlers) {
     event.currentTarget = el;
@@ -322,7 +321,7 @@ function dispatch(event) {
 
 //针对firefox, chrome修正mouseenter, mouseleave
 if (!('onmouseenter' in root)) {
-  _.eachObj({
+  _.each({
     mouseenter: 'mouseover',
     mouseleave: 'mouseout'
   }, function(origType, fixType) {
@@ -336,7 +335,7 @@ if (!('onmouseenter' in root)) {
   })
 }
 //针对IE9+, w3c修正animationend
-_.eachObj({
+_.each({
   AnimationEvent: 'animationend',
   WebKitAnimationEvent: 'webkitAnimationEnd'
 }, function(construct, fixType) {
@@ -390,7 +389,7 @@ if (!('oninput' in document.createElement('input'))) {
       if (actEl.value == actEl.oldValue)
         return;
       actEl.oldValue = actEl.value;
-      if (eventListeners.hasHandler(actEl, 'input')) {
+      if (listen.hasHandler(actEl, 'input')) {
         event = new Event(event);
         event.type = 'input';
         dispatchEvent(actEl, 'input', event);
@@ -417,6 +416,6 @@ if (document.onmousewheel === void 0) {
     }
   }
 }
-_.eachObj(eventHooks, function(hook, type) {
+_.each(eventHooks, function(hook, type) {
   eventHookTypes[hook.type || type] = type;
 })

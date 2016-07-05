@@ -9,6 +9,7 @@ class DirectiveGroup extends AbstractBinding {
       return (b.const.prototype.priority - a.const.prototype.priority) || 0;
     });
     this.directives = [];
+
     this.bindedCount = 0;
   }
 

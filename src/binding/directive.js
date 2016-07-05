@@ -31,7 +31,7 @@ _.assign(Directive, {
     return _.isExtendOf(object, Directive);
   },
   register(name, option) {
-    let directive = _.createClass(option, Directive, dynamicDirectiveOptions);
+    let directive = _.dynamicClass(option, Directive, dynamicDirectiveOptions);
 
     if (!directive.className)
       directive.prototype.className = directive.className = (_.hump(name) + 'Directive');

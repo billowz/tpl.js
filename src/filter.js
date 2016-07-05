@@ -76,7 +76,7 @@ let eventFilters = {
     return e.target === e.currentTarget;
   }
 }
-_.eachObj(eventFilters, (fn, name) => {
+_.each(eventFilters, (fn, name) => {
   filter.register(name, {
     type: 'event',
     apply: fn
@@ -140,6 +140,6 @@ let nomalFilters = {
       : (args[0] + (value === 1 ? '' : 's'))
   }
 }
-_.eachObj(nomalFilters, (f, name) => {
+_.each(nomalFilters, (f, name) => {
   filter.register(name, f)
 })
