@@ -17,13 +17,15 @@
 <script src="../node_modules/observer.js/dist/observer.js"></script>
 <script src="../dist/tpl.js"></script>
 <script>
-$(document).ready(function() {
-  observer.setConfig({lazy:false})
+tpl.ready(function() {
+    tpl.init({
+        lazy: false
+    })
     var app = {
         databases: []
     }
-    tpl.proxyChange(app, function(obj, proxy){
-      app = proxy || obj;
+    tpl.proxy.on(app, function(obj, proxy) {
+        app = proxy || obj;
     });
     var template = new tpl($(document.getElementById('tpl/tpl.html')).html());
     template.complie(app).appendTo('#app');
@@ -36,7 +38,6 @@ $(document).ready(function() {
     loadSamples()
 })
 </script>
-
 <script id="tpl/tpl.html" type="text/template">
     <a href="../index.html">Back</a>
     <table class="table table-striped lastest-data">
@@ -60,4 +61,5 @@ $(document).ready(function() {
         </tbody>
     </table>
 </script>
+
 </html>

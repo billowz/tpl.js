@@ -1,13 +1,11 @@
-const AbstractBinding = require('./abstractBinding'),
-  exprReg = /((?:'[^']*')*(?:(?:[^\|']+(?:'[^']*')*[^\|']*)+|[^\|]+))|^$/g,
-  filterReg = /^$/g
+const AbstractBinding = require('./abstractBinding')
 
 class Binding extends AbstractBinding {
   constructor(tpl, expr) {
-    super(tpl);
-    this.expr = expr;
+    super(tpl)
+    this.expr = expr
   }
 }
-Binding.generateComments = true;
+Binding.generateComments = true
 
-module.exports = Binding;
+module.exports = Binding

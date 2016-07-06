@@ -4,18 +4,18 @@ const _ = require('../util'),
 _.assign(dom, {
   css(el, name, value) {
     let prop = /[_-]/.test(name) ? camelize(name) : name,
-      hook;
+      hook
 
-    name = cssName(prop) || prop;
-    hook = cssHooks[prop] || cssDefaultHook;
-    if (arguments.length == 2 || typeof value === 'boolean') {
+    name = cssName(prop) || prop
+    hook = cssHooks[prop] || cssDefaultHook
+    if (arguments.length == 2) {
       let convert = value, num;
 
       if (name === 'background')
         name = 'backgroundColor';
       value = hook.get(el, name);
       return convert !== false && isFinite((num = parseFloat(value))) ? num : value;
-    } else if (value === '' || value === undefined || value === null) {
+    } else if (!value && value !== 0) {
       el.style[name] = ''
     } else {
       if (isFinite(value) && !cssNumber[prop])

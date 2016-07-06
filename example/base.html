@@ -13,7 +13,11 @@
 <script src="../node_modules/observer.js/dist/observer.js"></script>
 <script src="../dist/tpl.js"></script>
 <script type="text/javascript">
-$(document).ready(function() {
+
+tpl.ready(function() {
+    tpl.init({
+        lazy: false
+    })
     var data = {
         input: null,
         radio1: 'Radio1 Selected',
@@ -25,7 +29,7 @@ $(document).ready(function() {
         },
         eachArray: []
     }
-    tpl.proxyChange(data, function(obj, proxy){
+    tpl.proxy.on(data, function(obj, proxy){
       data = proxy || obj;
     });
     var docTpl = new tpl($(document.getElementById('tpl/code.html')).html());
@@ -64,7 +68,7 @@ $(document).ready(function() {
         setTimeout(function() {
             console.log('update each use:' + (new Date() - s));
         }, 0);
-    }, 1000)
+    }, 100000)
 });
 </script>
 <script id="tpl/code.html" type="text/template">

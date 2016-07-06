@@ -1,6 +1,7 @@
 const _ = require('./util'),
   slice = Array.prototype.slice,
-  filters = {};
+  filters = {}
+
 function apply(name, data, args, apply) {
   let f = filters[name],
     type = f ? f.type : undefined, fn;
@@ -9,7 +10,7 @@ function apply(name, data, args, apply) {
   if (!fn) {
     console.warn(`filter[${name}].${apply !== false ? 'apply' : 'unapply'} is undefined`);
   } else {
-    if (typeof args == 'function')
+    if (_.isFunc(args))
       args = args();
     data = fn.apply(f, [data].concat(args));
   }
@@ -55,6 +56,7 @@ export const keyCodes = {
   right: 39,
   down: 40
 }
+
 let eventFilters = {
   key(e) {
     let keys = slice.call(arguments, 1),
@@ -76,12 +78,14 @@ let eventFilters = {
     return e.target === e.currentTarget;
   }
 }
+
 _.each(eventFilters, (fn, name) => {
   filter.register(name, {
     type: 'event',
     apply: fn
   })
 })
+
 let nomalFilters = {
   json: {
     apply: function(value, indent) {
@@ -128,9 +132,7 @@ let nomalFilters = {
       : ''
     var _float = stringified.slice(-3)
     var sign = value < 0 ? '-' : ''
-    return sign + currency + head +
-      _int.slice(i).replace(digitsRE, '$1,') +
-      _float
+    return sign + currency + head + _int.slice(i).replace(digitsRE, '$1,') + _float
   },
 
   pluralize(value) {

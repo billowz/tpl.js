@@ -34,9 +34,5 @@ if (document.readyState === 'complete') {
 dom.on(window, 'load', fireReady);
 
 dom.ready = function(fn) {
-  if (!isReady) {
-    readyList.push(fn)
-  } else {
-    fn()
-  }
+  !isReady ? readyList.push(fn) : fn()
 }

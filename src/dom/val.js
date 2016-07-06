@@ -1,94 +1,84 @@
 const _ = require('../util'),
   dom = require('./core');
 
+function stringValue(val) {
+  if (_.isNil(val) || val === NaN)
+    return ''
+  if (!_.isString(val))
+    return val + ''
+  return val
+}
+
 module.exports = _.assign(dom, {
   val(el, val) {
-    let hook = dom.valHooks[el.type || el.tagName.toLowerCase()];
-    if (arguments.length > 1) {
-      if (hook && hook.set) {
-        hook.set(el, val);
-      } else {
-        if (val === undefined || val === null || val === NaN) {
-          val = '';
-        } else if (typeof val != 'string')
-          val = val + '';
-        el.value = val;
-      }
-    } else {
-      if (hook && hook.get) {
-        return hook.get(el);
-      } else
-        return el.value || '';
-    }
+    let hook = dom.valHooks[el.type || el.tagName.toLowerCase()]
+
+    if (arguments.length == 1)
+      return hook && hook.get ? hook.get(el) : el.value || ''
+
+    return hook && hook.set ? hook.set(el, val) : (el.value = stringValue(val))
   },
   valHooks: {
     option: {
-      get: function(elem) {
-        var val = elem.attributes.value;
-        return !val || val.specified ? elem.value : elem.text;
+      get(el) {
+        let val = el.attributes.value
+
+        return !val || val.specified ? el.value : el.text
       }
     },
 
     select: {
-      get: function(elem) {
-        let signle = elem.type == 'select-one',
-          index = elem.selectedIndex;
+      get(el) {
+        let signle = el.type == 'select-one',
+          index = el.selectedIndex
 
         if (index < 0)
-          return signle ? undefined : [];
+          return signle ? undefined : []
 
-        let options = elem.options,
+        let options = el.options,
           option,
           values = signle ? undefined : []
 
         for (let i = 0, l = options.length; i < l; i++) {
           option = options[i];
           if (option.selected || i == index) {
-            if (signle)
-              return dom.val(option);
-            values.push(dom.val(option));
+            if (signle) return dom.val(option);
+            values.push(dom.val(option))
           }
         }
-        return values;
+        return values
       },
 
-      set: function(elem, value) {
-        let signle = elem.type == 'select-one',
-          options = elem.options,
-          option,
-          i, l;
+      set(el, value) {
+        let signle = el.type == 'select-one',
+          options = el.options,
+          option, i, l, vl, val
 
-        elem.selectedIndex = -1;
-        if ((value instanceof Array)) {
-          if (signle) {
-            value = value[0];
-          } else {
-            if (!value.length)
-              return;
-            let vals = {};
-            for (i = 0, l = value.length; i < l; i++)
-              vals[value[i]] = true;
+        el.selectedIndex = -1;
 
-            for (i = 0, l = options.length; i < l; i++) {
-              option = options[i];
-              if (vals[dom.val(option)] === true)
-                option.selected = true;
-            }
-            return;
-          }
-        }
-        if (value !== undefined && value !== null) {
-          if (typeof value != 'string')
-            value = value + '';
+        if (!_.isArray(value))
+          value = _.isNil(value) ? [] : [value]
+
+        if ((vl = value.length)) {
+          if (signle) vl = value.length = 1
+
+          let map = _.reverseConvert(value, () => false),
+            nr = 0
+
           for (i = 0, l = options.length; i < l; i++) {
-            option = options[i];
-            if (dom.val(option) == value) {
-              option.selected = true;
-              return;
+            option = options[i]
+            val = dom.val(option)
+            if (_.isBoolean(map[val])) {
+              map[val] = option.selected = true
+              if (++nr === vl)
+                break
             }
+            value = _.keys(map, (v) => v === true)
           }
         }
+        return signle ? value[0] : value
       }
+
     }
   }
 })

@@ -1,109 +1,106 @@
 const observer = require('observer'),
   _ = require('./util'),
   dom = require('./dom'),
-  {Text, Directive, DirectiveGroup} = require('./binding');
+  {
+    Text,
+    Directive,
+    DirectiveGroup
+  } = require('./binding')
 
-function cpyChildNodes(el) {
-  let els = [],
-    childNodes = el.childNodes;
-  for (let i = 0, l = childNodes.length; i < l; i++)
-    els[i] = childNodes[i];
-  return els;
+function childNodes(el) {
+  return _.map(el.childNodes, (n) => n)
 }
 
 class TemplateInstance {
   constructor(el, scope, delimiterReg, directiveReg, autoBind) {
-    this.delimiterReg = delimiterReg;
-    this.directiveReg = directiveReg;
-    this.scope = observer.proxy.proxy(scope) || scope;
-    this._scopeProxyListen = this._scopeProxyListen.bind(this);
-    observer.proxy.on(this.scope, this._scopeProxyListen);
-    this.bindings = this.parse(el, this);
-    this.binded = false;
-    this.bind();
-    this.els = cpyChildNodes(el);
+    this.delimiterReg = delimiterReg
+    this.directiveReg = directiveReg
+    this.scope = observer.proxy.proxy(scope) || scope
+    this._scopeProxyListen = this._scopeProxyListen.bind(this)
+    observer.proxy.on(this.scope, this._scopeProxyListen)
+    this.bindings = this.parse(el, this)
+    this.binded = false
+    this.bind()
+    this.els = childNodes(el)
   }
 
   parentEl() {
-    return this.els[0].parentNode;
+    return this.els[0].parentNode
   }
 
   before(target) {
-    dom.before(this.els, dom.query(target));
-    return this;
+    dom.before(this.els, dom.query(target))
+    return this
   }
 
   after(target) {
-    dom.after(this.els, dom.query(target));
-    return this;
+    dom.after(this.els, dom.query(target))
+    return this
   }
 
   prependTo(target) {
-    dom.prepend(dom.query(target), this.els);
-    return this;
+    dom.prepend(dom.query(target), this.els)
+    return this
   }
 
   appendTo(target) {
-    dom.append(dom.query(target), this.els);
-    return this;
+    dom.append(dom.query(target), this.els)
+    return this
   }
 
   bind() {
-    if (this.binded)
-      return;
-    let bindings = this.bindings;
-    for (let i = 0, l = bindings.length; i < l; i++) {
-      bindings[i].bind();
+    if (!this.binded) {
+      _.each(this.bindings, (bind) => {
+        bind.bind()
+      })
+      this.binded = true
     }
-    this.binded = true;
-    return this;
+    return this
   }
 
   unbind() {
-    if (!this.binded)
-      return;
-    let bindings = this.bindings;
-    for (let i = 0, l = bindings.length; i < l; i++) {
-      bindings[i].unbind();
+    if (this.binded) {
+      _.each(this.bindings, (bind) => {
+        bind.unbind()
+      })
+      this.binded = false
     }
-    this.binded = false;
-    return this;
+    return this
   }
 
   destroy() {
-    observer.proxy.un(this.scope, this._scopeProxyListen);
-    let bindings = this.bindings;
-    for (let i = 0, l = bindings.length; i < l; i++) {
+    observer.proxy.un(this.scope, this._scopeProxyListen)
+    _.each(this.bindings, (bind) => {
       if (this.binded)
-        bindings[i].unbind();
-      bindings[i].destroy();
-    }
-    dom.remove(this.els);
-    this.bindings = undefined;
-    this.scope = undefined;
+        bind.unbind()
+      bind.destroy()
+    })
+    dom.remove(this.els)
+    this.bindings = undefined
+    this.scope = undefined
   }
 
   _scopeProxyListen(obj, proxy) {
-    this.scope = proxy || obj;
+    this.scope = proxy || obj
   }
 
   parse(els) {
-    if (els.jquery || els instanceof Array) {
-      let bindings = [];
-      for (let i = 0, l = els.length; i < l; i++) {
-        bindings.push.apply(bindings, this.parseEl(els[i]));
-      }
-      return bindings;
+    if (_.isArrayLike(els)) {
+      let bindings = []
+      _.each(els, (el) => {
+        bindings.push.apply(bindings, this.parseEl(el))
+      })
+      return bindings
     }
-    return this.parseEl(els);
+    return this.parseEl(els)
   }
 
   parseEl(el) {
     switch (el.nodeType) {
       case 1:
-        return this.parseElement(el);
+        return this.parseElement(el)
       case 3:
-        return this.parseText(el);
+        return this.parseText(el)
     }
   }
 
@@ -112,25 +109,25 @@ class TemplateInstance {
       delimiterReg = this.delimiterReg,
       token,
       lastIndex = 0,
-      bindings = [];
+      bindings = []
 
     while ((token = delimiterReg.exec(text))) {
 
-      this.createTextNode2(text.substring(lastIndex, delimiterReg.lastIndex - token[0].length), el);
+      this.createTextNode2(text.substring(lastIndex, delimiterReg.lastIndex - token[0].length), el)
 
-      bindings.push(new Text(this.createTextNode('binding', el), this, token[1]));
+      bindings.push(new Text(this.createTextNode('binding', el), this, token[1]))
 
-      lastIndex = delimiterReg.lastIndex;
+      lastIndex = delimiterReg.lastIndex
     }
 
     if (bindings.length) {
 
-      this.createTextNode2(text.substr(lastIndex), el);
+      this.createTextNode2(text.substr(lastIndex), el)
 
-      dom.remove(el);
+      dom.remove(el)
     }
 
-    return bindings;
+    return bindings
   }
 
   parseElement(el) {
@@ -141,72 +138,68 @@ class TemplateInstance {
       name,
       directiveName,
       directiveConst,
-      directiveConsts = [];
+      directiveConsts = []
 
     for (let i = 0, l = attributes.length; i < l; i++) {
-      attribute = attributes[i];
-      name = attribute.name;
-      directiveName = this.parseDirectiveName(name);
-      if (!directiveName)
-        continue;
-
-      directiveConst = Directive.getDirective(directiveName)
-      if (!directiveConst) {
-        console.warn('Directive is undefined ' + name);
-        continue;
-      }
-
-      if (directiveConst.prototype.abstract) {
-        block = true;
-        directiveConsts = [{
-          const: directiveConst,
-          expression: attribute.value,
-          attr: name
-        }];
-        break;
-      } else {
-        directiveConsts.push({
-          const: directiveConst,
-          expression: attribute.value,
-          attr: name
-        });
-        if (directiveConst.prototype.block)
-          block = true;
+      attribute = attributes[i]
+      name = attribute.name
+      directiveName = this.parseDirectiveName(name)
+      if (directiveName) {
+        directiveConst = Directive.getDirective(directiveName)
+        if (directiveConst) {
+          if (directiveConst.prototype.abstract) {
+            block = true
+            directiveConsts = [{
+              const: directiveConst,
+              expression: attribute.value,
+              attr: name
+            }]
+            break
+          } else {
+            directiveConsts.push({
+              const: directiveConst,
+              expression: attribute.value,
+              attr: name
+            })
+            if (directiveConst.prototype.block)
+              block = true
+          }
+        } else {
+          console.warn('Directive is undefined ' + name)
+        }
       }
     }
     if (directiveConsts.length == 1) {
-      let cfg = directiveConsts[0];
-      directives.push(new cfg.const(el, this, cfg.expression, cfg.attr));
+      let cfg = directiveConsts[0]
+      directives.push(new cfg.const(el, this, cfg.expression, cfg.attr))
     } else if (directiveConsts.length) {
-      directives.push(new DirectiveGroup(el, this, directiveConsts));
+      directives.push(new DirectiveGroup(el, this, directiveConsts))
     }
     if (!block)
-      directives.push.apply(directives, this.parseChildNodes(el));
-    return directives;
+      directives.push.apply(directives, this.parseChildNodes(el))
+    return directives
   }
 
   parseChildNodes(el) {
-    return this.parse(cpyChildNodes(el));
+    return this.parse(childNodes(el))
   }
 
   parseDirectiveName(name) {
-    let directiveName = name.replace(this.directiveReg, '');
-    return directiveName == name ? undefined : directiveName;
+    let directiveName = name.replace(this.directiveReg, '')
+    return directiveName == name ? undefined : directiveName
   }
 
   createTextNode(content, before) {
-    let el = document.createTextNode(content);
-    dom.before(el, before);
-    return el;
+    let el = document.createTextNode(content)
+    dom.before(el, before)
+    return el
   }
 
   createTextNode2(content, before) {
-    if ( (content = _.trim(content)) ) {
-      return this.createTextNode(content, before);
-    }
-    return undefined;
+    if ((content = _.trim(content)))
+      return this.createTextNode(content, before)
+    return undefined
   }
 }
 
-module.exports = TemplateInstance;
-
+module.exports = TemplateInstance

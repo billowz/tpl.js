@@ -3,67 +3,59 @@ const _ = require('../util'),
   {Directive} = require('../binding'),
   expression = require('../expression'),
   {YieId} = _,
-  expressionArgs = ['$el'],
-  hasOwn = Object.prototype.hasOwnProperty;
+  expressionArgs = ['$el']
 
 function registerDirective(name, opt) {
-  let cls = Directive.register(name, opt);
-  module.exports[cls.className] = cls;
+  let cls = Directive.register(name, opt)
+  module.exports[cls.className] = cls
 }
 
 export class SimpleDirective extends Directive {
   constructor(el, tpl, expr, attr) {
-    super(el, tpl, expr, attr);
-    this.observeHandler = _.bind.call(this.observeHandler, this);
-    this.expression = expression.parse(this.expr, expressionArgs);
+    super(el, tpl, expr, attr)
+    this.observeHandler = this.observeHandler.bind(this)
+    this.expression = expression.parse(this.expr, expressionArgs)
   }
 
   realValue() {
-    return this.expression.execute.call(this, this.scope(), this.el);
+    return this.expression.execute.call(this, this.scope(), this.el)
   }
 
   value() {
-    return this.expression.executeAll.call(this, this.scope(), this.el);
+    return this.expression.executeAll.call(this, this.scope(), this.el)
   }
 
   bind() {
-    super.bind();
-    let identities = this.expression.identities;
-    for (let i = 0, l = identities.length; i < l; i++)
-      this.observe(identities[i], this.observeHandler);
-
-    this.update(this.value());
+    super.bind()
+    _.each(this.expression.identities, (ident) => {
+      this.observe(ident, this.observeHandler)
+    })
+    this.update(this.value())
   }
 
   unbind() {
-    super.unbind();
-
-    let identities = this.expression.identities;
-    for (let i = 0, l = identities.length; i < l; i++)
-      this.unobserve(identities[i], this.observeHandler);
-
+    super.unbind()
+    _.each(this.expression.identities, (ident) => {
+      this.unobserve(ident, this.observeHandler)
+    })
   }
 
   blankValue(val) {
-    if (arguments.length == 0) {
-      val = this.value();
-    }
-    if (val === undefined || val == null) {
-      return '';
-    }
-    return val;
+    if (arguments.length == 0)
+      val = this.value()
+    return _.isNil(val) ? '' : val
   }
 
   observeHandler(expr, val) {
     if (this.expression.simplePath) {
-      this.update(this.expression.applyFilter(val, this, [this.scope(), this.el]));
+      this.update(this.expression.applyFilter(val, this, [this.scope(), this.el]))
     } else {
-      this.update(this.value());
+      this.update(this.value())
     }
   }
 
   update(val) {
-    throw 'Abstract Method [' + this.className + '.update]';
+    throw 'Abstract Method [' + this.className + '.update]'
   }
 }
 
@@ -91,24 +83,24 @@ const EVENT_CHANGE = 'change',
     'class': {
       update(value) {
         if (value && typeof value == 'string') {
-          this.handleArray(_.trim(value).split(/\s+/));
+          this.handleArray(_.trim(value).split(/\s+/))
         } else if (value instanceof Array) {
-          this.handleArray(value);
+          this.handleArray(value)
         } else if (value && typeof value == 'object') {
-          this.handleObject(value);
+          this.handleObject(value)
         } else {
-          this.cleanup();
+          this.cleanup()
         }
       },
 
       handleObject(value) {
-        this.cleanup(value, false);
+        this.cleanup(value, false)
         let keys = this.prevKeys = [],
-          el = this.el;
+          el = this.el
         for (let key in value) {
           if (value[key]) {
             dom.addClass(el, key)
-            keys.push(key);
+            keys.push(key)
           } else {
             dom.removeClass(el, key)
           }
@@ -116,25 +108,25 @@ const EVENT_CHANGE = 'change',
       },
 
       handleArray(value) {
-        this.cleanup(value, true);
+        this.cleanup(value, true)
         let keys = this.prevKeys = [],
-          el = this.el;
-        for (let i = 0, l = value.length; i < l; i++) {
-          if (value[i]) {
-            keys.push(value[i]);
-            dom.addClass(el, value[i])
+          el = this.el
+        _.each(value, (val) => {
+          if (val) {
+            keys.push(val)
+            dom.addClass(el, val)
           }
-        }
+        })
       },
 
       cleanup(value, isArr) {
-        let prevKeys = this.prevKeys;
+        let prevKeys = this.prevKeys
         if (prevKeys) {
           let i = prevKeys.length,
-            el = this.el;
+            el = this.el
           while (i--) {
-            let key = prevKeys[i];
-            if (!value || (isArr ? _.indexOf.call(value, key) == -1 : !hasOwn.call(value, key))) {
+            let key = prevKeys[i]
+            if (!value || (isArr ? _.indexOf(value, key) == -1 : !_.hasOwnProp(value, key))) {
               dom.removeClass(el, key)
             }
           }
@@ -143,20 +135,20 @@ const EVENT_CHANGE = 'change',
     },
     'style': {
       update(value) {
-        if (value && typeof value == 'string') {
+        if (value && _.isString(value)) {
           dom.style(this.el, value)
-        } else if (value && typeof value == 'object') {
-          this.handleObject(value);
+        } else if (value && _.isObject(value)) {
+          this.handleObject(value)
         }
       },
 
       handleObject(value) {
-        this.cleanup(value);
+        this.cleanup(value)
         let keys = this.prevKeys = [],
-          el = this.el;
-        for (let key in value) {
-          dom.css(el, key, value[key]);
-        }
+          el = this.el
+        _.each(value, (val, key) => {
+          dom.css(el, key, val)
+        })
       }
     },
     show: {
@@ -176,37 +168,34 @@ const EVENT_CHANGE = 'change',
     },
     'if': {
       bind() {
-        SimpleDirective.prototype.bind.call(this);
-        if (!this.directives) {
-          this.yieId = new YieId();
-          return this.yieId;
-        }
+        SimpleDirective.prototype.bind.call(this)
+        if (!this.directives)
+          return (this.yieId = new YieId())
       },
       update(val) {
         if (!val) {
-          dom.css(this.el, 'display', 'none');
+          dom.css(this.el, 'display', 'none')
         } else {
           if (!this.directives) {
-            let directives = this.directives = this.tpl.parseChildNodes(this.el);
-
-            for (let i = 0, l = directives.length; i < l; i++)
-              directives[i].bind();
-
+            let directives = this.directives = this.tpl.parseChildNodes(this.el)
+            _.each(directives, (dir) => {
+              dir.bind()
+            })
             if (this.yieId) {
-              this.yieId.done();
-              delete this.yieId;
+              this.yieId.done()
+              this.yieId = undefined
             }
           }
-          dom.css(this.el, 'display', '');
+          dom.css(this.el, 'display', '')
         }
       },
       unbind() {
-        SimpleDirective.prototype.unbind.call(this);
+        SimpleDirective.prototype.unbind.call(this)
         if (this.directives) {
-          let directives = this.directives;
-
-          for (let i = 0, l = directives.length; i < l; i++)
-            directives[i].unbind();
+          let directives = this.directives
+          _.each(directives, (dir) => {
+            dir.unbind()
+          })
         }
       },
       priority: 9,
@@ -214,10 +203,7 @@ const EVENT_CHANGE = 'change',
     },
     checked: {
       update(val) {
-        if (val instanceof Array)
-          dom.checked(this.el, _.indexOf.call(val, dom.val(this.el)))
-        else
-          dom.checked(this.el, !!val);
+        _.isArray(val) ? dom.checked(this.el, _.indexOf(val, dom.val(this.el))) : dom.checked(this.el, !!val)
       }
     },
     selected: {
@@ -225,109 +211,107 @@ const EVENT_CHANGE = 'change',
     },
     focus: {
       update(val) {
-        if (!val)
-          return;
-        dom.focus(this.el);
+        if (val)
+          dom.focus(this.el)
       }
     },
     input: {
       constructor(el) {
-        SimpleDirective.apply(this, arguments);
+        SimpleDirective.apply(this, arguments)
 
         if (!this.expression.simplePath)
-          throw TypeError(`Invalid Expression[${this.expression.expr}] on InputDirective`);
+          throw TypeError(`Invalid Expression[${this.expression.expr}] on InputDirective`)
 
-        this.onChange = _.bind.call(this.onChange, this);
-        let tag = this.tag = el.tagName;
+        this.onChange = this.onChange.bind(this)
+        let tag = this.tag = el.tagName
         switch (tag) {
           case TAG_SELECT:
-            this.event = EVENT_CHANGE;
-            break;
+            this.event = EVENT_CHANGE
+            break
           case TAG_INPUT:
-            let type = this.type = el.type;
-            this.event = (type == RADIO || type == CHECKBOX) ? EVENT_CHANGE : EVENT_INPUT;
-            break;
+            let type = this.type = el.type
+            this.event = (type == RADIO || type == CHECKBOX) ? EVENT_CHANGE : EVENT_INPUT
+            break
           case TAG_TEXTAREA:
-            throw TypeError('Directive[input] not support ' + tag);
-            break;
-          default: throw TypeError('Directive[input] not support ' + tag);
+            throw TypeError('Directive[input] not support ' + tag)
+            break
+          default:
+            throw TypeError('Directive[input] not support ' + tag)
         }
       },
 
       bind() {
-        SimpleDirective.prototype.bind.call(this);
-        dom.on(this.el, this.event, this.onChange);
+        SimpleDirective.prototype.bind.call(this)
+        dom.on(this.el, this.event, this.onChange)
       },
 
       unbind() {
-        SimpleDirective.prototype.unbind.call(this);
-        dom.off(this.el, this.event, this.onChange);
+        SimpleDirective.prototype.unbind.call(this)
+        dom.off(this.el, this.event, this.onChange)
       },
 
       setRealValue(val) {
-        this.set(this.expression.path, val);
+        this.set(this.expression.path, val)
       },
 
       setValue(val) {
-        this.setRealValue(this.expression.applyFilter(val, this, [this.scope(), this.el], false));
+        this.setRealValue(this.expression.applyFilter(val, this, [this.scope(), this.el], false))
       },
 
       onChange(e) {
-        let val = this.elVal(), idx,
-          _val = this.val;
+        let val = this.elVal(),
+          idx,
+          _val = this.val
         if (val != _val)
-          this.setValue(val);
-        e.stopPropagation();
+          this.setValue(val)
+        e.stopPropagation()
       },
 
       update(val) {
-        let _val = this.blankValue(val);
-        if (_val != this.val) {
-          this.elVal(_val);
-          this.val = _val;
-        }
+        let _val = this.blankValue(val)
+        if (_val != this.val)
+          this.elVal((this.val = _val))
       },
 
       elVal(val) {
-        let tag = this.tag;
+        let tag = this.tag
 
         switch (tag) {
           case TAG_SELECT:
-            break;
+            break
           case TAG_INPUT:
-            let type = this.type;
+            let type = this.type
 
             if (type == RADIO || type == CHECKBOX) {
               if (arguments.length == 0) {
-                return dom.checked(this.el) ? dom.val(this.el) : undefined;
+                return dom.checked(this.el) ? dom.val(this.el) : undefined
               } else {
-                let checked;
+                let checked
 
-                checked = val == dom.val(this.el);
-
+                checked = val == dom.val(this.el)
                 if (dom.checked(this.el) != checked)
-                  dom.checked(this.el, checked);
+                  dom.checked(this.el, checked)
               }
             } else {
               if (arguments.length == 0) {
-                return dom.val(this.el);
+                return dom.val(this.el)
               } else if (val != dom.val(this.el)) {
                 dom.val(this.el, val)
               }
             }
-            break;
+            break
           case TAG_TEXTAREA:
-            throw TypeError('Directive[input] not support ' + tag);
-            break;
+            throw TypeError('Directive[input] not support ' + tag)
+            break
           default:
-            throw TypeError('Directive[input] not support ' + tag);
+            throw TypeError('Directive[input] not support ' + tag)
         }
       },
       priority: 4
     }
-  };
+  }
 
-_.eachObj(directives, (opt, name) => {
-  opt.extend = SimpleDirective;
-  registerDirective(name, opt);
-});
+_.each(directives, (opt, name) => {
+  opt.extend = SimpleDirective
+  registerDirective(name, opt)
+})

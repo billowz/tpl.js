@@ -22,7 +22,9 @@
 <script src="../node_modules/observer.js/dist/observer.js"></script>
 <script src="../dist/tpl.js"></script>
 <script type="text/javascript">
-$(document).ready(function() {
+tpl.ready(function() {
+  tpl.init();
+
   var filters = {
     all: function (todos) {
       return todos;
@@ -62,14 +64,14 @@ $(document).ready(function() {
                 return;
             }
             var todo = this.editedTodo;
-            todo.title = tpl.trim($($el).val());
+            todo.title = tpl.trim(tpl.val($el));
             if (!todo.title) {
                 this.removeTodo(todo);
             }
             this.editedTodo = undefined;
         },
         removeTodo: function(todo) {
-            var idx = tpl.indexOf.call(this.todos, todo);
+            var idx = tpl.indexOf(this.todos, todo);
             this.todos.splice(idx, 1);
             if(todo.completed)
               this.completedNum--;
