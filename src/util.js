@@ -38,6 +38,7 @@ module.exports = _.assignIf({
     proxy: observer.proxy,
     Logger: observer.Logger,
     logger: observer.logger,
+    Configuration: observer.Configuration,
     timeoutframe: observer.timeoutframe,
     observe: observer.on,
     unobserve: observer.un,

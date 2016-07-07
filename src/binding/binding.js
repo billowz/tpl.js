@@ -1,4 +1,7 @@
-const AbstractBinding = require('./abstractBinding')
+const AbstractBinding = require('./abstractBinding'),
+  config = require('../config')
+
+config.register('generateComments', true)
 
 class Binding extends AbstractBinding {
   constructor(tpl, expr) {
@@ -6,6 +9,5 @@ class Binding extends AbstractBinding {
     this.expr = expr
   }
 }
-Binding.generateComments = true
 
 module.exports = Binding

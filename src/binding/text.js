@@ -2,7 +2,8 @@ const _ = require('../util'),
   dom = require('../dom'),
   expression = require('../expression'),
   Binding = require('./binding'),
-  expressionArgs = ['$el']
+  expressionArgs = ['$el'],
+  config = require('../config')
 
 class Text extends Binding {
   constructor(el, tpl, expr) {
@@ -11,7 +12,7 @@ class Text extends Binding {
     this.observeHandler = this.observeHandler.bind(this)
     this.expression = expression.parse(this.expr, expressionArgs)
 
-    if (Binding.generateComments) {
+    if (config.get('generateComments')) {
       this.comment = document.createComment('Text Binding ' + this.expr)
       dom.before(this.comment, this.el)
     }

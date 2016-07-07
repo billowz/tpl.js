@@ -5,7 +5,8 @@ const _ = require('../util'),
     extend: 'extend',
     constructor: 'constructor'
   },
-  directives = {}
+  directives = {},
+  config = require('../config')
 
 class Directive extends Binding {
   constructor(el, tpl, expr, attr) {
@@ -13,7 +14,7 @@ class Directive extends Binding {
     this.el = el
     this.attr = attr
     dom.removeAttr(this.el, this.attr)
-    if (Binding.generateComments) {
+    if (config.get('generateComments')) {
       this.comment = document.createComment(' Directive:' + this.name + ' [' + this.expr + '] ')
       dom.before(this.comment, this.el)
     }
