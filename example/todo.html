@@ -6,7 +6,6 @@
     <title>tpl.js • TodoMVC </title>
     <link rel="stylesheet" href="../node_modules/todomvc-common/base.css">
     <link rel="stylesheet" href="../node_modules/todomvc-app-css/index.css">
-
 </head>
 
 <body>
@@ -17,36 +16,38 @@
         <p><a href="../index.html">Back</a></p>
     </div>
 </body>
-
 <script src="../node_modules/jquery/jquery.js"></script>
 <script src="../node_modules/observer.js/dist/observer.js"></script>
 <script src="../dist/tpl.js"></script>
-<script type="text/javascript">
-tpl.ready(function() {
-  tpl.init();
 
-  var filters = {
-    all: function (todos) {
-      return todos;
-    },
-    active: function (todos) {
-      return todos.filter(function (todo) {
-        return !todo.completed;
-      });
-    },
-    completed: function (todos) {
-      return todos.filter(function (todo) {
-        return todo.completed;
-      });
-    }
-  };
-    window.template = new tpl($(document.getElementById('tpl/todo.html')).html());
+<script type="text/javascript">
+
+tpl.init();
+
+tpl.ready(function() {
+
+    var filters = {
+        all: function(todos) {
+            return todos;
+        },
+        active: function(todos) {
+            return todos.filter(function(todo) {
+                return !todo.completed;
+            });
+        },
+        completed: function(todos) {
+            return todos.filter(function(todo) {
+                return todo.completed;
+            });
+        }
+    };
+    window.template = new tpl('#tpl/todo.html');
     window.templ = template.complie({
-        filteredTodos: function () {
-          return filters[this.visibility](this.todos);
+        filteredTodos: function() {
+            return filters[this.visibility](this.todos);
         },
         addTodo: function(scope, el, e) {
-          console.log(e.which)
+            console.log(e.which)
             if (e.which === 13 && (el = $(el)).val()) {
                 this.todos.push({
                     title: el.val(),
@@ -73,15 +74,15 @@ tpl.ready(function() {
         removeTodo: function(todo) {
             var idx = tpl.indexOf(this.todos, todo);
             this.todos.splice(idx, 1);
-            if(todo.completed)
-              this.completedNum--;
+            if (todo.completed)
+                this.completedNum--;
         },
         completeTodo: function(todo) {
             if (!todo) {
                 var done = this.completedNum != this.todos.length;
                 var todos = this.todos;
-                for(var i = 0, l = todos.length; i < l; i++){
-                  todos[i].completed = done;
+                for (var i = 0, l = todos.length; i < l; i++) {
+                    todos[i].completed = done;
                 }
                 this.completedNum = done ? todos.length : 0;
             } else {
@@ -93,8 +94,8 @@ tpl.ready(function() {
                 }
             }
         },
-        removeCompleted: function(){
-          console.log('=========')
+        removeCompleted: function() {
+            console.log('=========')
         },
         editedTodo: null,
         todos: [],

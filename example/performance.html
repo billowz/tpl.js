@@ -17,18 +17,19 @@
 <script src="../node_modules/observer.js/dist/observer.js"></script>
 <script src="../dist/tpl.js"></script>
 <script>
+tpl.init({
+    //lazy: false,
+    //es6Proxy: false
+})
+app = {
+    databases: []
+}
+tpl.proxy.on(app, function(obj, proxy) {
+    app = proxy || obj;
+})
 tpl.ready(function() {
-    tpl.init({
-        lazy: false
-    })
-    var app = {
-        databases: []
-    }
-    tpl.proxy.on(app, function(obj, proxy) {
-        app = proxy || obj;
-    });
-    var template = new tpl($(document.getElementById('tpl/tpl.html')).html());
-    template.complie(app).appendTo('#app');
+    new tpl($(document.getElementById('tpl/tpl.html')).html())
+        .complie(app).appendTo('#app');
 
     function loadSamples() {
         app.databases = ENV.generateData().toArray();

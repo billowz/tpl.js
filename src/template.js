@@ -21,7 +21,7 @@ class Template {
       if (templ.charAt(0) == '<')
         el.innerHTML = templ
       else
-        dom.append(el, dom.querySelector(templ))
+        dom.append(el, dom.query(templ))
     } else {
       dom.append(el, templ)
     }
