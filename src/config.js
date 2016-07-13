@@ -1,1 +1,3 @@
-module.exports = new require('./util').Configuration()
+const {Configuration} = require('./util')
+
+module.exports = new Configuration()

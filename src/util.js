@@ -1,5 +1,4 @@
 const observer = require('observer'),
-    _ = observer.util,
     regHump = /(^[a-z])|([_-][a-zA-Z])/g
 
 function _hump(k) {
@@ -8,8 +7,18 @@ function _hump(k) {
     return k.toUpperCase();
 }
 
-module.exports = _.assignIf({
-    YieId: _.dynamicClass({
+function assign(target, source, alias){
+    observer.each(source, (v,k)=>{
+        target[alias[k] || k] = v
+    })
+    return target
+}
+
+module.exports = assign({
+    hump(str) {
+        return str.replace(regHump, _hump);
+    },
+    YieId: observer.dynamicClass({
         constructor() {
             this.doned = false
             this.thens = []
@@ -32,18 +41,12 @@ module.exports = _.assignIf({
         isDone() {
             return this.doned
         }
-    }),
-    eq: observer.eq,
-    obj: observer.obj,
-    proxy: observer.proxy,
-    Logger: observer.Logger,
-    logger: observer.logger,
-    Configuration: observer.Configuration,
-    timeoutframe: observer.timeoutframe,
-    observe: observer.on,
-    unobserve: observer.un,
-    isObserved: observer.hasListen,
-    hump(str) {
-        return str.replace(regHump, _hump);
-    }
-}, _)
+    })
+}, observer, {
+    on: 'observe',
+    un: 'unobserve',
+    hasListen: 'isObserved'
+})
+
+if(!Object.create)
+    Object.create = observer.create

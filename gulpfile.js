@@ -14,6 +14,7 @@ var gulp = require('gulp'),
   dist = './dist',
   pkg = require('./package.json')
 
+
 function miniConfig(webpackCfg) {
   var miniCfg = Object.assign({}, webpackCfg);
   miniCfg.output = Object.assign({}, webpackCfg.output, {
@@ -34,8 +35,10 @@ function allConfig(webpackCfg) {
   cfg.output = Object.assign({}, webpackCfg.output, {
     filename: webpackCfg.output.filename.replace(/js$/, 'all.js')
   })
-  cfg.externals = Object.assign({}, webpackCfg.externals)
-  delete cfg.externals.observer
+  cfg.externals = {};
+  (webpackCfg.allExternals || []).forEach(function(name){
+    cfg.externals[name] = webpackCfg.externals[name]
+  });
   return cfg;
 }
 
@@ -64,7 +67,7 @@ gulp.task('watch', function(event) {
 });
 
 gulp.task('server', function() {
-  var webpackCfg = require('./build/webpack.dev.config.js')
+  var webpackCfg = allConfig(require('./build/webpack.dev.config.js'))
   var devServer = new WebpackDevServer(webpack(webpackCfg), {
     contentBase: webpackCfg.output.contentBase,
     publicPath: webpackCfg.output.publicPath,
@@ -166,7 +169,7 @@ gulp.task('_version', function() {
   PRERELEASE ("prerelease") a pre-release version
   Version example
   major: 1.0.0
-  minor: 0.1 .0
+  minor: 0.1.0
   patch: 0.0.2
   prerelease: 0.0.1-2
  */

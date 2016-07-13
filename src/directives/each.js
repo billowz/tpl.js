@@ -66,7 +66,7 @@ export class EachDirective extends Directive {
       }
       sort[idx] = scope // update sort
       if (init) { // init compontent
-        scope.$tpl = new TemplateInstance(dom.cloneNode(this.el), scope, this.tpl.delimiterReg, this.tpl.directiveReg)
+        scope.$tpl = new TemplateInstance(dom.cloneNode(this.el), scope, this.tpl.TextParser, this.tpl.directiveReg)
         data[idx] = scope[valueAlias]
         scope.$tpl.before(end)
       }
@@ -88,7 +88,7 @@ export class EachDirective extends Directive {
           sort[scope.$sort] = scope2
           scope = scope2
         } else {
-          scope.$tpl = new TemplateInstance(dom.cloneNode(this.el), scope, this.tpl.delimiterReg, this.tpl.directiveReg)
+          scope.$tpl = new TemplateInstance(dom.cloneNode(this.el), scope, this.tpl.TextParser, this.tpl.directiveReg)
         }
         data[scope.$sort] = scope[valueAlias]
         scope.$tpl.after(scope.$sort ? sort[scope.$sort - 1].$tpl.els : begin)

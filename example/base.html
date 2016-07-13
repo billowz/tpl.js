@@ -9,9 +9,7 @@
 <body>
     <a href="../index.html">Back</a>
 </body>
-<script src="../node_modules/jquery/jquery.js"></script>
-<script src="../node_modules/observer.js/dist/observer.js"></script>
-<script src="../dist/tpl.js"></script>
+<script src="../dist/tpl.all.js"></script>
 <script type="text/javascript">
 
 tpl.ready(function() {
@@ -32,19 +30,19 @@ tpl.ready(function() {
     tpl.proxy.on(data, function(obj, proxy){
       data = proxy || obj;
     });
-    var docTpl = new tpl($(document.getElementById('tpl/code.html')).html());
+
+    var docTpl = new tpl(document.getElementById('tpl/code.html').innerHTML);
 
     function renderTempl(id, renderTo) {
-        var html = $(document.getElementById(id)).html();
+        var html = tpl.html(document.getElementById(id));
         new tpl(html).complie(data)
             .appendTo(renderTo || document.body);
         docTpl.complie({
             template: html,
             templateUrl: id,
-            js: '$(document.body).append(new tpl(' + id + ').complie({\n\t\n}).el);',
+            js: 'new tpl(' + id + ').complie({\n\t\n}).appendTo(document.body);',
             toggleSource: function() {
                 this.openSource = !this.openSource;
-                console.log(arguments)
             }
         }).appendTo(renderTo || document.body);
     }
@@ -57,9 +55,8 @@ tpl.ready(function() {
 
     renderTempl('tpl/input.html');
     renderTempl('tpl/checkbox.html');
-    var s = new Date();
     renderTempl('tpl/each.html');
-    console.log('reander each use:' + (new Date() - s));
+    var s = new Date();
     setTimeout(function() {
         s = new Date();
         for (var i = 0; i < count; i++) {

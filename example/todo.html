@@ -16,9 +16,7 @@
         <p><a href="../index.html">Back</a></p>
     </div>
 </body>
-<script src="../node_modules/jquery/jquery.js"></script>
-<script src="../node_modules/observer.js/dist/observer.js"></script>
-<script src="../dist/tpl.js"></script>
+<script src="../dist/tpl.all.js"></script>
 
 <script type="text/javascript">
 
@@ -41,19 +39,19 @@ tpl.ready(function() {
             });
         }
     };
-    window.template = new tpl('#tpl/todo.html');
+    window.template = new tpl(document.getElementById('tpl/todo.html').innerHTML);
     window.templ = template.complie({
         filteredTodos: function() {
             return filters[this.visibility](this.todos);
         },
         addTodo: function(scope, el, e) {
             console.log(e.which)
-            if (e.which === 13 && (el = $(el)).val()) {
+            if (e.which === 13 && tpl.val(el)) {
                 this.todos.push({
-                    title: el.val(),
+                    title: tpl.val(el),
                     completed: false
                 });
-                el.val('');
+                tpl.val(el, '');
                 tpl.focus(el)
             }
         },
@@ -95,7 +93,6 @@ tpl.ready(function() {
             }
         },
         removeCompleted: function() {
-            console.log('=========')
         },
         editedTodo: null,
         todos: [],

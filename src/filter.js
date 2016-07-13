@@ -1,18 +1,18 @@
 const _ = require('./util'),
   slice = Array.prototype.slice,
-  filters = {}
+  filters = {},
+  log = require('./log')
 
 function apply(name, data, args, apply) {
   let f = filters[name],
-    type = f ? f.type : undefined, fn;
+    type = f ? f.type : undefined, fn
 
-  fn = f ? apply !== false ? f.apply : f.unapply : undefined;
+  fn = f ? apply !== false ? f.apply : f.unapply : undefined
   if (!fn) {
-    console.warn(`filter[${name}].${apply !== false ? 'apply' : 'unapply'} is undefined`);
+    log.warn(`filter[${name}].${apply !== false ? 'apply' : 'unapply'} is undefined`)
   } else {
-    if (_.isFunc(args))
-      args = args();
-    data = fn.apply(f, [data].concat(args));
+    if (_.isFunc(args)) args = args()
+    data = fn.apply(f, [data].concat(args))
   }
   return {
     stop: type == 'event' && data === false,
@@ -23,27 +23,28 @@ function apply(name, data, args, apply) {
 let filter = {
   register(name, filter) {
     if (filters[name])
-      throw Error('Filter is existing');
+      throw Error(`Filter[${name}] is existing`)
     if (typeof filter == 'function')
       filter = {
         apply: filter
-      };
-    filter.type = filter.type || 'normal';
-    filters[name] = filter;
+      }
+    filter.type = filter.type || 'normal'
+    filters[name] = filter
+    log.debug('register Filter[%s:%s]', filter.type, name)
   },
 
   get(name) {
-    return filters[name];
+    return filters[name]
   },
 
   apply: apply,
 
   unapply(name, data, args) {
-    return apply(name, data, args, false);
+    return apply(name, data, args, false)
   }
 }
 
-module.exports = filter;
+module.exports = filter
 
 export const keyCodes = {
   esc: 27,
@@ -59,23 +60,23 @@ export const keyCodes = {
 
 let eventFilters = {
   key(e) {
-    let keys = slice.call(arguments, 1),
-      codes = {}, key;
+    let which = e.which, k
 
-    for (let i = 0, l = keys.length; i < l; i++) {
-      key = keys[i];
-      codes[keyCodes[key] || key] = true;
+    for(let i = 1, l = arguments.length; i < l; i++){
+      k = arguments[i]
+      if(which == (keyCodes[k] || k))
+        return true
     }
-    return codes[e.which] || false;
+    return false
   },
   stop(e) {
-    e.stopPropagation();
+    e.stopPropagation()
   },
   prevent(e) {
-    e.preventDefault();
+    e.preventDefault()
   },
   self(e) {
-    return e.target === e.currentTarget;
+    return e.target === e.currentTarget
   }
 }
 

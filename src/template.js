@@ -1,17 +1,11 @@
 const _ = require('./util'),
   dom = require('./dom'),
-  TemplateInstance = require('./templateInstance')
+  TemplateInstance = require('./templateInstance'),
+  TextParser = require('./textParser'),
+  config = require('./config')
 
-const parseDelimiterReg = function(delimiter) {
-    return new RegExp([delimiter[0], '([^', delimiter[0],']*)', delimiter[1]].join(''), 'g')
-  },
-  parseDirectiveReg = function(prefix) {
-    return new RegExp('^' + prefix)
-  },
-  defaultCfg = {
-    delimiter: ['{', '}'],
-    directivePrefix: 'tpl-'
-  }
+config.register('directiveReg', /^tpl-/)
+config.register('textParser', TextParser.NormalTextParser)
 
 class Template {
   constructor(templ, cfg = {}) {
@@ -26,14 +20,13 @@ class Template {
       dom.append(el, templ)
     }
     this.el = el
-    this.directivePrefix = cfg.directivePrefix || defaultCfg.directivePrefix
-    this.delimiter = cfg.delimiter || defaultCfg.delimiter
-    this.directiveReg = parseDirectiveReg(this.directivePrefix)
-    this.delimiterReg = parseDelimiterReg(this.delimiter)
+    this.directiveReg = cfg.directiveReg || config.get('directiveReg')
+    this.TextParser = cfg.TextParser || config.get('textParser')
   }
 
   complie(scope) {
-    return new TemplateInstance(dom.cloneNode(this.el), scope, this.delimiterReg, this.directiveReg)
+    return new TemplateInstance(dom.cloneNode(this.el), scope, this.TextParser, this.directiveReg)
   }
 }
+
 module.exports = Template

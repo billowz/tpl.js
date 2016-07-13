@@ -12,16 +12,16 @@ function childNodes(el) {
 }
 
 class TemplateInstance {
-  constructor(el, scope, delimiterReg, directiveReg, autoBind) {
-    this.delimiterReg = delimiterReg
+  constructor(el, scope, TextParser, directiveReg) {
+    this.TextParser = TextParser
     this.directiveReg = directiveReg
-    this.scope = observer.proxy.proxy(scope) || scope
     this._scopeProxyListen = this._scopeProxyListen.bind(this)
+    this.scope = observer.proxy.proxy(scope) || scope
     observer.proxy.on(this.scope, this._scopeProxyListen)
     this.bindings = this.parse(el, this)
     this.binded = false
-    this.bind()
     this.els = childNodes(el)
+    this.bind()
   }
 
   parentEl() {
@@ -101,32 +101,25 @@ class TemplateInstance {
         return this.parseElement(el)
       case 3:
         return this.parseText(el)
+      default:
+        return []
     }
   }
 
   parseText(el) {
     let text = el.data,
-      delimiterReg = this.delimiterReg,
-      token,
-      lastIndex = 0,
-      bindings = []
+      parser = new this.TextParser(text),
+      token, index = 0, bindings = []
 
-    while ((token = delimiterReg.exec(text))) {
-
-      this.createTextNode2(text.substring(lastIndex, delimiterReg.lastIndex - token[0].length), el)
-
-      bindings.push(new Text(this.createTextNode('binding', el), this, token[1]))
-
-      lastIndex = delimiterReg.lastIndex
+    while(token = parser.token()){
+      this.createTextNode2(text.substring(index, token.start), el)
+      bindings.push(new Text(this.createTextNode('binding', el), this, token.token))
+      index = token.end
     }
-
-    if (bindings.length) {
-
-      this.createTextNode2(text.substr(lastIndex), el)
-
+    if(index){
+      this.createTextNode2(text.substr(index), el)
       dom.remove(el)
     }
-
     return bindings
   }
 

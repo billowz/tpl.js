@@ -41,11 +41,13 @@ var config = {
       amd: 'jquery'
     }
   },
+  allExternals: ['jquery'],
   resolve: {
     modulesDirectories: [path.resolve(__dirname, '../node_modules')],
     extensions: ['', '.js'],
     alias: {
-      'observer': 'observer.js'
+      'observer': 'observer.js',
+      'utility': 'utility.js'
     }
   },
   module: {

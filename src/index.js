@@ -8,6 +8,7 @@ _.assign(tpl, _, require('./dom'), {
   expression: require('./expression'),
   Directive: require('./binding').Directive,
   directives: require('./directives'),
+  TextParser: require('./textParser'),
   config: config.get(),
   init(cfg) {
     observer.init(cfg)
