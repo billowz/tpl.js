@@ -7,17 +7,14 @@ const _ = require('../util'),
   eachReg = /^\s*([\s\S]+)\s+in\s+([\S]+)(\s+track\s+by\s+([\S]+))?\s*$/,
   eachAliasReg = /^(\(\s*([^,\s]+)(\s*,\s*([\S]+))?\s*\))|([^,\s]+)(\s*,\s*([\S]+))?$/
 
-export const EachDirective = _.dynamicClass({
-  extend: Directive,
-  abstract: true,
-  block: true,
-  priority: 10,
-  constructor() {
-    this.super.constructor.apply(this, arguments)
+export class EachDirective extends Directive {
+  constructor(el, tpl, expr, attr) {
+    super(el, tpl, expr, attr)
     this.observeHandler = this.observeHandler.bind(this)
-    let token = this.expr.match(eachReg)
+
+    let token = expr.match(eachReg)
     if (!token)
-      throw Error(`Invalid Expression[${this.expr}] on Each Directive`)
+      throw Error(`Invalid Expression[${expr}] on Each Directive`)
 
     this.scopeExpr = token[2]
     this.indexExpr = token[4]
@@ -30,14 +27,16 @@ export const EachDirective = _.dynamicClass({
     this.keyAlias = aliasToken[4] || aliasToken[7]
 
     this.begin = document.createComment('each begin')
-    this.end = document.createComment('each end')
     dom.before(this.begin, this.el)
+    this.end = document.createComment('each end')
     dom.after(this.end, this.begin)
+
     dom.remove(this.el)
     let div = document.createElement('div')
     dom.append(div, this.el)
     this.el = div
-  },
+  }
+
   update(data) {
     let parentScope = this.realScope(),
       begin = this.begin,
@@ -51,6 +50,7 @@ export const EachDirective = _.dynamicClass({
       cache = init ? (this.cache = {}) : this.cache,
       removed = [],
       added = []
+
 
     _.each(data, (item, idx) => {
       let index = indexExpr ? _.get(item, indexExpr) : idx, // read index of data item
@@ -97,7 +97,8 @@ export const EachDirective = _.dynamicClass({
         scope.$tpl.destroy()
       })
     }
-  },
+  }
+
   createScope(parentScope, value, i, index) {
     let scope = _.create(parentScope)
     scope.$parent = parentScope
@@ -105,7 +106,8 @@ export const EachDirective = _.dynamicClass({
     scope.$tpl = null
     this.initScope(scope, value, i, index, true)
     return scope
-  },
+  }
+
   initScope(scope, value, i, index, isCreate) {
     if (!isCreate)
       scope = scope.$tpl.scope
@@ -114,20 +116,29 @@ export const EachDirective = _.dynamicClass({
     if (this.keyAlias)
       scope[this.keyAlias] = i
     scope.$index = index
-  },
+  }
+
   bind() {
+    super.bind()
     this.observe(this.scopeExpr, this.observeHandler)
     this.update(this.target())
-  },
+  }
+
   unbind() {
+    super.unbind()
     this.unobserve(this.scopeExpr, this.observeHandler)
-  },
+  }
+
   target() {
     return this.get(this.scopeExpr)
-  },
+  }
+
   observeHandler(expr, target) {
     this.update(target)
   }
-})
+}
+EachDirective.prototype.abstract = true
+EachDirective.prototype.block = true
+EachDirective.prototype.priority = 10
 
 Directive.register('each', EachDirective)

@@ -1,25 +1,24 @@
 const _ = require('./util')
 
-const TextParser = _.dynamicClass({
-  constructor(text) {
+class TextParser{
+  constructor(text){
     this.text = text
-  },
-  token() {
+  }
+  token(){
     throw new Error('abstract method')
   }
-})
+}
 
-TextParser.NormalTextParser = _.dynamicClass({
-  extend: TextParser,
-  constructor() {
-    this.super.constructor.apply(this, arguments)
+class NormalTextParser extends TextParser{
+  constructor(text){
+    super(text)
     this.index = 0
     this.reg = /{([^{]+)}/g
-  },
-  token() {
+  }
+  token(){
     let tk, reg = this.reg
 
-    if (tk = reg.exec(this.text)) {
+    if(tk = reg.exec(this.text)){
       let index = reg.lastIndex
 
       this.index = index
@@ -31,6 +30,6 @@ TextParser.NormalTextParser = _.dynamicClass({
     }
     this.index = 0
   }
-})
-
+}
+TextParser.NormalTextParser = NormalTextParser
 module.exports = TextParser

@@ -27,7 +27,7 @@ tpl.proxy.on(app, function(obj, proxy) {
     app = proxy || obj;
 })
 tpl.ready(function() {
-    new tpl($(document.getElementById('tpl/tpl.html')).html())
+    new tpl(tpl.html(document.getElementById('tpl/tpl.html')))
         .complie(app).appendTo('#app');
 
     function loadSamples() {

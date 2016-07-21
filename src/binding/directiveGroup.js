@@ -1,52 +1,44 @@
-const AbstractBinding = require('./abstractBinding'),
-  {YieId} = require('../util')
+const Binding = require('./binding'),
+  Directive = require('./directive'),
+  _ = require('../util'),
+  {
+    YieId
+  } = _
 
-class DirectiveGroup extends AbstractBinding {
-  constructor(el, tpl, directiveConfigs) {
-    super(tpl)
-    this.el = el
-    this.directiveConfigs = directiveConfigs.sort((a, b) => {
-      return (b.const.prototype.priority - a.const.prototype.priority) || 0
-    })
+module.exports = _.dynamicClass({
+  extend: Binding,
+  constructor(el, scope, Directives) {
+    this.super.constructor.call(this, el, scope)
+    this.Directives = Directives
     this.directives = []
     this.bindedCount = 0
-  }
+    this.parse = this.parse.bind(this)
+  },
+  createDirective(cfg) {
+    return new cfg.directive(this.el, this.scope, cfg.expression, cfg.attr)
+  },
+  parse() {
+    let idx = this.bindedCount,
+      directive = this.directives[idx],
+      ret
 
+    if (!directive)
+      directive = this.directives[idx] = this.createDirective(this.Directives[idx])
+
+    ret = directive.bind()
+    if ((++this.bindedCount) < this.directives.length)
+      (ret && ret instanceof YieId) ? ret.then(this.parse) : this.parse()
+  },
   bind() {
-    super.bind()
-    let directives = this.directives,
-      directiveConfigs = this.directiveConfigs,
-      tpl = this.tpl,
-      el = this.el,
-      directiveCount = this.directiveConfigs.length,
-      self = this
-    function parse() {
-      let idx = self.bindedCount,
-        directive = directives[idx],
-        ret
-      if (!directive) {
-        let cfg = directiveConfigs[idx]
-        directive = directives[idx] = new cfg.const(el, tpl,
-          cfg.expression, cfg.attr)
-      }
-      ret = directive.bind()
-      if ((++self.bindedCount) < directiveCount) {
-        if (ret && ret instanceof YieId)
-          ret.then(parse)
-        else
-          parse()
-      }
-    }
-    parse()
-  }
-
+    this.parse()
+  },
   unbind() {
-    super.unbind()
-    let directives = this.directives
-    for (let i = 0, l = this.bindedCount; i < l; i++) {
+    let directives = this.directives,
+      i = this.bindedCount
+
+    while (i--) {
       directives[i].unbind()
     }
     this.bindedCount = 0
   }
-}
-module.exports = DirectiveGroup
+})

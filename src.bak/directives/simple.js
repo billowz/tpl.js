@@ -1,12 +1,8 @@
 const _ = require('../util'),
   dom = require('../dom'),
-  {
-    Directive
-  } = require('../binding'),
+  {Directive} = require('../binding'),
   expression = require('../expression'),
-  {
-    YieId
-  } = _,
+  {YieId} = _,
   expressionArgs = ['$el']
 
 function registerDirective(name, opt) {
@@ -14,45 +10,54 @@ function registerDirective(name, opt) {
   module.exports[cls.className] = cls
 }
 
-export const SimpleDirective = _.dynamicClass({
-  extend: Directive,
-  constructor() {
-    this.super.constructor.apply(this, arguments)
+export class SimpleDirective extends Directive {
+  constructor(el, tpl, expr, attr) {
+    super(el, tpl, expr, attr)
     this.observeHandler = this.observeHandler.bind(this)
     this.expression = expression.parse(this.expr, expressionArgs)
-  },
+  }
+
   realValue() {
     return this.expression.execute.call(this, this.scope(), this.el)
-  },
+  }
+
   value() {
     return this.expression.executeAll.call(this, this.scope(), this.el)
-  },
+  }
+
   bind() {
+    super.bind()
     _.each(this.expression.identities, (ident) => {
       this.observe(ident, this.observeHandler)
     })
     this.update(this.value())
-  },
+  }
+
   unbind() {
+    super.unbind()
     _.each(this.expression.identities, (ident) => {
       this.unobserve(ident, this.observeHandler)
     })
-  },
+  }
+
   blankValue(val) {
-    if (arguments.length == 0) val = this.value()
+    if (arguments.length == 0)
+      val = this.value()
     return _.isNil(val) ? '' : val
-  },
+  }
+
   observeHandler(expr, val) {
     if (this.expression.simplePath) {
       this.update(this.expression.applyFilter(val, this, [this.scope(), this.el]))
     } else {
       this.update(this.value())
     }
-  },
-  update(val) {
-    throw `abstract method`
   }
-})
+
+  update(val) {
+    throw 'Abstract Method [' + this.className + '.update]'
+  }
+}
 
 const EVENT_CHANGE = 'change',
   EVENT_INPUT = 'input',
@@ -64,16 +69,16 @@ const EVENT_CHANGE = 'change',
   CHECKBOX = 'checkbox',
   directives = {
     text: {
-      block: true,
       update(val) {
         dom.text(this.el, this.blankValue(val))
-      }
+      },
+      block: true
     },
     html: {
-      block: true,
       update(val) {
         dom.html(this.el, this.blankValue(val))
-      }
+      },
+      block: true
     },
     'class': {
       update(value) {
@@ -87,6 +92,7 @@ const EVENT_CHANGE = 'change',
           this.cleanup()
         }
       },
+
       handleObject(value) {
         this.cleanup(value, false)
         let keys = this.prevKeys = [],
@@ -100,6 +106,7 @@ const EVENT_CHANGE = 'change',
           }
         }
       },
+
       handleArray(value) {
         this.cleanup(value, true)
         let keys = this.prevKeys = [],
@@ -111,6 +118,7 @@ const EVENT_CHANGE = 'change',
           }
         })
       },
+
       cleanup(value, isArr) {
         let prevKeys = this.prevKeys
         if (prevKeys) {
@@ -133,6 +141,7 @@ const EVENT_CHANGE = 'change',
           this.handleObject(value)
         }
       },
+
       handleObject(value) {
         this.cleanup(value)
         let keys = this.prevKeys = [],
@@ -158,21 +167,10 @@ const EVENT_CHANGE = 'change',
       }
     },
     'if': {
-      priority: 9,
-      block: true,
       bind() {
-        this.super.bind.call(this)
+        SimpleDirective.prototype.bind.call(this)
         if (!this.directives)
           return (this.yieId = new YieId())
-      },
-      unbind() {
-        this.super.unbind.call(this)
-        if (this.directives) {
-          let directives = this.directives
-          _.each(directives, (dir) => {
-            dir.unbind()
-          })
-        }
       },
       update(val) {
         if (!val) {
@@ -190,7 +188,18 @@ const EVENT_CHANGE = 'change',
           }
           dom.css(this.el, 'display', '')
         }
-      }
+      },
+      unbind() {
+        SimpleDirective.prototype.unbind.call(this)
+        if (this.directives) {
+          let directives = this.directives
+          _.each(directives, (dir) => {
+            dir.unbind()
+          })
+        }
+      },
+      priority: 9,
+      block: true
     },
     checked: {
       update(val) {
@@ -202,13 +211,14 @@ const EVENT_CHANGE = 'change',
     },
     focus: {
       update(val) {
-        if (val) dom.focus(this.el)
+        if (val)
+          dom.focus(this.el)
       }
     },
     input: {
-      priority: 4,
       constructor(el) {
-        this.super.constructor.apply(this, arguments)
+        SimpleDirective.apply(this, arguments)
+
         if (!this.expression.simplePath)
           throw TypeError(`Invalid Expression[${this.expression.expr}] on InputDirective`)
 
@@ -231,12 +241,12 @@ const EVENT_CHANGE = 'change',
       },
 
       bind() {
-        this.super.bind.call(this)
+        SimpleDirective.prototype.bind.call(this)
         dom.on(this.el, this.event, this.onChange)
       },
 
       unbind() {
-        this.super.unbind.call(this)
+        SimpleDirective.prototype.unbind.call(this)
         dom.off(this.el, this.event, this.onChange)
       },
 
@@ -296,7 +306,8 @@ const EVENT_CHANGE = 'change',
           default:
             throw TypeError('Directive[input] not support ' + tag)
         }
-      }
+      },
+      priority: 4
     }
   }
 
