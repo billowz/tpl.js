@@ -7,11 +7,11 @@ const _ = require('../util'),
 
 module.exports = _.dynamicClass({
   extend: Binding,
-  constructor(el, scope, expr) {
-    this.super.constructor.call(this, el, scope)
-    this.expr = expression.parse(expr, expressionArgs)
+  constructor(cfg) {
+    this.super(arguments)
+    this.expr = expression.parse(cfg.expression, expressionArgs)
     if (config.get(Binding.commentCfg)) {
-      this.comment = document.createComment('Text Binding ' + expr)
+      this.comment = document.createComment('Text Binding ' + this.expr)
       dom.before(this.comment, this.el)
     }
     this.observeHandler = this.observeHandler.bind(this)

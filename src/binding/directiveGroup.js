@@ -7,27 +7,41 @@ const Binding = require('./binding'),
 
 module.exports = _.dynamicClass({
   extend: Binding,
-  constructor(el, scope, Directives) {
-    this.super.constructor.call(this, el, scope)
-    this.Directives = Directives
-    this.directives = []
+  constructor(cfg) {
+    this.super(arguments)
+    this.template = cfg.template
+    this.directives = _.map(cfg.directives, (directive) => {
+      return this.createDirective(directive)
+    })
     this.bindedCount = 0
+    this.bindedChildren = false
     this.parse = this.parse.bind(this)
+    this.children = _.map(cfg.children, (directive) => {
+      return this.createDirective(directive)
+    })
   },
-  createDirective(cfg) {
-    return new cfg.directive(this.el, this.scope, cfg.expression, cfg.attr)
+  createDirective(binding) {
+    return this.template.parser.createDirective(binding, {
+      el: this.el,
+      template: this.template,
+      scope: this.realScope(),
+      group: this
+    })
   },
   parse() {
-    let idx = this.bindedCount,
-      directive = this.directives[idx],
-      ret
-
-    if (!directive)
-      directive = this.directives[idx] = this.createDirective(this.Directives[idx])
-
-    ret = directive.bind()
-    if ((++this.bindedCount) < this.directives.length)
-      (ret && ret instanceof YieId) ? ret.then(this.parse) : this.parse()
+    let idx = this.bindedCount
+    if (idx < this.directives.length) {
+      let directive = this.directives[idx],
+        ret
+      ret = directive.bind()
+      this.bindedCount++;
+      (ret && ret instanceof YieId) ? ret.then(this.parse): this.parse()
+    } else {
+      _.each(this.children, (directive) => {
+        directive.bind()
+      })
+      this.bindedChildren = true
+    }
   },
   bind() {
     this.parse()
@@ -36,6 +50,12 @@ module.exports = _.dynamicClass({
     let directives = this.directives,
       i = this.bindedCount
 
+    if (this.bindedChildren) {
+      _.each(this.children, (directive) => {
+        directive.unbind()
+      })
+      this.bindedChildren = false
+    }
     while (i--) {
       directives[i].unbind()
     }

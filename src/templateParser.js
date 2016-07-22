@@ -2,7 +2,9 @@ const _ = require('./util'),
   dom = require('./dom'),
   log = require('./log'),
   {
-    Directive
+    Directive,
+    DirectiveGroup,
+    Text
   } = require('./binding')
 
 const TemplateParser = _.dynamicClass({
@@ -16,6 +18,20 @@ const TemplateParser = _.dynamicClass({
     this.directiveReg = directiveReg
     this.TextParser = TextParser
     this.parse()
+  },
+  createDirective(binding, cfg) {
+    cfg = _.assign(cfg, binding)
+    switch (binding.type) {
+      case TemplateParser.TEXT:
+        return new Text(cfg)
+        break
+      case TemplateParser.DIRECTIVE:
+        return new binding.directive(cfg)
+      case TemplateParser.DIRECTIVE_GROUP:
+        return new DirectiveGroup(cfg)
+      default:
+        throw new Error('invalid binding')
+    }
   },
   clone() {
     let el = dom.cloneNode(this.el)
@@ -50,33 +66,32 @@ const TemplateParser = _.dynamicClass({
     this.bindings = []
     if (_.isArrayLike(this.el)) {
       _.each(this.el, (el) => {
-        this.parseNode(el)
+        this.parseNode(el, this.bindings)
       })
     } else {
-      this.parseNode(this.el)
+      this.parseNode(this.el, this.bindings)
     }
   },
-  parseNode(el) {
+  parseNode(el, coll) {
     switch (el.nodeType) {
       case 1:
-        this.parseElement(el)
+        this.parseElement(el, coll)
         break
       case 3:
-        this.parseText(el)
+        this.parseText(el, coll)
         break
     }
   },
-  parseText(el) {
+  parseText(el, coll) {
     let text = dom.text(el),
       parser = new this.TextParser(text),
       token, index = 0,
-      els = this.els,
-      bindings = this.bindings
+      els = this.els
 
     while (token = parser.token()) {
       this.insertText2(text.substring(index, token.start), el)
       this.insertText('binding', el)
-      bindings.push({
+      coll.push({
         expression: token.token,
         index: els.length - 1,
         type: TemplateParser.TEXT
@@ -90,13 +105,12 @@ const TemplateParser = _.dynamicClass({
       this.pushEl(el, false)
     }
   },
-  parseElement(el) {
+  parseElement(el, coll) {
     let directives = [],
       index = this.els.length,
-      bindings = this.bindings,
       directiveReg = this.directiveReg,
+      directive = undefined,
       block
-
 
     _.each(el.attributes, (attr) => {
       let name = attr.name
@@ -112,33 +126,38 @@ const TemplateParser = _.dynamicClass({
           }
           if (Directive.isAbstract(directive)) {
             directives = [cfg]
+            block = Directive.isBlock(directive)
             return false
           }
-          directives.push(cfg)
           if (Directive.isBlock(directive))
             block = true
+          directives.push(cfg)
         } else {
           log.warn(`Directive[${name}] is undefined`)
         }
       }
     })
+
     if (directives.length == 1) {
-      bindings.push(directives[0])
+      directive = directives[0]
     } else if (directives.length) {
-      bindings.push({
+      directive = {
         directives: directives.sort((a, b) => {
           return Directive.getPriority(b.directive) - Directive.getPriority(a.directive)
         }),
         index: index,
         type: TemplateParser.DIRECTIVE_GROUP
-      })
+      }
+    }
+    if (directive) {
+      coll.push(directive)
+      coll = directive.children = []
     }
 
     this.pushEl(el, !block)
-
     if (!block)
       _.each(_.map(el.childNodes, (n) => n), (el) => {
-        this.parseNode(el)
+        this.parseNode(el, coll)
       })
   },
   pushEl(el, parsed) {

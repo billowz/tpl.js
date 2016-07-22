@@ -3,7 +3,7 @@ const _ = require('../util'),
   {
     Directive
   } = require('../binding'),
-  TemplateInstance = require('../templateInstance'),
+  Template = require('../template'),
   eachReg = /^\s*([\s\S]+)\s+in\s+([\S]+)(\s+track\s+by\s+([\S]+))?\s*$/,
   eachAliasReg = /^(\(\s*([^,\s]+)(\s*,\s*([\S]+))?\s*\))|([^,\s]+)(\s*,\s*([\S]+))?$/
 
@@ -13,7 +13,7 @@ export const EachDirective = _.dynamicClass({
   block: true,
   priority: 10,
   constructor() {
-    this.super.constructor.apply(this, arguments)
+    this.super(arguments)
     this.observeHandler = this.observeHandler.bind(this)
     let token = this.expr.match(eachReg)
     if (!token)
@@ -29,14 +29,21 @@ export const EachDirective = _.dynamicClass({
     this.valueAlias = aliasToken[2] || aliasToken[5]
     this.keyAlias = aliasToken[4] || aliasToken[7]
 
+    dom.removeAttr(this.el, this.attr)
     this.begin = document.createComment('each begin')
     this.end = document.createComment('each end')
-    dom.before(this.begin, this.el)
+    dom.replace(this.el, this.begin)
     dom.after(this.end, this.begin)
-    dom.remove(this.el)
-    let div = document.createElement('div')
-    dom.append(div, this.el)
-    this.el = div
+
+    let eachTemplateId = this.template.id + '-' + this.templateIndex
+    if(!(this.eachTemplate = Template.get(eachTemplateId)))
+      this.eachTemplate = new Template(this.el, {
+        id: eachTemplateId,
+        directiveReg: this.template.directiveReg,
+        TextParser: this.template.TextParser,
+        clone: false
+      })
+    this.el = null
   },
   update(data) {
     let parentScope = this.realScope(),
@@ -65,7 +72,7 @@ export const EachDirective = _.dynamicClass({
       }
       sort[idx] = scope // update sort
       if (init) { // init compontent
-        scope.$tpl = new TemplateInstance(dom.cloneNode(this.el), scope, this.tpl.TextParser, this.tpl.directiveReg)
+        scope.$tpl = this.eachTemplate.complie(scope)
         data[idx] = scope[valueAlias]
         scope.$tpl.before(end)
       }
@@ -87,7 +94,7 @@ export const EachDirective = _.dynamicClass({
           sort[scope.$sort] = scope2
           scope = scope2
         } else {
-          scope.$tpl = new TemplateInstance(dom.cloneNode(this.el), scope, this.tpl.TextParser, this.tpl.directiveReg)
+          scope.$tpl = this.eachTemplate.complie(scope)
         }
         data[scope.$sort] = scope[valueAlias]
         scope.$tpl.after(scope.$sort ? sort[scope.$sort - 1].$tpl.els : begin)

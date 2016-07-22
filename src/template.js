@@ -8,7 +8,8 @@ const _ = require('./util'),
   config = require('./config'),
   TemplateParser = require('./templateParser'),
   directiveRegCfg = 'directiveReg',
-  TextParserCfg = 'TextParser'
+  TextParserCfg = 'TextParser',
+  TemplateInstance = require('./templateInstance')
 
 config.register(directiveRegCfg, /^tpl-/)
 config.register(TextParserCfg, TextParser.NormalTextParser)
@@ -30,65 +31,35 @@ function getConfig(cfg, name) {
   return cfg[name] || config.get(name)
 }
 
-class Template {
+let templateId = 0
+const templateCache = {}
+module.exports = _.dynamicClass({
+  statics: {
+    get(id) {
+      return templateCache[id]
+    }
+  },
   constructor(templ, cfg = {}) {
-    this.parser = new TemplateParser(parseEl(templ, cfg.clone !== false),
-      getConfig(cfg, directiveRegCfg), getConfig(cfg, TextParserCfg))
-  }
+    this.id = cfg.id || (templateId++)
+    this.directiveReg = getConfig(cfg, directiveRegCfg)
+    this.TextParser = getConfig(cfg, TextParserCfg)
+    this.el = parseEl(templ, cfg.clone !== false)
+    this.parser = new TemplateParser(this.el, this.directiveReg, this.TextParser)
+    templateCache[this.id] = this
+  },
   complie(scope) {
     let templ = this.parser.clone(),
       els = templ.els,
-      bindings = _.map(templ.bindings, (binding) => {
-        let el = els[binding.index]
-        switch (binding.type) {
-          case TemplateParser.TEXT:
-            return new Text(el, scope, binding.expression)
-            break
-          case TemplateParser.DIRECTIVE:
-            return new binding.directive(el, scope, binding.expression, binding.attr)
-            break
-          case TemplateParser.DIRECTIVE_GROUP:
-            return new DirectiveGroup(el, scope, binding.directives)
-            break
-          default:
-            throw new Error('invalid binding')
-        }
+      bindings
+
+    dom.append(document.createDocumentFragment(), templ.el)
+    bindings = _.map(templ.bindings, (binding) => {
+      return this.parser.createDirective(binding, {
+        el: els[binding.index],
+        scope: scope,
+        template: this
       })
-      console.log(bindings)
+    })
+    return new TemplateInstance(templ.el, bindings)
   }
-}
-
-class TemplateInstance {
-  constructor(scope, tmpl) {
-    this.scope = scope
-    this.el = _.map(tmpl.el.childNodes, (n) => n)
-    dom.remove(this.el)
-  }
-
-  before(target) {
-    dom.before(this.el, dom.query(target))
-    return this
-  }
-
-  after(target) {
-    dom.after(this.el, dom.query(target))
-    return this
-  }
-
-  prependTo(target) {
-    dom.prepend(dom.query(target), this.el)
-    return this
-  }
-
-  appendTo(target) {
-    dom.append(dom.query(target), this.el)
-    return this
-  }
-
-  destroy() {
-    dom.remove(this.el)
-    this.bindings = undefined
-    this.scope = undefined
-  }
-}
-module.exports = Template
+})

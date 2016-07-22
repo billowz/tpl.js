@@ -5,12 +5,13 @@ const Binding = _.dynamicClass({
   statics: {
     commentCfg: 'generateComments'
   },
-  constructor(el, scope) {
-    this._scope = _.obj(scope)
-    this.el = el
+  constructor(cfg) {
+    this._scope = _.obj(cfg.scope)
+    this.el = cfg.el
   },
   scope() {
-    return _.proxy(this._scope)
+    let scope = this._scope
+    return _.proxy(scope) || scope
   },
   realScope() {
     return this._scope

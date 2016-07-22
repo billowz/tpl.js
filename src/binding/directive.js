@@ -10,15 +10,34 @@ const Directive = _.dynamicClass({
   abstract: false,
   block: false,
   priority: 5,
-  constructor(el, scope, expr, attr) {
-    this.super.constructor.call(this, el, scope)
-    this.expr = expr
-    this.attr = attr
-    dom.removeAttr(this.el, this.attr)
+  constructor(cfg) {
+    this.super(arguments)
+    this.expr = cfg.expression
+    this.attr = cfg.attr
+    this.template = cfg.template
+    this.templateIndex = cfg.index
+    this.children = _.map(cfg.children, (binding) => {
+      return this.template.parser.createDirective(binding, {
+        el: this.el,
+        template: this.template,
+        scope: this.realScope()
+      })
+    })
+    this.group = cfg.group
     if (config.get(Binding.commentCfg)) {
       this.comment = document.createComment(`Directive[${this.attr}]: ${this.expr}`)
       dom.before(this.comment, this.el)
     }
+  },
+  bindChildren() {
+    _.each(this.children, (directive) => {
+      directive.bind()
+    })
+  },
+  unbindChildren() {
+    _.each(this.children, (directive) => {
+      directive.unbind()
+    })
   },
   statics: {
     getPriority(directive) {

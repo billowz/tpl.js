@@ -12,7 +12,7 @@ const TextParser = _.dynamicClass({
 TextParser.NormalTextParser = _.dynamicClass({
   extend: TextParser,
   constructor() {
-    this.super.constructor.apply(this, arguments)
+    this.super(arguments)
     this.index = 0
     this.reg = /{([^{]+)}/g
   },

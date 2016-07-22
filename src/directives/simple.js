@@ -11,13 +11,13 @@ const _ = require('../util'),
 
 function registerDirective(name, opt) {
   let cls = Directive.register(name, opt)
-  module.exports[cls.className] = cls
+  module.exports[_.hump(name + 'Directive')] = cls
 }
 
 export const SimpleDirective = _.dynamicClass({
   extend: Directive,
   constructor() {
-    this.super.constructor.apply(this, arguments)
+    this.super(arguments)
     this.observeHandler = this.observeHandler.bind(this)
     this.expression = expression.parse(this.expr, expressionArgs)
   },
@@ -27,16 +27,22 @@ export const SimpleDirective = _.dynamicClass({
   value() {
     return this.expression.executeAll.call(this, this.scope(), this.el)
   },
-  bind() {
+  listen() {
     _.each(this.expression.identities, (ident) => {
       this.observe(ident, this.observeHandler)
     })
     this.update(this.value())
   },
-  unbind() {
+  bind() {
+    this.listen()
+  },
+  unlisten() {
     _.each(this.expression.identities, (ident) => {
       this.unobserve(ident, this.observeHandler)
     })
+  },
+  unbind() {
+    this.unlisten()
   },
   blankValue(val) {
     if (arguments.length == 0) val = this.value()
@@ -159,34 +165,23 @@ const EVENT_CHANGE = 'change',
     },
     'if': {
       priority: 9,
-      block: true,
       bind() {
-        this.super.bind.call(this)
-        if (!this.directives)
-          return (this.yieId = new YieId())
+        this.yieId = new YieId()
+        this.listen()
+        return this.yieId
       },
       unbind() {
-        this.super.unbind.call(this)
-        if (this.directives) {
-          let directives = this.directives
-          _.each(directives, (dir) => {
-            dir.unbind()
-          })
-        }
+        this.unlisten()
+        this.unbindChildren()
       },
       update(val) {
         if (!val) {
           dom.css(this.el, 'display', 'none')
         } else {
-          if (!this.directives) {
-            let directives = this.directives = this.tpl.parseChildNodes(this.el)
-            _.each(directives, (dir) => {
-              dir.bind()
-            })
-            if (this.yieId) {
-              this.yieId.done()
-              this.yieId = undefined
-            }
+          this.bindChildren()
+          if (this.yieId) {
+            this.yieId.done()
+            this.yieId = undefined
           }
           dom.css(this.el, 'display', '')
         }
@@ -207,19 +202,19 @@ const EVENT_CHANGE = 'change',
     },
     input: {
       priority: 4,
-      constructor(el) {
-        this.super.constructor.apply(this, arguments)
+      constructor() {
+        this.super(arguments)
         if (!this.expression.simplePath)
           throw TypeError(`Invalid Expression[${this.expression.expr}] on InputDirective`)
 
         this.onChange = this.onChange.bind(this)
-        let tag = this.tag = el.tagName
+        let tag = this.tag = this.el.tagName
         switch (tag) {
           case TAG_SELECT:
             this.event = EVENT_CHANGE
             break
           case TAG_INPUT:
-            let type = this.type = el.type
+            let type = this.type = this.el.type
             this.event = (type == RADIO || type == CHECKBOX) ? EVENT_CHANGE : EVENT_INPUT
             break
           case TAG_TEXTAREA:
@@ -231,12 +226,12 @@ const EVENT_CHANGE = 'change',
       },
 
       bind() {
-        this.super.bind.call(this)
+        this.super()
         dom.on(this.el, this.event, this.onChange)
       },
 
       unbind() {
-        this.super.unbind.call(this)
+        this.super()
         dom.off(this.el, this.event, this.onChange)
       },
 

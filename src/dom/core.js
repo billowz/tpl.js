@@ -94,6 +94,10 @@ let dom = {
     target.firstChild ? dom.before(el, el.firstChild) : dom.append(target, el)
     return dom
   },
+  replace(source, target){
+    let parent = source.parentNode
+    parent.replaceChild(target, source)
+  },
   html(el, html) {
     return arguments.length > 1 ? (el.innerHTML = html) : el.innerHTML
   },

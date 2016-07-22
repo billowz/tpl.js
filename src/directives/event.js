@@ -15,7 +15,7 @@ function registerDirective(name, opt) {
 export const EventDirective = _.dynamicClass({
   extend: Directive,
   constructor() {
-    this.super.constructor.apply(this, arguments)
+    this.super(arguments)
     this.handler = this.handler.bind(this)
     this.expression = expression.parse(this.expr, expressionArgs)
   },
@@ -39,12 +39,12 @@ export const EventDirective = _.dynamicClass({
     }
   },
   bind() {
-    this.super.bind.call(this)
     dom.on(this.el, this.eventType, this.handler)
+    this.bindChildren()
   },
   unbind() {
-    this.super.unbind.call(this)
     dom.off(this.el, this.eventType, this.handler)
+    this.unbindChildren()
   }
 })
 
