@@ -1,3 +1,8 @@
-const _ = require('../util')
+import EachDirective from './each'
+import event from './event'
+import simple from './simple'
+import _ from '../util'
 
-module.exports = _.assign({}, require('./each'), require('./event'), require('./simple'))
+export default _.assign({
+  EachDirective
+}, event, simple)

@@ -1,3 +1,3 @@
-const {Configuration} = require('./util')
+import _ from './util'
 
-module.exports = new Configuration()
+export default new _.Configuration()

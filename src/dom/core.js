@@ -1,5 +1,6 @@
-const _ = require('../util'),
-  textContent = typeof document.createElement('div').textContent == 'string' ? 'textContent' : 'innerText'
+import _ from '../util'
+
+const textContent = typeof document.createElement('div').textContent == 'string' ? 'textContent' : 'innerText'
 
 function firstEl(el) {
   return _.isArrayLike(el) ? el[0] : el
@@ -94,7 +95,7 @@ let dom = {
     target.firstChild ? dom.before(el, el.firstChild) : dom.append(target, el)
     return dom
   },
-  replace(source, target){
+  replace(source, target) {
     let parent = source.parentNode
     parent.replaceChild(target, source)
   },
@@ -120,7 +121,7 @@ let dom = {
   }
 }
 
-module.exports = dom
+export default dom
 
 //====================== Query =============================
 if (!document.querySelectorAll) {

@@ -1,25 +1,19 @@
-const _ = require('../util'),
-  dom = require('../dom'),
-  {
-    Directive
-  } = require('../binding'),
-  expression = require('../expression'),
-  {
-    YieId
-  } = _,
-  expressionArgs = ['$el']
+import {
+  Directive
+} from '../binding'
+import expression from '../expression'
+import _ from '../util'
+import dom from '../dom'
+import log from '../log'
 
-function registerDirective(name, opt) {
-  let cls = Directive.register(name, opt)
-  module.exports[_.hump(name + 'Directive')] = cls
-}
+const expressionArgs = ['$el']
 
-export const SimpleDirective = _.dynamicClass({
+const SimpleDirective = _.dynamicClass({
   extend: Directive,
   constructor() {
     this.super(arguments)
     this.observeHandler = this.observeHandler.bind(this)
-    this.expression = expression.parse(this.expr, expressionArgs)
+    this.expression = expression(this.expr, expressionArgs)
   },
   realValue() {
     return this.expression.execute.call(this, this.scope(), this.el)
@@ -166,7 +160,7 @@ const EVENT_CHANGE = 'change',
     'if': {
       priority: 9,
       bind() {
-        this.yieId = new YieId()
+        this.yieId = new _.YieId()
         this.listen()
         return this.yieId
       },
@@ -295,7 +289,13 @@ const EVENT_CHANGE = 'change',
     }
   }
 
-_.each(directives, (opt, name) => {
+export default _.assign(_.convert(directives, (opt, name) => {
+  console.log('name', name)
+  return _.hump(name + 'Directive')
+}, (opt, name) => {
+  console.log('name2', name)
   opt.extend = SimpleDirective
-  registerDirective(name, opt)
+  return Directive.register(name, opt)
+}), {
+  SimpleDirective
 })

@@ -1,5 +1,5 @@
-const _ = require('../util'),
-  dom = require('./core');
+import dom from './core'
+import _ from '../util'
 
 function stringValue(val) {
   if (_.isNil(val) || val === NaN)
@@ -9,7 +9,7 @@ function stringValue(val) {
   return val
 }
 
-module.exports = _.assign(dom, {
+export default _.assign(dom, {
   val(el, val) {
     let hook = dom.valHooks[el.type || el.tagName.toLowerCase()]
 

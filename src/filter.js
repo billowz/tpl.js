@@ -1,11 +1,13 @@
-const _ = require('./util'),
-  slice = Array.prototype.slice,
-  filters = {},
-  log = require('./log')
+import _ from './util'
+import log from './log'
+
+const slice = Array.prototype.slice,
+  filters = {}
 
 function apply(name, data, args, apply) {
   let f = filters[name],
-    type = f ? f.type : undefined, fn
+    type = f ? f.type : undefined,
+    fn
 
   fn = f ? apply !== false ? f.apply : f.unapply : undefined
   if (!fn) {
@@ -44,7 +46,7 @@ let filter = {
   }
 }
 
-module.exports = filter
+export default filter
 
 export const keyCodes = {
   esc: 27,
@@ -60,11 +62,12 @@ export const keyCodes = {
 
 let eventFilters = {
   key(e) {
-    let which = e.which, k
+    let which = e.which,
+      k
 
-    for(let i = 1, l = arguments.length; i < l; i++){
+    for (let i = 1, l = arguments.length; i < l; i++) {
       k = arguments[i]
-      if(which == (keyCodes[k] || k))
+      if (which == (keyCodes[k] || k))
         return true
     }
     return false
@@ -90,9 +93,7 @@ _.each(eventFilters, (fn, name) => {
 let nomalFilters = {
   json: {
     apply: function(value, indent) {
-      return typeof value === 'string'
-        ? value
-        : JSON.stringify(value, null, Number(indent) || 2)
+      return typeof value === 'string' ? value : JSON.stringify(value, null, Number(indent) || 2)
     },
     unapply: function(value) {
       try {
@@ -110,15 +111,11 @@ let nomalFilters = {
   },
 
   uppercase(value) {
-    return (value || value === 0)
-      ? value.toString().toUpperCase()
-      : ''
+    return (value || value === 0) ? value.toString().toUpperCase() : ''
   },
 
   lowercase(value) {
-    return (value || value === 0)
-      ? value.toString().toLowerCase()
-      : ''
+    return (value || value === 0) ? value.toString().toLowerCase() : ''
   },
 
   currency(value, currency) {
@@ -128,9 +125,7 @@ let nomalFilters = {
     var stringified = Math.abs(value).toFixed(2)
     var _int = stringified.slice(0, -3)
     var i = _int.length % 3
-    var head = i > 0
-      ? (_int.slice(0, i) + (_int.length > 3 ? ',' : ''))
-      : ''
+    var head = i > 0 ? (_int.slice(0, i) + (_int.length > 3 ? ',' : '')) : ''
     var _float = stringified.slice(-3)
     var sign = value < 0 ? '-' : ''
     return sign + currency + head + _int.slice(i).replace(digitsRE, '$1,') + _float
@@ -138,9 +133,7 @@ let nomalFilters = {
 
   pluralize(value) {
     var args = slice.call(arguments, 1)
-    return args.length > 1
-      ? (args[value % 10 - 1] || args[args.length - 1])
-      : (args[0] + (value === 1 ? '' : 's'))
+    return args.length > 1 ? (args[value % 10 - 1] || args[args.length - 1]) : (args[0] + (value === 1 ? '' : 's'))
   }
 }
 _.each(nomalFilters, (f, name) => {

@@ -1,19 +1,27 @@
-let tpl = require('./template'),
-  observer = require('observer'),
-  _ = require('./util'),
-  config = require('./config')
+import observer from 'observer'
+import Template from './Template'
+import TemplateParser from './TemplateParser'
+import TextParser from './TextParser'
+import expression from './expression'
+import filter from './filter'
+import {
+  Directive
+} from './binding'
+import directives from './directives'
+import config from './config'
+import _ from './util'
+import dom from './dom'
 
-_.assign(tpl, _, require('./dom'), {
-  filter: require('./filter'),
-  expression: require('./expression'),
-  Directive: require('./binding').Directive,
-  directives: require('./directives'),
-  TextParser: require('./textParser'),
-  config: config.get(),
+export default _.assign(Template, _, dom, {
+  filter,
+  expression,
+  Directive,
+  directives,
+  TextParser,
+  config,
+  TemplateParser,
   init(cfg) {
     observer.init(cfg)
     config.config(cfg)
-  },
-  tp: require('./templateParser')
+  }
 })
-module.exports = tpl;

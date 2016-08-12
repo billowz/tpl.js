@@ -1,9 +1,8 @@
-let dom = require('./core')
-require('./attr')
-require('./css')
-require('./val')
-require('./event')
-require('./ready')
+import dom from './core'
+import './attr'
+import './css'
+import './val'
+import './event'
+import './ready'
 
-module.exports = dom
-
+export default dom

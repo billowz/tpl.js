@@ -1,9 +1,10 @@
-const _ = require('../util'),
-  dom = require('./core'),
-  root = document.documentElement
+import dom from './core'
+import _ from '../util'
 
-_.assign(dom, {
-  hasListen(el, type, cb){
+const root = document.documentElement
+
+export default _.assign(dom, {
+  hasListen(el, type, cb) {
     return hasListen(el, type, cb)
   },
   on(el, type, cb, once) {
@@ -34,8 +35,6 @@ _.assign(dom, {
     return hackEvent
   }
 })
-
-module.exports = dom
 
 const mouseEventReg = /^(?:mouse|contextmenu|drag)|click/,
   keyEventReg = /^key/,
@@ -183,7 +182,7 @@ function hasListen(el, type, handler) {
   let listens = el[listenKey],
     handlers = listens ? listens[type] : undefined
 
-  return handlers ? handler ? _.indexOf(handlers, handler)!=-1 : !!handlers.length : false;
+  return handlers ? handler ? _.indexOf(handlers, handler) != -1 : !!handlers.length : false;
 }
 
 const bind = dom.W3C ? function(el, type, fn, capture) {

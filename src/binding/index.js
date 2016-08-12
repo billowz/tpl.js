@@ -1,5 +1,11 @@
-const _ = require('../util')
+import Binding from './Binding'
+import Text from './Text'
+import Directive from './Directive'
+import DirectiveGroup from './DirectiveGroup'
 
-_.each(['binding', 'text', 'directive', 'directiveGroup', 'text'], (name) => {
-  module.exports[_.upperFirst(name)] = require('./' + name)
-})
+export {
+  Binding,
+  Text,
+  Directive,
+  DirectiveGroup
+}

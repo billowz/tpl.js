@@ -1,5 +1,26 @@
-var base = require('./karma.base.config.js')
-var batch = {
+var baseCfg = require('./karma.config'),
+  pkg = require('../package.json')
+
+module.exports = function(config) {
+  baseCfg(config)
+  config.set({
+    browsers: Object.keys(browsers),
+    customLaunchers: browsers,
+    reporters: ['spec', 'saucelabs'],
+    sauceLabs: {
+      testName: 'utility.js unit tests',
+      username: 'utility-js',
+      accessKey: '6b589fb2-460b-46d7-a272-8e9646bfb0d7',
+      tags: ['v' + pkg.version],
+      'public': 'public'
+    },
+    // mobile emulators are really slow
+    captureTimeout: 300000,
+    browserNoActivityTimeout: 300000
+  })
+}
+
+var browsers = {
   sl_chrome: {
     base: 'SauceLabs',
     browserName: 'chrome',
@@ -8,7 +29,8 @@ var batch = {
   sl_firefox: {
     base: 'SauceLabs',
     browserName: 'firefox',
-    platform: 'Windows 7'
+    platform: 'Windows 7',
+    version: '44'
   },
   sl_mac_safari: {
     base: 'SauceLabs',
@@ -51,24 +73,4 @@ var batch = {
     platform: 'Windows XP',
     version: '6'
   }
-}
-
-module.exports = function(config) {
-  var options = Object.assign(base, {
-    browsers: Object.keys(batch),
-    customLaunchers: batch,
-    reporters: ['progress', 'saucelabs'],
-    sauceLabs: {
-      testName: 'tpl.js unit tests',
-      username: 'tpl_js',
-      accessKey: '1410ba42-f5e0-4dcd-867d-1852420b5826'
-    },
-    port: 9876,
-    // mobile emulators are really slow
-    captureTimeout: 300000,
-    browserNoActivityTimeout: 300000
-  });
-
-  options.plugins.push(require('karma-sauce-launcher'));
-  config.set(options)
 }

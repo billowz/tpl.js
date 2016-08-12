@@ -1,3 +1,3 @@
-const {Logger} = require('./util')
+import _ from './util'
 
-module.exports = new Logger('tpl', 'debug')
+export default new _.Logger('tpl', 'debug')

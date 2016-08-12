@@ -1,6 +1,7 @@
-const _ = require('./util'),
-  filter = require('./filter'),
-  defaultKeywords = _.reverseConvert('Math,Date,this,true,false,null,undefined,Infinity,NaN,isNaN,isFinite,decodeURI,decodeURIComponent,encodeURI,encodeURIComponent,parseInt,parseFloat,$scope'.split(','), () => true),
+import _ from './util'
+import filter from './filter'
+
+const defaultKeywords = _.reverseConvert('Math,Date,this,true,false,null,undefined,Infinity,NaN,isNaN,isFinite,decodeURI,decodeURIComponent,encodeURI,encodeURIComponent,parseInt,parseFloat,$scope'.split(','), () => true),
   wsReg = /\s/g,
   newlineReg = /\n/g,
   translationReg = /[\{,]\s*[\w\$_]+\s*:|('(?:[^'\\]|\\.)*'|"(?:[^"\\]|\\.)*"|`(?:[^`\\]|\\.)*\$\{|\}(?:[^`\\]|\\.)*`|`(?:[^`\\]|\\.)*`)|new |typeof |void |(\|\|)/g,
@@ -132,7 +133,7 @@ function compileExecuter(exp, keywords) {
 }
 
 function parseFilterArgs(executors, scope, args) {
-  return _.map(executors, (executor)=>{
+  return _.map(executors, (executor) => {
     return executor.apply(scope, args)
   })
 }
@@ -156,7 +157,7 @@ function isSimplePath(exp) {
 
 let cache = {}
 
-export function parse(exp, args) {
+export default function expression(exp, args) {
   let res
 
   exp = _.trim(exp)

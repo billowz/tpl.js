@@ -1,13 +1,15 @@
-const _ = require('../util'),
-  dom = require('../dom'),
-  {
-    Directive
-  } = require('../binding'),
-  Template = require('../template'),
-  eachReg = /^\s*([\s\S]+)\s+in\s+([\S]+)(\s+track\s+by\s+([\S]+))?\s*$/,
+import {
+  Directive
+} from '../binding'
+import Template from '../template'
+import _ from '../util'
+import dom from '../dom'
+import log from '../log'
+
+const eachReg = /^\s*([\s\S]+)\s+in\s+([\S]+)(\s+track\s+by\s+([\S]+))?\s*$/,
   eachAliasReg = /^(\(\s*([^,\s]+)(\s*,\s*([\S]+))?\s*\))|([^,\s]+)(\s*,\s*([\S]+))?$/
 
-export const EachDirective = _.dynamicClass({
+export default Directive.register('each', _.dynamicClass({
   extend: Directive,
   abstract: true,
   block: true,
@@ -36,7 +38,7 @@ export const EachDirective = _.dynamicClass({
     dom.after(this.end, this.begin)
 
     let eachTemplateId = this.template.id + '-' + this.templateIndex
-    if(!(this.eachTemplate = Template.get(eachTemplateId)))
+    if (!(this.eachTemplate = Template.get(eachTemplateId)))
       this.eachTemplate = new Template(this.el, {
         id: eachTemplateId,
         directiveReg: this.template.directiveReg,
@@ -135,6 +137,4 @@ export const EachDirective = _.dynamicClass({
   observeHandler(expr, target) {
     this.update(target)
   }
-})
-
-Directive.register('each', EachDirective)
+}))

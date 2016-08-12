@@ -1,23 +1,20 @@
-const _ = require('../util'),
-  dom = require('../dom'),
-  {
-    Directive
-  } = require('../binding'),
-  expression = require('../expression'),
-  log = require('../log'),
-  expressionArgs = ['$el', '$event']
+import {
+  Directive
+} from '../binding'
+import Template from '../template'
+import expression from '../expression'
+import _ from '../util'
+import dom from '../dom'
+import log from '../log'
 
-function registerDirective(name, opt) {
-  let cls = Directive.register(name, opt)
-  module.exports[cls.className] = cls
-}
+const expressionArgs = ['$el', '$event']
 
-export const EventDirective = _.dynamicClass({
+const EventDirective = _.dynamicClass({
   extend: Directive,
   constructor() {
     this.super(arguments)
     this.handler = this.handler.bind(this)
-    this.expression = expression.parse(this.expr, expressionArgs)
+    this.expression = expression(this.expr, expressionArgs)
   },
   handler(e) {
     e.stopPropagation()
@@ -55,11 +52,17 @@ const events = ['blur', 'change', 'click', 'dblclick', 'error', 'focus', 'keydow
   }
 ]
 
-_.each(events, (opt) => {
-  opt = _.isObject(opt) ? opt : {
-    eventType: opt
-  }
-  opt.name = opt.name || `on${opt.eventType}`
+export default _.assign(_.convert(events, (opt) => {
+  let name = _.isObject(opt) ? opt.name : opt
+  return _.hump(name + 'Directive')
+}, (opt) => {
+  if (!_.isObject(opt))
+    opt = {
+      eventType: opt
+    }
+  let name = opt.name || `on${opt.eventType}`
   opt.extend = EventDirective
-  registerDirective(opt.name, opt)
+  return Directive.register(name, opt)
+}), {
+  EventDirective
 })

@@ -1,7 +1,7 @@
-const _ = require('../util'),
-  dom = require('./core');
+import dom from './core'
+import _ from '../util'
 
-_.assign(dom, {
+export default _.assign(dom, {
   css(el, name, value) {
     let prop = /[_-]/.test(name) ? camelize(name) : name,
       hook
@@ -9,7 +9,8 @@ _.assign(dom, {
     name = cssName(prop) || prop
     hook = cssHooks[prop] || cssDefaultHook
     if (arguments.length == 2) {
-      let convert = value, num;
+      let convert = value,
+        num;
 
       if (name === 'background')
         name = 'backgroundColor';
@@ -89,8 +90,6 @@ _.assign(dom, {
   }
 });
 
-module.exports = dom;
-
 let cssFix = dom.cssFix = {
     'float': dom.W3C ? 'cssFloat' : 'styleFloat'
   },
@@ -130,6 +129,7 @@ function camelize(target) {
     return match.charAt(1).toUpperCase()
   });
 }
+
 function cssName(name, host, camelCase) {
   if (cssFix[name])
     return cssFix[name]
@@ -183,7 +183,7 @@ if (window.getComputedStyle) {
     let currentStyle = el.currentStyle,
       val = currentStyle[name];
 
-    if ( (rnumnonpx.test(val) && !rposition.test(val)) ) {
+    if ((rnumnonpx.test(val) && !rposition.test(val))) {
       let style = el.style,
         left = style.left,
         rsLeft = el.runtimeStyle.left;

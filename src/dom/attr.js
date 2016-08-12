@@ -1,9 +1,10 @@
-const _ = require('../util'),
-  dom = require('./core'),
-  rfocusable = /^(?:input|select|textarea|button|object)$/i,
+import dom from './core'
+import _ from '../util'
+
+const rfocusable = /^(?:input|select|textarea|button|object)$/i,
   rclickable = /^(?:a|area)$/i
 
-_.assign(dom, {
+export default _.assign(dom, {
   prop(el, name, value) {
     name = dom.propFix[name] || name
     let hook = dom.propHooks[name]
@@ -79,5 +80,3 @@ function _prop(el, name, set, val) {
   dom.prop(el, name)
   return dom
 }
-
-module.exports = dom

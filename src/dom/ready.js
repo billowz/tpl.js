@@ -1,5 +1,6 @@
-let dom = require('./event'),
-  readyList = [],
+import dom from './event'
+
+let readyList = [],
   isReady,
   root = document.documentElement
 
@@ -37,3 +38,5 @@ dom.ready = function(fn) {
   !isReady ? readyList.push(fn) : fn()
   return dom
 }
+
+export default dom
