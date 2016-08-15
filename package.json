@@ -60,6 +60,7 @@
     "rollup-plugin-local-resolve": "^1.0.7",
     "rollup-plugin-multi-entry": "^2.0.0",
     "rollup-plugin-node-resolve-ext": "^2.0.0",
+    "rollup-plugin-sourcemaps": "^0.3.6",
     "rollup-plugin-uglify": "^1.0.1",
     "rollup-watch": "^2.5.0"
   }

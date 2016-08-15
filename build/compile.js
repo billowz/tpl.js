@@ -1,70 +1,72 @@
 var fs = require('fs'),
   zlib = require('zlib'),
   rollup = require('rollup').rollup,
-  uglify = require('rollup-plugin-uglify'),
-  localResolve = require('rollup-plugin-local-resolve'),
-  rollupOptions = 'entry,cache,external,paths,onwarn,plugins,treeshake,acorn'.split(',')
+  uglify = require('rollup-plugin-uglify')
 
-function complie(opt, dest, mini) {
-  var cfg = {}
-  rollupOptions.forEach(function(name) {
-    cfg[name] = opt[name]
-  })
-  cfg.plugins = (opt.plugins || []).concat(mini ? [uglify(), localResolve()] : [localResolve()])
+function _complie(dest, options, bundleOptions, needGzip) {
+  return rollup(options)
+    .then(bundle => {
+      var rs = bundle.generate(bundleOptions),
+        code = rs.code,
+        promises = []
 
-  return rollup(cfg).then(function(bundle) {
-    var res = bundle.generate({
-        format: 'umd',
-        banner: opt.banner,
-        moduleId: opt.module,
-        moduleName: opt.module,
-        useStrict: opt.useStrict,
-        sourceMap: true,
-        dest: dest,
-        globals: opt.globals,
-        indent: false
-      }),
-      code = res.code + '\n//# sourceMappingURL=' + dest.replace(/(.*\/)|(.*\\)/g, '') + '.map',
-      mapcode = JSON.stringify(res.map)
-
-    return Promise.all([
-      write(dest, code),
-      write(dest + '.map', mapcode)
-    ])
-  })
+      if (bundleOptions.sourceMap) {
+        code = code + '\n//# sourceMappingURL=' + dest.replace(/(.*\/)|(.*\\)/g, '') + '.map'
+        promises.push(write(dest + '.map', JSON.stringify(rs.map), writeLog))
+      }
+      promises.push(write(dest, code, writeLog))
+      if (needGzip)
+        promises.push(gzip(dest + '.gz', code, writeLog))
+      return Promise.all(promises)
+    })
 }
 
-module.exports = function(dest, opt) {
-  return complie(opt, dest)
-    .then(function(dest) {
-      return complie(opt, dest[0].replace(/\.js$/, '.min.js'), true)
+module.exports = function complie(options) {
+  var bundle = options.bundle,
+    dest = bundle.dest,
+    promises = []
+
+  console.log(`complie ${options.rollup.entry} -> ${dest}`)
+
+  promises.push(_complie(dest, options.rollup, bundle, false))
+  if (bundle.mini)
+    promises.push(_complie(dest.replace(/\.js$/, '.min.js'), Object.assign({}, options.rollup, {
+      plugins: options.rollup.plugins.concat([uglify()])
+    }), bundle, bundle.gzip))
+
+  return Promise.all(promises)
+    .catch(function(e) {
+      console.error(`complie ${options.rollup.entry} -> ${dest} Error`, e)
     })
-    .then(function(dest) {
-      return new Promise(function(resolve, reject) {
-        fs.readFile(dest[0], function(err, buf) {
-          if (err) return reject(err)
-          zlib.gzip(buf, function(err, buf) {
-            if (err) return reject(err)
-            write(dest[0] + '.gz', buf).then(resolve).catch(reject)
-          })
-        })
+}
+
+function gzip(dest, buff, callback) {
+  return new Promise((resolve, reject) => {
+    zlib.gzip(buff, (err, content) => {
+      if (err) return reject(err)
+      fs.writeFile(dest, content, (err) => {
+        if (err) return reject(err)
+        callback(dest, content)
+        resolve(dest)
       })
     })
-    .catch(function(e) {
-      console.error(e)
-    })
+  })
 }
 
-function write(dest, code) {
-  return new Promise(function(resolve, reject) {
-    fs.writeFile(dest, code, function(err) {
+function write(dest, buf, callback) {
+  return new Promise((resolve, reject) => {
+    fs.writeFile(dest, buf, (err) => {
       if (err) return reject(err)
-      console.log('complie and output: ', dest + ' (' + size(code) + ')')
+      callback(dest, buf)
       resolve(dest)
     })
   })
 }
 
-function size(code) {
-  return (code.length / 1024).toFixed(2) + 'kb'
+function writeLog(dest, buf) {
+  console.log('complie and write: ' + dest + ' (' + size(buf) + ')')
+}
+
+function size(buf) {
+  return (buf.length / 1024).toFixed(2) + 'kb'
 }

@@ -1,6 +1,5 @@
-var babel = require('./rollup-babel'),
-  multiEntry = require('rollup-plugin-multi-entry'),
-  nodeResolve = require('rollup-plugin-node-resolve-ext')
+var multiEntry = require('rollup-plugin-multi-entry'),
+  rollup = require('./rollup.all.config').rollup
 
 module.exports = function(config) {
   config.set({
@@ -15,11 +14,7 @@ module.exports = function(config) {
     },
     rollupPreprocessor: {
       rollup: {
-        plugins: [nodeResolve({
-          alias: require('./dep-alias')
-        }), babel({
-          plugins: ['istanbul']
-        }), multiEntry()]
+        plugins: [multiEntry()].concat(rollup.plugins)
       },
       bundle: {
         sourceMap: 'inline',

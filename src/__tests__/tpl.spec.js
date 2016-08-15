@@ -1,4 +1,4 @@
-import tpl from '../Template'
+import tpl from '../index'
 
 describe("Template", () => {
   it("Template", () => {})

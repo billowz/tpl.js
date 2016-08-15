@@ -3,20 +3,10 @@ const express = require('express'),
   path = require('path'),
   pkg = require('../package.json')
 
-const app = express();
+function devServer(option) {
+  let app = express()
 
-app.use(rollup({
-  src: './src',
-  dest: './dist',
-  bundleExtension: '.js',
-  root: path.join(__dirname, '../'),
-  rollupOpts: {
-    entry: 'index.js'
-  },
-  bundleOpts: {
-    format: 'umd'
-  },
-  debug: true
-}));
-app.use(express.static(path.join(__dirname, '../')));
-app.listen(3000);
+  app.use(express.static(path.join(__dirname, '../')))
+  app.listen(3000)
+  return app
+}
