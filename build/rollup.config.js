@@ -6,13 +6,13 @@ const babel = require('rollup-plugin-babel'),
  * Copyright (c) 2016 ${pkg.author}
  * Released under the ${pkg.license} license
  * support IE6+ and other browsers
- *${pkg.homepage}
+ * ${pkg.homepage}
  */`
 
 module.exports = {
   rollup: { // rollup config, see https://github.com/rollup/rollup/wiki/JavaScript-API
     entry: pkg.main,
-    external: Object.keys(pkg.dependencies),
+    external: Object.keys(pkg.dependencies || {}),
     plugins: [localResolve(), babel({
       runtimeHelpers: false,
       presets: ["es2015-loose-rollup"],

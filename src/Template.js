@@ -55,8 +55,9 @@ export default _.dynamicClass({
 
     dom.append(document.createDocumentFragment(), templ.el)
     bindings = _.map(templ.bindings, (binding) => {
-      return this.parser.createDirective(binding, {
+      return this.parser.createBinding(binding, {
         el: els[binding.index],
+        els: els,
         scope: scope,
         template: this
       })

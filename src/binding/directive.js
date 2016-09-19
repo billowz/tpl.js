@@ -18,8 +18,8 @@ const Directive = _.dynamicClass({
     this.template = cfg.template
     this.templateIndex = cfg.index
     this.children = _.map(cfg.children, (binding) => {
-      return this.template.parser.createDirective(binding, {
-        el: this.el,
+      return this.template.parser.createBinding(binding, {
+        el: cfg.els[binding.index],
         template: this.template,
         scope: this.realScope()
       })

@@ -1,3 +1,5 @@
-import _ from './util'
+import {
+  Configuration
+} from './util'
 
-export default new _.Configuration()
+export default new Configuration()

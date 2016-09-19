@@ -1,9 +1,9 @@
 /*
- * tpl.js v0.0.15 built in Mon, 15 Aug 2016 11:42:20 GMT
+ * tpl.js v0.0.15 built in Mon, 12 Sep 2016 05:47:25 GMT
  * Copyright (c) 2016 Tao Zeng <tao.zeng.zt@gmail.com>
  * Released under the MIT license
  * support IE6+ and other browsers
- *https://github.com/tao-zeng/tpl.js
+ * https://github.com/tao-zeng/tpl.js
  */
 (function (global, factory) {
   typeof exports === 'object' && typeof module !== 'undefined' ? module.exports = factory(require('observer')) :
@@ -1494,8 +1494,8 @@ var   root$2 = document.documentElement;
       this.template = cfg.template;
       this.templateIndex = cfg.index;
       this.children = _.map(cfg.children, function (binding) {
-        return _this.template.parser.createDirective(binding, {
-          el: _this.el,
+        return _this.template.parser.createBinding(binding, {
+          el: cfg.els[binding.index],
           template: _this.template,
           scope: _this.realScope()
         });
@@ -1574,7 +1574,7 @@ var   root$2 = document.documentElement;
       });
     },
     createDirective: function (binding) {
-      return this.template.parser.createDirective(binding, {
+      return this.template.parser.createBinding(binding, {
         el: this.el,
         template: this.template,
         scope: this.realScope(),
@@ -1662,7 +1662,7 @@ var   root$2 = document.documentElement;
       this.TextParser = TextParser;
       this.parse();
     },
-    createDirective: function (binding, cfg) {
+    createBinding: function (binding, cfg) {
       cfg = _.assign(cfg, binding);
       switch (binding.type) {
         case TemplateParser.TEXT:
@@ -1929,8 +1929,9 @@ var   root$2 = document.documentElement;
 
       dom.append(document.createDocumentFragment(), templ.el);
       bindings = _.map(templ.bindings, function (binding) {
-        return _this.parser.createDirective(binding, {
+        return _this.parser.createBinding(binding, {
           el: els[binding.index],
+          els: els,
           scope: scope,
           template: _this
         });
@@ -1988,8 +1989,9 @@ var   textParserCfg$1 = 'textParser';
 
       dom.append(document.createDocumentFragment(), templ.el);
       bindings = _.map(templ.bindings, function (binding) {
-        return _this.parser.createDirective(binding, {
+        return _this.parser.createBinding(binding, {
           el: els[binding.index],
+          els: els,
           scope: scope,
           template: _this
         });

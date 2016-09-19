@@ -1,3 +1,5 @@
-import _ from './util'
+import {
+  Logger
+} from './util'
 
-export default new _.Logger('tpl', 'debug')
+export default new Logger('tpl', 'debug')

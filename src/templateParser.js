@@ -19,7 +19,7 @@ const TemplateParser = _.dynamicClass({
     this.TextParser = TextParser
     this.parse()
   },
-  createDirective(binding, cfg) {
+  createBinding(binding, cfg) {
     cfg = _.assign(cfg, binding)
     switch (binding.type) {
       case TemplateParser.TEXT:

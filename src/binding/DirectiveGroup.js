@@ -18,7 +18,7 @@ export default _.dynamicClass({
     })
   },
   createDirective(binding) {
-    return this.template.parser.createDirective(binding, {
+    return this.template.parser.createBinding(binding, {
       el: this.el,
       template: this.template,
       scope: this.realScope(),

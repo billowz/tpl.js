@@ -1,9 +1,9 @@
 /*
- * tpl.js v0.0.15 built in Mon, 15 Aug 2016 11:42:20 GMT
+ * tpl.js v0.0.15 built in Mon, 12 Sep 2016 05:47:25 GMT
  * Copyright (c) 2016 Tao Zeng <tao.zeng.zt@gmail.com>
  * Released under the MIT license
  * support IE6+ and other browsers
- *https://github.com/tao-zeng/tpl.js
+ * https://github.com/tao-zeng/tpl.js
  */
 (function (global, factory) {
   typeof exports === 'object' && typeof module !== 'undefined' ? module.exports = factory() :
@@ -863,16 +863,220 @@ var _$1 = Object.freeze({
 
   Logger.logger = new Logger('default', 'info');
 
+  var IDGenerator = 1;
+
+  var LinkedList = dynamicClass({
+    statics: {
+      ListKey: '__UTILITY_LIST__'
+    },
+    constructor: function () {
+      this._id = IDGenerator++;
+      this._size = 0;
+      this._header = undefined;
+      this._tail = undefined;
+      this._version = 1;
+    },
+    _listObj: function (obj) {
+      return hasOwnProp(obj, LinkedList.ListKey) && obj[LinkedList.ListKey];
+    },
+    _desc: function (obj) {
+      var list = this._listObj(obj);
+
+      return list && list[this._id];
+    },
+    _getOrCreateDesc: function (obj) {
+      var list = this._listObj(obj) || (obj[LinkedList.ListKey] = {}),
+          desc = list[this._id];
+
+      return desc || (list[this._id] = {
+        obj: obj,
+        prev: undefined,
+        next: undefined,
+        version: this._version++
+      });
+    },
+    _unlink: function (desc) {
+      var prev = desc.prev,
+          next = desc.next;
+
+      if (prev) {
+        prev.next = next;
+      } else {
+        this._header = next;
+      }
+      if (next) {
+        next.prev = prev;
+      } else {
+        this._tail = prev;
+      }
+      this._size--;
+    },
+    _move: function (desc, prev, alwaysMove) {
+      var header = this._header;
+
+      if (header === desc || desc.prev) this._unlink(desc);
+
+      desc.prev = prev;
+      if (prev) {
+        desc.next = prev.next;
+        prev.next = desc;
+      } else {
+        desc.next = header;
+        if (header) header.prev = desc;
+        this._header = desc;
+      }
+      if (this._tail === prev) this._tail = desc;
+      this._size++;
+    },
+    _remove: function (desc) {
+      var obj = desc.obj,
+          list = this._listObj(obj);
+
+      this._unlink(desc);
+      delete list[this._id];
+    },
+    push: function (obj) {
+      return this.last(obj);
+    },
+    pop: function () {
+      var desc = this._header;
+
+      if (desc) {
+        this._remove(desc);
+        return desc.obj;
+      }
+      return undefined;
+    },
+    shift: function () {
+      var desc = this._tail;
+
+      if (desc) {
+        this._remove(desc);
+        return desc.obj;
+      }
+      return undefined;
+    },
+    first: function (obj) {
+      if (arguments.length == 0) {
+        var desc = this._header;
+        return desc && desc.obj;
+      }
+      this._move(this._getOrCreateDesc(obj), undefined);
+      return this;
+    },
+    last: function (obj) {
+      if (arguments.length == 0) {
+        var desc = this._tail;
+        return desc && desc.obj;
+      }
+      this._move(this._getOrCreateDesc(obj), this._tail);
+      return this;
+    },
+    before: function (obj, target) {
+      if (arguments.length == 1) {
+        var desc = this._desc(obj),
+            prev = desc && desc.prev;
+
+        return prev && prev.obj;
+      }
+      this._move(this._getOrCreateDesc(obj), this._desc(target).prev);
+      return this;
+    },
+    after: function (obj, target) {
+      if (arguments.length == 1) {
+        var desc = this._desc(obj),
+            next = desc && desc.next;
+
+        return next && next.obj;
+      }
+      this._move(this._getOrCreateDesc(obj), this._desc(target));
+      return this;
+    },
+    contains: function (obj) {
+      return !!this._desc(obj);
+    },
+    remove: function (obj) {
+      var list = this._listObj(obj),
+          desc = void 0;
+
+      if (!list) return;
+      desc = list[this._id];
+      if (!desc) return;
+
+      this._unlink(desc);
+      delete list[this._id];
+      return this;
+    },
+    clean: function () {
+      var desc = this._header;
+      while (desc) {
+        delete this._listObj(desc.obj)[this._id];
+        desc = desc.next;
+      }
+      this._header = undefined;
+      this._tail = undefined;
+      this._size = 0;
+      return this;
+    },
+    empty: function () {
+      return this._size == 0;
+    },
+    size: function () {
+      return this._size;
+    },
+    each: function (callback, scope) {
+      var desc = this._header,
+          ver = this._version;
+
+      while (desc) {
+        if (desc.version < ver) {
+          if (callback.call(scope || this, desc.obj, this) === false) return false;
+        }
+        desc = desc.next;
+      }
+      return true;
+    },
+    map: function (callback, scope) {
+      var _this = this;
+
+      var rs = [];
+      this.each(function (obj) {
+        rs.push(callback.call(scope || _this, obj, _this));
+      });
+      return rs;
+    },
+    filter: function (callback, scope) {
+      var _this2 = this;
+
+      var rs = [];
+      this.each(function (obj) {
+        if (callback.call(scope || _this2, obj, _this2)) rs.push(obj);
+      });
+      return rs;
+    },
+    toArray: function () {
+      var rs = [];
+      this.each(function (obj) {
+        rs.push(obj);
+      });
+      return rs;
+    }
+  });
+
   var _ = assignIf({
     timeoutframe: timeoutframe,
     Configuration: Configuration,
-    Logger: Logger
+    Logger: Logger,
+    LinkedList: LinkedList
   }, _$1);
 
   var configuration = new _.Configuration();
 
-var   hasOwn$1 = Object.prototype.hasOwnProperty;
+  var hasOwn$1 = Object.prototype.hasOwnProperty;
   var LISTEN_CONFIG = 'proxyListenKey';
+  var LinkedList$2 = _.LinkedList;
+
+
   configuration.register(LISTEN_CONFIG, '__PROXY_LISTENERS__');
 
   var defaultPolicy = {
@@ -890,36 +1094,22 @@ var   hasOwn$1 = Object.prototype.hasOwnProperty;
     change: function (obj, p) {
       var handlers = _.getOwnProp(obj, configuration.get(LISTEN_CONFIG));
 
-      if (handlers) {
-        var i = handlers.length;
-        while (i--) {
-          handlers[i](obj, p);
-        }
-      }
+      if (handlers) handlers.each(function (handler) {
+        return handler(obj, p);
+      });
     },
     on: function (obj, handler) {
       if (!_.isFunc(handler)) throw TypeError('Invalid Proxy Event Handler[' + handler);
       var key = configuration.get(LISTEN_CONFIG),
           handlers = _.getOwnProp(obj, key);
 
-      if (!handlers) obj[key] = handlers = [];
+      if (!handlers) obj[key] = handlers = new LinkedList$2();
       handlers.push(handler);
     },
     un: function (obj, handler) {
       var handlers = _.getOwnProp(obj, configuration.get(LISTEN_CONFIG));
 
-      if (handlers) {
-        if (_.isFunc(handler)) {
-          var i = handlers.length;
-
-          while (i-- > 0) {
-            if (handlers[i] === handler) {
-              handlers.splice(i, 1);
-              return true;
-            }
-          }
-        }
-      }
+      if (handlers && _.isFunc(handler)) handlers.remove(handler);
       return false;
     },
     clean: function (obj) {
@@ -981,8 +1171,11 @@ var   hasOwn$1 = Object.prototype.hasOwnProperty;
 
   var logger = new _.Logger('observer', 'info');
 
-var   timeoutframe$1 = _.timeoutframe;
+  var timeoutframe$1 = _.timeoutframe;
   var config = configuration.get();
+  var LinkedList$1 = _.LinkedList;
+
+
   configuration.register({
     lazy: true,
     animationFrame: true,
@@ -1004,7 +1197,7 @@ var   timeoutframe$1 = _.timeoutframe;
       var _this = this;
 
       var handlers = this.listens[attr];
-      if (handlers && (!proxy$1.eq(val, oldVal) || _.isArray(val))) _.each(handlers.slice(), function (handler) {
+      if (handlers && (!proxy$1.eq(val, oldVal) || _.isArray(val))) handlers.each(function (handler) {
         handler(attr, val, oldVal, _this.target);
       });
     },
@@ -1033,6 +1226,7 @@ var   timeoutframe$1 = _.timeoutframe;
     },
     checkHandler: function (handler) {
       if (!_.isFunc(handler)) throw TypeError('Invalid Observe Handler');
+      return handler;
     },
     hasListen: function (attr, handler) {
       switch (arguments.length) {
@@ -1041,49 +1235,44 @@ var   timeoutframe$1 = _.timeoutframe;
         case 1:
           if (_.isFunc(attr)) {
             return !_.each(this.listens, function (handlers) {
-              return _.lastIndexOf(handlers, attr) !== -1;
+              return handlers.contains(attr);
             });
           }
           return !!this.listens[attr];
         default:
           this.checkHandler(handler);
-          return _.lastIndexOf(this.listens[attr], handler) !== -1;
+          var handlers = this.listens[attr];
+          return !!handlers && handlers.contains(handler);
       }
     },
     on: function (attr, handler) {
       var handlers = void 0;
-
       this.checkHandler(handler);
-      if (!(handlers = this.listens[attr])) {
-        this.listens[attr] = [handler];
+
+      if (!(handlers = this.listens[attr])) this.listens[attr] = handlers = new LinkedList$1();
+
+      if (handlers.empty()) {
         this.watchPropNum++;
         this._watch(attr);
-      } else {
-        handlers.push(handler);
       }
+
+      handlers.push(handler);
       return this.target;
-    },
-    _cleanListen: function (attr) {
-      this.listens[attr] = undefined;
-      this.watchPropNum--;
-      this._unwatch(attr);
     },
     un: function (attr, handler) {
       var handlers = this.listens[attr];
 
-      if (handlers) {
+      if (handlers && !handlers.empty()) {
         if (arguments.length == 1) {
-          this._cleanListen(attr);
+          handlers.clean();
+          this.watchPropNum--;
+          this._unwatch(attr);
         } else {
           this.checkHandler(handler);
-
-          var i = handlers.length;
-          while (i--) {
-            if (handlers[i] === handler) {
-              handlers.splice(i, 1);
-              if (!handlers.length) this._cleanListen(attr);
-              break;
-            }
+          handlers.remove(handler);
+          if (handlers.empty()) {
+            this.watchPropNum--;
+            this._unwatch(attr);
           }
         }
       }
@@ -1145,7 +1334,7 @@ var   timeoutframe$1 = _.timeoutframe;
     constructor: function (target, expr, path) {
       this.id = expressionIdGenerator++;
       this.expr = expr;
-      this.handlers = [];
+      this.handlers = new LinkedList$1();
       this.observers = [];
       this.path = path || _.parseExpr(expr);
       this.observeHandlers = this._initObserveHandlers();
@@ -1224,39 +1413,29 @@ var   timeoutframe$1 = _.timeoutframe;
 
           if (proxy$1.eq(val, oldVal)) return;
         }
-        _.each(_this3.handlers.slice(), function (h) {
-          h(this.expr, val, oldVal, this.target);
-        }, _this3);
+        _this3.handlers.each(function (handler) {
+          return handler(_this3.expr, val, oldVal, _this3.target);
+        });
       };
     },
     checkHandler: function (handler) {
       if (!_.isFunc(handler)) throw TypeError('Invalid Observe Handler');
+      return handler;
     },
     on: function (handler) {
-      this.checkHandler(handler);
-      this.handlers.push(handler);
+      this.handlers.push(this.checkHandler(handler));
       return this;
     },
     un: function (handler) {
       if (!arguments.length) {
-        this.handlers = [];
+        this.handlers.clean();
       } else {
-        this.checkHandler(handler);
-
-        var handlers = this.handlers,
-            i = handlers.length;
-
-        while (i--) {
-          if (handlers[i] === handler) {
-            handlers.splice(i, 1);
-            break;
-          }
-        }
+        this.handlers.remove(this.checkHandler(handler));
       }
       return this;
     },
     hasListen: function (handler) {
-      return arguments.length ? _.lastIndexOf(this.handlers, handler) != -1 : !!this.handlers.length;
+      return arguments.length ? this.handlers.contains(this.checkHandler(handler)) : !this.handlers.empty();
     },
     destory: function () {
       proxy$1.un(this.target, this._onTargetProxy);
@@ -3355,8 +3534,8 @@ var   slice$1 = Array.prototype.slice;
       this.template = cfg.template;
       this.templateIndex = cfg.index;
       this.children = _$2.map(cfg.children, function (binding) {
-        return _this.template.parser.createDirective(binding, {
-          el: _this.el,
+        return _this.template.parser.createBinding(binding, {
+          el: cfg.els[binding.index],
           template: _this.template,
           scope: _this.realScope()
         });
@@ -3435,7 +3614,7 @@ var   slice$1 = Array.prototype.slice;
       });
     },
     createDirective: function (binding) {
-      return this.template.parser.createDirective(binding, {
+      return this.template.parser.createBinding(binding, {
         el: this.el,
         template: this.template,
         scope: this.realScope(),
@@ -3523,7 +3702,7 @@ var   slice$1 = Array.prototype.slice;
       this.TextParser = TextParser;
       this.parse();
     },
-    createDirective: function (binding, cfg) {
+    createBinding: function (binding, cfg) {
       cfg = _$2.assign(cfg, binding);
       switch (binding.type) {
         case TemplateParser.TEXT:
@@ -3790,8 +3969,9 @@ var   slice$1 = Array.prototype.slice;
 
       dom.append(document.createDocumentFragment(), templ.el);
       bindings = _$2.map(templ.bindings, function (binding) {
-        return _this.parser.createDirective(binding, {
+        return _this.parser.createBinding(binding, {
           el: els[binding.index],
+          els: els,
           scope: scope,
           template: _this
         });
@@ -3849,8 +4029,9 @@ var   textParserCfg$1 = 'textParser';
 
       dom.append(document.createDocumentFragment(), templ.el);
       bindings = _$2.map(templ.bindings, function (binding) {
-        return _this.parser.createDirective(binding, {
+        return _this.parser.createBinding(binding, {
           el: els[binding.index],
+          els: els,
           scope: scope,
           template: _this
         });
