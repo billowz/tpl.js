@@ -37,11 +37,11 @@ const EventDirective = _.dynamicClass({
   },
   bind() {
     dom.on(this.el, this.eventType, this.handler)
-    this.bindChildren()
+    this.super(arguments)
   },
   unbind() {
     dom.off(this.el, this.eventType, this.handler)
-    this.unbindChildren()
+    this.super(arguments)
   }
 })
 

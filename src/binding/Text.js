@@ -1,7 +1,7 @@
 import Binding from './Binding'
+import expression from '../expression'
 import _ from '../util'
 import dom from '../dom'
-import expression from '../expression'
 import config from '../config'
 import log from '../log'
 

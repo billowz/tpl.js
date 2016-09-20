@@ -8,37 +8,31 @@ const directives = {}
 
 const Directive = _.dynamicClass({
   extend: Binding,
-  abstract: false,
+  independent: false,
   block: false,
   priority: 5,
   constructor(cfg) {
     this.super(arguments)
     this.expr = cfg.expression
     this.attr = cfg.attr
-    this.template = cfg.template
-    this.templateIndex = cfg.index
-    this.children = _.map(cfg.children, (binding) => {
-      return this.template.parser.createBinding(binding, {
-        el: cfg.els[binding.index],
-        template: this.template,
-        scope: this.realScope()
-      })
-    })
-    this.group = cfg.group
+    this.children = cfg.children
+    this.domParser = cfg.domParser
     if (config.get(Binding.commentCfg)) {
       this.comment = document.createComment(`Directive[${this.attr}]: ${this.expr}`)
       dom.before(this.comment, this.el)
     }
   },
-  bindChildren() {
-    _.each(this.children, (directive) => {
-      directive.bind()
-    })
+  bind() {
+    if (this.children)
+      _.each(this.children, (directive) => {
+        directive.bind()
+      })
   },
-  unbindChildren() {
-    _.each(this.children, (directive) => {
-      directive.unbind()
-    })
+  unbind() {
+    if (this.children)
+      _.each(this.children, (directive) => {
+        directive.unbind()
+      })
   },
   statics: {
     getPriority(directive) {
@@ -47,8 +41,8 @@ const Directive = _.dynamicClass({
     isBlock(directive) {
       return directive.prototype.block
     },
-    isAbstract(directive) {
-      return directive.prototype.abstract
+    isIndependent(directive) {
+      return directive.prototype.independent
     },
     getDirective(name) {
       return directives[name.toLowerCase()]

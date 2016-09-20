@@ -1,21 +1,57 @@
-let templateId = 0
-const templateCache = {}
+import _ from '../util'
+import dom from '../dom'
+
 export default _.dynamicClass({
-  statics: {
-    get(id) {
-      return templateCache[id]
-    }
+  constructor(el, bindings) {
+    this.el = el
+    this.bindings = bindings
   },
-  constructor(templ, cfg = {}) {
-    this.id = cfg.id || (templateId++)
-    if (_.hasOwnProp(templateCache, this.id)) {
-      throw new Error('Existing Template[' + this.id + ']')
-    }
-    let DomParser = config.get('domParser')
-    this.parser = new DomParser(templ)
-    templateCache[this.id] = this
+  before(target) {
+    this.bind()
+    dom.before(this.el, dom.query(target))
+    return this
   },
-  complie(scope) {
-    return new Instance(this.parser.complie(scope))
+  after(target) {
+    this.bind()
+    dom.after(this.el, dom.query(target))
+    return this
+  },
+  prependTo(target) {
+    this.bind()
+    dom.prepend(dom.query(target), this.el)
+    return this
+  },
+  appendTo(target) {
+    this.bind()
+    dom.append(dom.query(target), this.el)
+    return this
+  },
+  bind() {
+    if (!this.binded) {
+      _.each(this.bindings, (bind) => {
+        bind.bind()
+      })
+      this.binded = true
+    }
+    return this
+  },
+  unbind() {
+    if (this.binded) {
+      _.each(this.bindings, (bind) => {
+        bind.unbind()
+      })
+      this.binded = false
+    }
+    return this
+  },
+  destroy() {
+    if (this.binded)
+      _.each(this.bindings, (bind) => {
+        bind.unbind()
+        bind.destroy()
+      })
+    dom.remove(this.el)
+    this.bindings = undefined
+    this.el = undefined
   }
 })

@@ -27,16 +27,18 @@ const SimpleDirective = _.dynamicClass({
     })
     this.update(this.value())
   },
-  bind() {
-    this.listen()
-  },
   unlisten() {
     _.each(this.expression.identities, (ident) => {
       this.unobserve(ident, this.observeHandler)
     })
   },
+  bind() {
+    this.listen()
+    this.super(arguments)
+  },
   unbind() {
     this.unlisten()
+    this.super(arguments)
   },
   blankValue(val) {
     if (arguments.length == 0) val = this.value()
@@ -290,10 +292,8 @@ const EVENT_CHANGE = 'change',
   }
 
 export default _.assign(_.convert(directives, (opt, name) => {
-  console.log('name', name)
   return _.hump(name + 'Directive')
 }, (opt, name) => {
-  console.log('name2', name)
   opt.extend = SimpleDirective
   return Directive.register(name, opt)
 }), {

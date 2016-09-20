@@ -1,15 +1,30 @@
 import _ from '../util'
-import dom from '../dom'
-import {
-  Text,
-  DirectiveGroup
-} from './binding'
-import config from '../config'
 import DomParser from './DomParser'
+import DirectiveParser from './DirectiveParser'
 import TextParser from './TextParser'
 
-const domParserCfg = 'domParser',
-  textParserCfg = 'textParser'
 
-config.register(domParserCfg, DomParser)
-config.register(textParserCfg, TextParser)
+let templateId = 0
+const templateCache = {}
+
+export default _.dynamicClass({
+  statics: {
+    get(id) {
+      return templateCache[id]
+    },
+    DomParser: DomParser,
+    DirectiveParser: DirectiveParser,
+    TextParser: TextParser
+  },
+  constructor(templ, cfg = {}) {
+    this.id = cfg.id || (templateId++)
+    if (_.hasOwnProp(templateCache, this.id)) {
+      throw new Error('Existing Template[' + this.id + ']')
+    }
+    this.parser = new DomParser(templ)
+    templateCache[this.id] = this
+  },
+  complie(scope) {
+    return this.parser.complie(scope)
+  }
+})
