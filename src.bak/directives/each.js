@@ -38,19 +38,19 @@ export class EachDirective extends Directive {
   }
 
   update(data) {
+
+
     let parentScope = this.realScope(),
       begin = this.begin,
       end = this.end,
       indexExpr = this.indexExpr,
       valueAlias = this.valueAlias,
       keyAlias = this.keyAlias,
-      init = !this.cache,
       oldSort = this.sort,
       sort = this.sort = new Array(data.length),
-      cache = init ? (this.cache = {}) : this.cache,
+      cache = this.cache ? (this.cache = {}) : this.cache,
       removed = [],
       added = []
-
 
     _.each(data, (item, idx) => {
       let index = indexExpr ? _.get(item, indexExpr) : idx, // read index of data item

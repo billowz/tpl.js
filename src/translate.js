@@ -2,16 +2,16 @@ import _ from './util'
 import log from './log'
 
 const slice = Array.prototype.slice,
-  filters = {}
+  translates = {}
 
 function apply(name, data, args, apply) {
-  let f = filters[name],
+  let f = translates[name],
     type = f ? f.type : undefined,
     fn
 
   fn = f ? apply !== false ? f.apply : f.unapply : undefined
   if (!fn) {
-    log.warn(`filter[${name}].${apply !== false ? 'apply' : 'unapply'} is undefined`)
+    log.warn(`Translate[${name}].${apply !== false ? 'apply' : 'unapply'} is undefined`)
   } else {
     if (_.isFunc(args)) args = args()
     data = fn.apply(f, [data].concat(args))
@@ -22,21 +22,21 @@ function apply(name, data, args, apply) {
     replaceData: type !== 'event'
   }
 }
-let filter = {
-  register(name, filter) {
-    if (filters[name])
-      throw Error(`Filter[${name}] is existing`)
-    if (typeof filter == 'function')
-      filter = {
-        apply: filter
+const translate = {
+  register(name, translate) {
+    if (translates[name])
+      throw Error(`Translate[${name}] is existing`)
+    if (typeof translate == 'function')
+      translate = {
+        apply: translate
       }
-    filter.type = filter.type || 'normal'
-    filters[name] = filter
-    log.debug('register Filter[%s:%s]', filter.type, name)
+    translate.type = translate.type || 'normal'
+    translates[name] = translate
+    log.debug('register Translate[%s:%s]', translate.type, name)
   },
 
   get(name) {
-    return filters[name]
+    return translates[name]
   },
 
   apply: apply,
@@ -46,7 +46,7 @@ let filter = {
   }
 }
 
-export default filter
+export default translate
 
 export const keyCodes = {
   esc: 27,
@@ -60,7 +60,7 @@ export const keyCodes = {
   down: 40
 }
 
-let eventFilters = {
+let eventTranslates = {
   key(e) {
     let which = e.which,
       k
@@ -83,14 +83,14 @@ let eventFilters = {
   }
 }
 
-_.each(eventFilters, (fn, name) => {
-  filter.register(name, {
+_.each(eventTranslates, (fn, name) => {
+  translate.register(name, {
     type: 'event',
     apply: fn
   })
 })
 
-let nomalFilters = {
+let nomalTranslates = {
   json: {
     apply: function(value, indent) {
       return typeof value === 'string' ? value : JSON.stringify(value, null, Number(indent) || 2)
@@ -136,6 +136,6 @@ let nomalFilters = {
     return args.length > 1 ? (args[value % 10 - 1] || args[args.length - 1]) : (args[0] + (value === 1 ? '' : 's'))
   }
 }
-_.each(nomalFilters, (f, name) => {
-  filter.register(name, f)
+_.each(nomalTranslates, (f, name) => {
+  translate.register(name, f)
 })

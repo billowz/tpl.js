@@ -22,17 +22,23 @@ const Directive = _.dynamicClass({
       dom.before(this.comment, this.el)
     }
   },
-  bind() {
+  bindChildren() {
     if (this.children)
       _.each(this.children, (directive) => {
         directive.bind()
       })
   },
-  unbind() {
+  bind() {
+    this.bindChildren()
+  },
+  unbindChildren() {
     if (this.children)
       _.each(this.children, (directive) => {
         directive.unbind()
       })
+  },
+  unbind() {
+    this.unbindChildren()
   },
   statics: {
     getPriority(directive) {

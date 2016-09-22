@@ -6,25 +6,34 @@ export default _.dynamicClass({
     this.el = el
     this.bindings = bindings
   },
-  before(target) {
-    this.bind()
+  before(target, bind) {
+    if (bind !== false)
+      this.bind()
     dom.before(this.el, dom.query(target))
     return this
   },
-  after(target) {
-    this.bind()
+  after(target, bind) {
+    if (bind !== false)
+      this.bind()
     dom.after(this.el, dom.query(target))
     return this
   },
-  prependTo(target) {
-    this.bind()
+  prependTo(target, bind) {
+    if (bind !== false)
+      this.bind()
     dom.prepend(dom.query(target), this.el)
     return this
   },
-  appendTo(target) {
-    this.bind()
+  appendTo(target, bind) {
+    if (bind !== false)
+      this.bind()
     dom.append(dom.query(target), this.el)
     return this
+  },
+  remove(unbind) {
+    dom.remove(this.el)
+    if (unbind !== false)
+      this.unbind()
   },
   bind() {
     if (!this.binded) {

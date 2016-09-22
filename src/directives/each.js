@@ -11,7 +11,7 @@ const eachReg = /^\s*([\s\S]+)\s+in\s+([\S]+)(\s+track\s+by\s+([\S]+))?\s*$/,
 
 export default Directive.register('each', _.dynamicClass({
   extend: Directive,
-  abstract: true,
+  independent: true,
   block: true,
   priority: 10,
   constructor() {
@@ -31,24 +31,71 @@ export default Directive.register('each', _.dynamicClass({
     this.valueAlias = aliasToken[2] || aliasToken[5]
     this.keyAlias = aliasToken[4] || aliasToken[7]
 
-    dom.removeAttr(this.el, this.attr)
     this.begin = document.createComment('each begin')
     this.end = document.createComment('each end')
     dom.replace(this.el, this.begin)
     dom.after(this.end, this.begin)
-
-    let eachTemplateId = this.template.id + '-' + this.templateIndex
-    if (!(this.eachTemplate = Template.get(eachTemplateId)))
-      this.eachTemplate = new Template(this.el, {
-        id: eachTemplateId,
-        directiveReg: this.template.directiveReg,
-        TextParser: this.template.TextParser,
-        clone: false
-      })
-    this.el = null
+    this.el = undefined
+    this.version = 1
   },
   update(data) {
-    let parentScope = this.realScope(),
+    let domParser = this.domParser,
+      parentScope = this.realScope(),
+      begin = this.begin,
+      end = this.end,
+      indexExpr = this.indexExpr,
+      used = this.used,
+      version = this.version++,
+      indexMap = this.used = {},
+      descs = _.map(data, (item, idx) => {
+        let index = indexExpr ? _.get(item, indexExpr) : idx, // read index of data item
+          reuse = used && used[index],
+          desc
+
+        if (reuse && reuse.version === version)
+          reuse = undefined
+
+        desc = reuse || {
+          index: index
+        }
+        desc.version = version
+        desc.data = item
+        indexMap[index] = desc
+        return desc
+      }),
+      idles = [],
+      fragment = document.createDocumentFragment()
+
+    if (used)
+      tpl.each(used, (desc) => {
+        if (desc.version != version)
+          idles.push(desc)
+        desc.tpl.remove(false)
+      })
+
+    tpl.each(descs, (desc) => {
+      if (!desc.scope) {
+        let idle = idles.pop()
+
+        if (!idle) {
+          desc.scope = this.createScope(parentScope, desc.data, desc.index)
+          desc.tpl = domParser.complie(desc.scope)
+          return
+        } else {
+          desc.scope = idle.scope
+          desc.tpl = idle.tpl
+        }
+      }
+      dom.append(fragment, desc.tpl.el)
+      this.initScope(desc.scope, desc.data, desc.index)
+    })
+    tpl.before(fragment, end)
+    tpl.each(descs, (desc) => desc.tpl.bind())
+    tpl.each(idles, (idle) => idle.tpl.destroy())
+  },
+  update2(data) {
+    let domParser = this.domParser,
+      parentScope = this.realScope(),
       begin = this.begin,
       end = this.end,
       indexExpr = this.indexExpr,
@@ -59,7 +106,8 @@ export default Directive.register('each', _.dynamicClass({
       sort = this.sort = new Array(data.length),
       cache = init ? (this.cache = {}) : this.cache,
       removed = [],
-      added = []
+      added = [],
+      fragment = document.createDocumentFragment()
 
     _.each(data, (item, idx) => {
       let index = indexExpr ? _.get(item, indexExpr) : idx, // read index of data item
@@ -74,7 +122,7 @@ export default Directive.register('each', _.dynamicClass({
       }
       sort[idx] = scope // update sort
       if (init) { // init compontent
-        scope.$tpl = this.eachTemplate.complie(scope)
+        scope.$tpl = domParser.complie(scope)
         data[idx] = scope[valueAlias]
         scope.$tpl.before(end)
       }
@@ -96,10 +144,10 @@ export default Directive.register('each', _.dynamicClass({
           sort[scope.$sort] = scope2
           scope = scope2
         } else {
-          scope.$tpl = this.eachTemplate.complie(scope)
+          scope.$tpl = domParser.complie(scope)
         }
         data[scope.$sort] = scope[valueAlias]
-        scope.$tpl.after(scope.$sort ? sort[scope.$sort - 1].$tpl.els : begin)
+        scope.$tpl.after(scope.$sort ? sort[scope.$sort - 1].$tpl.el : begin)
       })
 
       _.each(removed, (scope) => {
@@ -107,22 +155,19 @@ export default Directive.register('each', _.dynamicClass({
       })
     }
   },
-  createScope(parentScope, value, i, index) {
+  createScope(parentScope, value, index) {
     let scope = _.create(parentScope)
     scope.$parent = parentScope
     scope.$eachContext = this
-    scope.$tpl = null
-    this.initScope(scope, value, i, index, true)
+    this.initScope(scope, value, index, true)
     return scope
   },
-  initScope(scope, value, i, index, isCreate) {
+  initScope(scope, value, index, isCreate) {
     if (!isCreate)
-      scope = scope.$tpl.scope
-    scope.$sort = i
+      scope = _.proxy(scope)
     scope[this.valueAlias] = value
     if (this.keyAlias)
-      scope[this.keyAlias] = i
-    scope.$index = index
+      scope[this.keyAlias] = index
   },
   bind() {
     this.observe(this.scopeExpr, this.observeHandler)

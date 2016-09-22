@@ -37,8 +37,8 @@ const SimpleDirective = _.dynamicClass({
     this.super(arguments)
   },
   unbind() {
-    this.unlisten()
     this.super(arguments)
+    this.unlisten()
   },
   blankValue(val) {
     if (arguments.length == 0) val = this.value()
@@ -167,17 +167,18 @@ const EVENT_CHANGE = 'change',
         return this.yieId
       },
       unbind() {
+        if (!this.yieId)
+          this.unbindChildren()
         this.unlisten()
-        this.unbindChildren()
       },
       update(val) {
         if (!val) {
           dom.css(this.el, 'display', 'none')
         } else {
-          this.bindChildren()
           if (this.yieId) {
             this.yieId.done()
             this.yieId = undefined
+            this.bindChildren()
           }
           dom.css(this.el, 'display', '')
         }
@@ -222,8 +223,8 @@ const EVENT_CHANGE = 'change',
       },
 
       bind() {
-        this.super()
         dom.on(this.el, this.event, this.onChange)
+        this.super()
       },
 
       unbind() {

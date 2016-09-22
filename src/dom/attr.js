@@ -77,6 +77,6 @@ export default _.assign(dom, {
 
 function _prop(el, name, set, val) {
   if (!set) return dom.prop(el, name)
-  dom.prop(el, name)
+  dom.prop(el, name, val)
   return dom
 }

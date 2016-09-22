@@ -1,4 +1,4 @@
-import filter from './filter'
+import translate from './translate'
 import _ from './util'
 
 const defaultKeywords = _.reverseConvert('Math,Date,this,true,false,null,undefined,Infinity,NaN,isNaN,isFinite,decodeURI,decodeURIComponent,encodeURI,encodeURIComponent,parseInt,parseFloat,$scope'.split(','), () => true),
@@ -116,7 +116,7 @@ function compileExecuter(exp, keywords) {
     for (let i = 0, l = fs.length; i < l; i++) {
       f = fs[i]
       _args = parseFilterArgs(f.args, argScope, args)
-      rs = (apply !== false ? filter.apply : filter.unapply)(f.name, data, _args)
+      rs = (apply !== false ? translate.apply : translate.unapply)(f.name, data, _args)
       if (rs.stop) {
         return rs.data
       } else if (rs.replaceData)

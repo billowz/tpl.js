@@ -12,10 +12,7 @@ import log from '../log'
 import config from '../config'
 
 config.register('directiveParser', new DirectiveParser(), [DirectiveParser])
-config.register('TextParser', TextParser, [{
-  cls: TextParser,
-  type: config.TYPE
-}])
+config.register('TextParser', TextParser, TextParser, true)
 
 const TEXT = 1,
   DIRECTIVE = 2,
@@ -30,9 +27,9 @@ const DomParser = _.dynamicClass({
   },
   complie(scope) {
     let el = dom.cloneNode(this.el),
-      els = this.parseEls(el),
-      bindings = this.parseBindings(this.bindings, scope, els)
-    return new Template(el, bindings)
+      df = document.createDocumentFragment()
+    dom.append(df, el)
+    return new Template(_.map(df.childNodes, (n) => n), this.parseBindings(this.bindings, scope, this.parseEls(el)))
   },
   parseBindings(descs, scope, els) {
     return _.map(descs, (desc) => {
@@ -72,11 +69,11 @@ const DomParser = _.dynamicClass({
   },
   parseEls(el) {
     let index = 0,
-      tempEls = this.els
-    return this.eachDom(el, [], function(el, els) {
+      elStatus = this.elStatus
+    return this.eachDom(el, [], (el, els) => {
       els.push(el)
-      return tempEls[index++].marked && els
-    }, function(el, els) {
+      return elStatus[index++] && els
+    }, (el, els) => {
       els.push(el)
       index++
     })
@@ -97,7 +94,7 @@ const DomParser = _.dynamicClass({
   },
   eachDom(el, data, elemHandler, textHandler) {
     if (_.isArrayLike(el)) {
-      _.each(this.el, (el) => {
+      _.each(el, (el) => {
         this._eachDom(el, data, elemHandler, textHandler)
       })
     } else {
@@ -119,20 +116,19 @@ const DomParser = _.dynamicClass({
     }
   },
   parse() {
-    let els = [],
+    let elStatus = [],
       index = 0,
       TextParser = this.TextParser,
       directiveParser = this.directiveParser
 
     function markEl(el, marked) {
       if (el) {
-        el.marked = marked
-        els.push(el)
+        elStatus.push(marked)
         index++
       }
       return el
     }
-    this.els = els
+    this.elStatus = elStatus
     this.bindings = this.eachDom(this.el, [], (el, bindings) => {
       let directives = [],
         block = false,
@@ -204,6 +200,9 @@ const DomParser = _.dynamicClass({
         token,
         i = 0
 
+      let p = el.parentNode,
+        l = p.childNodes.length,
+        ii = index
       while (token = parser.nextToken()) {
         if (i < token.start)
           markEl(this.insertNotBlankText(expr.substring(i, token.start), el), false)
@@ -218,6 +217,7 @@ const DomParser = _.dynamicClass({
       if (i) {
         markEl(this.insertNotBlankText(expr.substr(i), el), false)
         dom.remove(el)
+        console.log(p.childNodes.length + '====' + l + '   ' + (index - ii))
       } else {
         markEl(el, false)
       }
@@ -225,9 +225,7 @@ const DomParser = _.dynamicClass({
 
   },
   insertNotBlankText(content, before) {
-    if ((content = _.trim(content)))
-      return this.insertText(content, before)
-    return null;
+    return (content = _.trim(content)) ? this.insertText(content, before) : undefined
   },
   insertText(content, before) {
     let el = document.createTextNode(content)

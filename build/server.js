@@ -72,11 +72,11 @@ function devServer(options) {
 
       addContent(map, main.dest, main.code)
       if (main.sourcemap)
-        addContent(map, main.sourcemapDest, main.sourcemap)
+        addContent(map, main.sourcemapDest, JSON.stringify(main.sourcemap))
       if (mini) {
         addContent(map, mini.dest, mini.code)
         if (mini.sourcemap)
-          addContent(map, mini.sourcemapDest, mini.sourcemap)
+          addContent(map, mini.sourcemapDest, JSON.stringify(mini.sourcemap))
         if (gzip)
           addContent(map, gzip.dest, gzip.code)
       }

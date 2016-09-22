@@ -1,7 +1,7 @@
 import observer from 'observer'
 import Template from './template'
 import expression from './expression'
-import filter from './filter'
+import translate from './translate'
 import {
   Directive
 } from './binding'
@@ -12,7 +12,7 @@ import dom from './dom'
 import config from './config'
 
 export default _.assign(Template, _, dom, {
-  filter,
+  translate,
   expression,
   Directive,
   directives,

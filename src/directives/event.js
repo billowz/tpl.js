@@ -40,8 +40,8 @@ const EventDirective = _.dynamicClass({
     this.super(arguments)
   },
   unbind() {
-    dom.off(this.el, this.eventType, this.handler)
     this.super(arguments)
+    dom.off(this.el, this.eventType, this.handler)
   }
 })
 

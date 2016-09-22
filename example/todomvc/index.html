@@ -1,0 +1,54 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="utf-8">
+    <title>tpl.js • TodoMVC </title>
+    <link rel="stylesheet" href="../../node_modules/todomvc-common/base.css">
+    <link rel="stylesheet" href="../../node_modules/todomvc-app-css/index.css">
+</head>
+
+<body>
+    <div class="todoapp"></div>
+    <div class="info">
+        <p>Double-click to edit a todo</p>
+        <p>Part of <a href="http://todomvc.com">TodoMVC</a></p>
+        <p><a href="../../index.html">Back</a></p>
+    </div>
+</body>
+<script src="../../dist/tpl.all.js"></script>
+<script src="./index.js"></script>
+<script id="tpl/todo.html" type="text/template">
+    <div class="header">
+        <h1>{title}</h1>
+        <input class="new-todo" autofocus autocomplete="off" placeholder="What needs to be done?" tpl-onkeydown="add | key 13">
+    </div>
+    <div class="main" tpl-if="todos.length">
+        <input class="toggle-all" type="checkbox" tpl-checked="completedNum == displayTodos.length" tpl-onchange="toggleAll()">
+        <ul class="todo-list">
+            <li class="todo" tpl-each="todo, idx in displayTodos " tpl-class="{completed: todo.completed, editing: todo === edited}">
+                <div class="view">
+                    <input class="toggle" type="checkbox" tpl-checked="todo.completed" tpl-onchange="toggle(todo)">
+                    <label tpl-ondblclick="edit(todo)">{idx}&nbsp; - &nbsp;{todo.title}</label>
+                    <button class="destroy" tpl-onclick="remove(todo)"></button>
+                </div>
+                <input class="edit" type="text" tpl-input="todo.title" tpl-focus="todo == edited" tpl-onblur="update(todo)">
+            </li>
+        </ul>
+    </div>
+    <div class="footer" tpl-if="todos.length">
+        <span class="todo-count">
+            {completedNum}&nbsp;<strong>{completedNum | pluralize 'item'}</strong>&nbsp;left
+        </span>
+        <ul class="filters">
+            <li><a href="#" tpl-onclick="vis('all')" tpl-class="{selected: visibility == 'all'}">All</a></li>
+            <li><a href="#" tpl-onclick="vis('active')" tpl-class="{selected: visibility == 'active'}">Active</a></li>
+            <li><a href="#" tpl-onclick="vis('completed')" tpl-class="{selected: visibility == 'completed'}">Completed</a></li>
+        </ul>
+        <button class="clear-completed" tpl-onclick="clear" tpl-show="completedNum">
+            Clear completed
+        </button>
+    </div>
+</script>
+
+</html>
