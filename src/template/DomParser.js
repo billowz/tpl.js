@@ -14,6 +14,19 @@ import config from '../config'
 config.register('directiveParser', new DirectiveParser(), [DirectiveParser])
 config.register('TextParser', TextParser, TextParser, true)
 
+function _clone(el) {
+  let elem = el.cloneNode(false)
+  if (el.nodeType == 1)
+    _.each(el.childNodes, c => {
+      elem.appendChild(_clone(c))
+    })
+  return elem
+}
+
+function clone(el) {
+  return _.isArrayLike(el) ? _.map(el, _clone) : _clone(el)
+}
+
 const TEXT = 1,
   DIRECTIVE = 2,
   DIRECTIVE_GROUP = 3
@@ -26,10 +39,12 @@ const DomParser = _.dynamicClass({
     this.parse()
   },
   complie(scope) {
-    let el = dom.cloneNode(this.el),
+    let el = clone(this.el),
       df = document.createDocumentFragment()
+
     dom.append(df, el)
-    return new Template(_.map(df.childNodes, (n) => n), this.parseBindings(this.bindings, scope, this.parseEls(el)))
+    return new Template(_.map(df.childNodes, (n) => n),
+      this.parseBindings(this.bindings, scope, this.parseEls(el)))
   },
   parseBindings(descs, scope, els) {
     return _.map(descs, (desc) => {
@@ -72,7 +87,7 @@ const DomParser = _.dynamicClass({
       elStatus = this.elStatus
     return this.eachDom(el, [], (el, els) => {
       els.push(el)
-      return elStatus[index++] && els
+      return elStatus[index++].marked && els
     }, (el, els) => {
       els.push(el)
       index++
@@ -123,7 +138,10 @@ const DomParser = _.dynamicClass({
 
     function markEl(el, marked) {
       if (el) {
-        elStatus.push(marked)
+        elStatus.push({
+          el: el,
+          marked: marked
+        })
         index++
       }
       return el
@@ -224,7 +242,7 @@ const DomParser = _.dynamicClass({
 
   },
   insertNotBlankText(content, before) {
-    return (content) ? this.insertText(content, before) : undefined
+    return (content) ? this.insertText(content || '&nbsp;', before) : undefined
   },
   insertText(content, before) {
     let el = document.createTextNode(content)

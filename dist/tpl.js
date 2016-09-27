@@ -1,5 +1,5 @@
 /*
- * tpl.js v0.0.16 built in Tue, 27 Sep 2016 06:50:46 GMT
+ * tpl.js v0.0.16 built in Tue, 27 Sep 2016 08:01:29 GMT
  * Copyright (c) 2016 Tao Zeng <tao.zeng.zt@gmail.com>
  * Released under the MIT license
  * support IE6+ and other browsers

@@ -11,7 +11,6 @@
 </body>
 <script src="../dist/tpl.all.js"></script>
 <script type="text/javascript">
-
 tpl.ready(function() {
     tpl.init({
         lazy: false
@@ -27,10 +26,11 @@ tpl.ready(function() {
         },
         eachArray: []
     }
-    tpl.proxy.on(data, function(obj, proxy){
-      data = proxy || obj;
+    tpl.proxy.on(data, function(obj, proxy) {
+        data = proxy || obj;
     });
 
+    var s = new Date();
     var docTpl = new tpl(document.getElementById('tpl/code.html').innerHTML);
 
     function renderTempl(id, renderTo) {
@@ -46,7 +46,7 @@ tpl.ready(function() {
             }
         }).appendTo(renderTo || document.body);
     }
-    var count = 10;
+    var count = 2000;
     for (var i = 0; i < count; i++) {
         data.eachArray.push({
             title: 'test-' + i
@@ -56,16 +56,20 @@ tpl.ready(function() {
     renderTempl('tpl/input.html');
     renderTempl('tpl/checkbox.html');
     renderTempl('tpl/each.html');
-    var s = new Date();
     setTimeout(function() {
+        console.log('render use:' + (new Date() - s) + 'ms')
         s = new Date();
-        for (var i = 0; i < count; i++) {
-            data.eachArray[i].title = 'test---' + i;
-        }
         setTimeout(function() {
-            console.log('update each use:' + (new Date() - s));
-        }, 0);
-    }, 100000)
+            s = new Date();
+            for (var i = 0; i < count; i++) {
+                tpl.proxy(data.eachArray[i]).title = 'updated test---' + i;
+            }
+            setTimeout(function() {
+                console.log('update each use:' + (new Date() - s)+'ms');
+            }, 0);
+        }, 1000)
+    }, 0)
+
 });
 </script>
 <script id="tpl/code.html" type="text/template">
