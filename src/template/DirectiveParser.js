@@ -1,7 +1,7 @@
 import {
   Directive
 } from '../binding'
-import _ from '../util'
+import _ from 'utility'
 import config from '../config'
 
 config.register('directiveReg', /^tpl-/, [RegExp])

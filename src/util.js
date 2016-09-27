@@ -1,4 +1,4 @@
-import observer from 'observer'
+import _ from 'utility'
 
 const regHump = /(^[a-z])|([_-][a-zA-Z])/g
 
@@ -8,43 +8,31 @@ function _hump(k) {
   return k.toUpperCase();
 }
 
-function assign(target, source, alias) {
-  observer.each(source, (v, k) => {
-    target[alias[k] || k] = v
-  })
-  return target
+export function hump(str) {
+  return str.replace(regHump, _hump)
 }
 
-export default assign({
-  hump(str) {
-    return str.replace(regHump, _hump);
+export const YieId = _.dynamicClass({
+  constructor() {
+    this.doned = false
+    this.thens = []
   },
-  YieId: observer.dynamicClass({
-    constructor() {
-      this.doned = false
-      this.thens = []
-    },
-    then(callback) {
-      if (this.doned)
-        callback()
-      else
-        this.thens.push(callback)
-    },
-    done() {
-      if (!this.doned) {
-        let thens = this.thens;
-        for (let i = 0, l = thens.length; i < l; i++) {
-          thens[i]()
-        }
-        this.doned = true
+  then(callback) {
+    if (this.doned)
+      callback()
+    else
+      this.thens.push(callback)
+  },
+  done() {
+    if (!this.doned) {
+      let thens = this.thens;
+      for (let i = 0, l = thens.length; i < l; i++) {
+        thens[i]()
       }
-    },
-    isDone() {
-      return this.doned
+      this.doned = true
     }
-  })
-}, observer, {
-  on: 'observe',
-  un: 'unobserve',
-  hasListen: 'isObserved'
+  },
+  isDone() {
+    return this.doned
+  }
 })

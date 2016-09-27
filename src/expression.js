@@ -1,5 +1,5 @@
 import translate from './translate'
-import _ from './util'
+import _ from 'utility'
 
 const defaultKeywords = _.reverseConvert('Math,Date,this,true,false,null,undefined,Infinity,NaN,isNaN,isFinite,decodeURI,decodeURIComponent,encodeURI,encodeURIComponent,parseInt,parseFloat,$scope'.split(','), () => true),
   wsReg = /\s/g,

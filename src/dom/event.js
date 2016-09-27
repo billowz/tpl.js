@@ -1,5 +1,5 @@
 import dom from './core'
-import _ from '../util'
+import _ from 'utility'
 
 const root = document.documentElement
 
@@ -141,48 +141,49 @@ function addListen(el, type, handler, once) {
     throw TypeError('Invalid Event Handler')
 
   let listens = el[listenKey],
-    handlers
+    handlers,
+    ret = false
 
   if (!listens)
     el[listenKey] = listens = {}
 
-  if (!(handlers = listens[type]))
-    listens[type] = handlers = []
-
+  if (!(handlers = listens[type])) {
+    listens[type] = handlers = new _.LinkedList()
+    ret = true
+  } else if (handlers.contains(handler)) {
+    return false
+  }
   handlers.push({
     handler: handler,
     once: once
   })
-  return handlers.length === 1
+  return ret
 }
 
 function removeListen(el, type, handler) {
   let listens = el[listenKey],
-    handlers = listens ? listens[type] : undefined
+    handlers = listens && listens[type]
 
-  if (handlers) {
-    for (let i = 0, l = handlers.length; i < l; i++) {
-      if (handlers[i].handler === handler) {
-        handlers.splice(i, 1);
-        return l === 1
-      }
-    }
+  if (handlers && !handlers.empty()) {
+    handlers.remove(handler)
+    return handlers.empty()
   }
-  return false;
+  return false
 }
 
 function getListens(el, type) {
-  let listens = el[listenKey],
-    handlers = listens ? listens[type] : undefined
+  let listens = el[listenKey]
 
-  return handlers ? handlers.slice() : undefined
+  return listens && listens[type]
 }
 
 function hasListen(el, type, handler) {
   let listens = el[listenKey],
-    handlers = listens ? listens[type] : undefined
+    handlers = listens && listens[type]
 
-  return handlers ? handler ? _.indexOf(handlers, handler) != -1 : !!handlers.length : false;
+  if (handlers)
+    return handler ? handlers.contains(handler) : !handlers.empty()
+  return false
 }
 
 const bind = dom.W3C ? function(el, type, fn, capture) {
@@ -208,32 +209,32 @@ const bind = dom.W3C ? function(el, type, fn, capture) {
   },
   eventHooks = {},
   eventHookTypes = {},
-  delegateEvents = {};
+  delegateEvents = {}
 
 _.each(canBubbleUpArray, (name) => {
-  canBubbleUp[name] = true;
-});
+  canBubbleUp[name] = true
+})
 if (!dom.W3C) {
   delete canBubbleUp.change
   delete canBubbleUp.select
 }
 
 function bandEvent(el, type, cb) {
-  let hook = eventHooks[type];
+  let hook = eventHooks[type]
   if (!hook || !hook.bind || hook.bind(el, type, cb) !== false)
-    bind(el, hook ? hook.type || type : type, dispatch, !!focusBlur[type]);
+    bind(el, hook ? hook.type || type : type, dispatch, !!focusBlur[type])
 }
 
 function unbandEvent(el, type, cb) {
-  let hook = eventHooks[type];
+  let hook = eventHooks[type]
   if (!hook || !hook.unbind || hook.unbind(el, type, cb) !== false)
-    unbind(el, hook ? hook.type || type : type, dispatch);
+    unbind(el, hook ? hook.type || type : type, dispatch)
 }
 
 function delegateEvent(type, cb) {
   if (!delegateEvents[type]) {
-    bandEvent(root, type, cb);
-    delegateEvents[type] = 1;
+    bandEvent(root, type, cb)
+    delegateEvents[type] = 1
   } else {
     delegateEvents[type]++;
   }
@@ -243,61 +244,64 @@ function undelegateEvent(type, cb) {
   if (delegateEvents[type]) {
     delegateEvents[type]--;
     if (!delegateEvents[type])
-      unbandEvent(root, type, cb);
+      unbandEvent(root, type, cb)
   }
 }
 
-let last = new Date();
+let last = new Date()
 
 function dispatchElement(el, event, isMove) {
-  let handlers = getListens(el, event.type);
+  let handlers = getListens(el, event.type)
 
   if (handlers) {
-    event.currentTarget = el;
-    let handler, i, l;
-    for (i = 0, l = handlers.length; i < l && !event.isImmediatePropagationStopped; i++) {
-      handler = handlers[i];
+    let handler, i, l
+
+    event.currentTarget = el
+    event.isImmediatePropagationStopped = false
+    handlers.each((handler) => {
       if (isMove) {
-        let now = new Date();
+        let now = new Date()
         if (now - last > 16) {
-          handler.handler.call(el, event);
-          last = now;
+          handler.handler.call(el, event)
+          last = now
         }
-      } else
-        handler.handler.call(el, event);
+      } else {
+        handler.handler.call(el, event)
+      }
 
       if (handler.once)
-        dom.off(el, event.type, handler.handler);
-    }
+        dom.off(el, event.type, handler.handler)
+      return !event.isImmediatePropagationStopped
+    })
   }
 }
 
 function dispatchEvent(el, type, event) {
   if (el.disabled !== true || type !== 'click') {
-    let isMove = /move|scroll/.test(type);
+    let isMove = /move|scroll/.test(type)
     if (canBubbleUp[type]) {
       while (el && el.getAttribute && !event.cancelBubble) {
-        dispatchElement(el, event, isMove);
-        el = el.parentNode;
+        dispatchElement(el, event, isMove)
+        el = el.parentNode
       }
     } else
-      dispatchElement(el, event, isMove);
+      dispatchElement(el, event, isMove)
   }
 }
 
 function dispatch(event) {
-  event = new Event(event);
+  event = new Event(event)
   let type = event.type,
-    el = event.target;
+    el = event.target
   if (eventHookTypes[type]) {
     type = eventHookTypes[type]
-    let hook = eventHooks[type];
+    let hook = eventHooks[type]
     if (hook && hook.fix && hook.fix(el, event) === false)
-      return;
-    event.type = type;
-    dispatchEvent(el, type, event);
+      return
+    event.type = type
+    dispatchEvent(el, type, event)
   } else {
-    dispatchEvent(el, type, event);
+    dispatchEvent(el, type, event)
   }
 }
 
@@ -310,7 +314,7 @@ if (!('onmouseenter' in root)) {
     eventHooks[origType] = {
       type: fixType,
       fix(elem, event, fn) {
-        let t = event.relatedTarget;
+        let t = event.relatedTarget
         return !t || (t !== elem && !(elem.compareDocumentPosition(t) & 16))
       }
     }
@@ -326,15 +330,15 @@ _.each({
       type: fixType
     }
   }
-});
+})
 
 //针对IE6-8修正input
 if (!('oninput' in document.createElement('input'))) {
-  delete canBubbleUp.input;
+  delete canBubbleUp.input
   eventHooks.input = {
     type: 'propertychange',
     fix(elem, event) {
-      return event.propertyName == 'value';
+      return event.propertyName == 'value'
     }
   }
   eventHooks.change = {
@@ -342,18 +346,18 @@ if (!('oninput' in document.createElement('input'))) {
       if (elem.type == 'checkbox' || elem.type == 'radio') {
         if (!elem.$onchange) {
           elem.$onchange = function(event) {
-            event.type = 'change';
-            dispatchEvent(elem, 'change', event);
+            event.type = 'change'
+            dispatchEvent(elem, 'change', event)
           }
-          dom.on(elem, 'click', elem.$onchange);
+          dom.on(elem, 'click', elem.$onchange)
         }
-        return false;
+        return false
       }
     },
     unbind(elem) {
       if (elem.type == 'checkbox' || elem.type == 'radio') {
-        dom.off(elem, 'click', elem.$onchange);
-        return false;
+        dom.off(elem, 'click', elem.$onchange)
+        return false
       }
     }
   }
@@ -361,23 +365,23 @@ if (!('oninput' in document.createElement('input'))) {
   eventHooks.input = {
       type: 'input',
       fix(elem) {
-        elem.oldValue = elem.value;
+        elem.oldValue = elem.value
       }
     }
     // http://stackoverflow.com/questions/6382389/oninput-in-ie9-doesnt-fire-when-we-hit-backspace-del-do-cut
   document.addEventListener('selectionchange', function(event) {
-    var actEl = document.activeElement;
+    var actEl = document.activeElement
     if (actEl.tagName === 'TEXTAREA' || (actEl.tagName === 'INPUT' && actEl.type === 'text')) {
       if (actEl.value == actEl.oldValue)
-        return;
-      actEl.oldValue = actEl.value;
+        return
+      actEl.oldValue = actEl.value
       if (hasListen(actEl, 'input')) {
-        event = new Event(event);
-        event.type = 'input';
-        dispatchEvent(actEl, 'input', event);
+        event = new Event(event)
+        event.type = 'input'
+        dispatchEvent(actEl, 'input', event)
       }
     }
-  });
+  })
 }
 
 
@@ -388,16 +392,16 @@ if (document.onmousewheel === void 0) {
    IE9-11 wheel deltaY 下40 上-40
    chrome wheel deltaY 下100 上-100 */
   let fixWheelType = document.onwheel ? 'wheel' : 'DOMMouseScroll',
-    fixWheelDelta = fixWheelType === 'wheel' ? 'deltaY' : 'detail';
+    fixWheelDelta = fixWheelType === 'wheel' ? 'deltaY' : 'detail'
   eventHooks.mousewheel = {
     type: fixWheelType,
     fix(elem, event) {
-      event.wheelDeltaY = event.wheelDelta = event[fixWheelDelta] > 0 ? -120 : 120;
-      event.wheelDeltaX = 0;
-      return true;
+      event.wheelDeltaY = event.wheelDelta = event[fixWheelDelta] > 0 ? -120 : 120
+      event.wheelDeltaX = 0
+      return true
     }
   }
 }
 _.each(eventHooks, function(hook, type) {
-  eventHookTypes[hook.type || type] = type;
+  eventHookTypes[hook.type || type] = type
 })

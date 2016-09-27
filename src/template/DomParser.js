@@ -6,7 +6,7 @@ import {
   DirectiveGroup,
   Text
 } from '../binding'
-import _ from '../util'
+import _ from 'utility'
 import dom from '../dom'
 import log from '../log'
 import config from '../config'
@@ -217,7 +217,6 @@ const DomParser = _.dynamicClass({
       if (i) {
         markEl(this.insertNotBlankText(expr.substr(i), el), false)
         dom.remove(el)
-        console.log(p.childNodes.length + '====' + l + '   ' + (index - ii))
       } else {
         markEl(el, false)
       }
@@ -225,7 +224,7 @@ const DomParser = _.dynamicClass({
 
   },
   insertNotBlankText(content, before) {
-    return (content = _.trim(content)) ? this.insertText(content, before) : undefined
+    return (content) ? this.insertText(content, before) : undefined
   },
   insertText(content, before) {
     let el = document.createTextNode(content)

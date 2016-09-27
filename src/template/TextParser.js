@@ -1,4 +1,4 @@
-import _ from '../util'
+import _ from 'utility'
 
 const reg = /{([^{]+)}/g
 export default _.dynamicClass({

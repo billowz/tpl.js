@@ -1,63 +1,18 @@
 /*
- * tpl.js v0.0.15 built in Thu, 22 Sep 2016 07:04:29 GMT
+ * tpl.js v0.0.16 built in Tue, 27 Sep 2016 06:50:46 GMT
  * Copyright (c) 2016 Tao Zeng <tao.zeng.zt@gmail.com>
  * Released under the MIT license
  * support IE6+ and other browsers
  * https://github.com/tao-zeng/tpl.js
  */
 (function (global, factory) {
-  typeof exports === 'object' && typeof module !== 'undefined' ? module.exports = factory(require('observer')) :
-  typeof define === 'function' && define.amd ? define('tpl', ['observer'], factory) :
-  (global.tpl = factory(global.observer));
-}(this, function (observer) {
+  typeof exports === 'object' && typeof module !== 'undefined' ? module.exports = factory(require('utility'), require('observer')) :
+  typeof define === 'function' && define.amd ? define('tpl', ['utility', 'observer'], factory) :
+  (global.tpl = factory(global.utility,global.observer));
+}(this, function (_,observer) {
 
+  _ = 'default' in _ ? _['default'] : _;
   observer = 'default' in observer ? observer['default'] : observer;
-
-  var regHump = /(^[a-z])|([_-][a-zA-Z])/g;
-
-  function _hump(k) {
-    if (k[0] == '_' || k[0] == '-') k = k[1];
-    return k.toUpperCase();
-  }
-
-  function assign(target, source, alias) {
-    observer.each(source, function (v, k) {
-      target[alias[k] || k] = v;
-    });
-    return target;
-  }
-
-  var _ = assign({
-    hump: function (str) {
-      return str.replace(regHump, _hump);
-    },
-
-    YieId: observer.dynamicClass({
-      constructor: function () {
-        this.doned = false;
-        this.thens = [];
-      },
-      then: function (callback) {
-        if (this.doned) callback();else this.thens.push(callback);
-      },
-      done: function () {
-        if (!this.doned) {
-          var thens = this.thens;
-          for (var i = 0, l = thens.length; i < l; i++) {
-            thens[i]();
-          }
-          this.doned = true;
-        }
-      },
-      isDone: function () {
-        return this.doned;
-      }
-    })
-  }, observer, {
-    on: 'observe',
-    un: 'unobserve',
-    hasListen: 'isObserved'
-  });
 
   var reg = /{([^{]+)}/g;
   var TextParser = _.dynamicClass({
@@ -88,12 +43,12 @@
       commentCfg: 'generateComments'
     },
     constructor: function (cfg) {
-      this._scope = _.obj(cfg.scope);
+      this._scope = observer.obj(cfg.scope);
       this.el = cfg.el;
     },
     scope: function () {
       var scope = this._scope;
-      return _.proxy(scope) || scope;
+      return observer.proxy(scope) || scope;
     },
     realScope: function () {
       return this._scope;
@@ -105,16 +60,16 @@
       while ((parent = scope.$parent) && !_.hasOwnProp(scope, prop)) {
         scope = parent;
       }
-      return _.proxy(scope) || scope;
+      return observer.proxy(scope) || scope;
     },
     exprScope: function (expr) {
       return this.propScope(_.parseExpr(expr)[0]);
     },
     observe: function (expr, callback) {
-      _.observe(this.exprScope(expr), expr, callback);
+      observer.on(this.exprScope(expr), expr, callback);
     },
     unobserve: function (expr, callback) {
-      _.unobserve(this.exprScope(expr), expr, callback);
+      observer.un(this.exprScope(expr), expr, callback);
     },
     get: function (expr) {
       return _.get(this.realScope(), expr);
@@ -137,45 +92,39 @@
 
   var log = new _.Logger('tpl', 'debug');
 
-  var slice = Array.prototype.slice;
   var translates = {};
-  function apply(name, data, args, apply) {
-    var f = translates[name],
-        type = f ? f.type : undefined,
-        fn = void 0;
-
-    fn = f ? apply !== false ? f.apply : f.unapply : undefined;
-    if (!fn) {
-      log.warn('Translate[' + name + '].' + (apply !== false ? 'apply' : 'unapply') + ' is undefined');
-    } else {
-      if (_.isFunc(args)) args = args();
-      data = fn.apply(f, [data].concat(args));
-    }
-    return {
-      stop: type == 'event' && data === false,
-      data: data,
-      replaceData: type !== 'event'
-    };
-  }
   var translate = {
-    register: function (name, translate) {
+    register: function (name, desc) {
       if (translates[name]) throw Error('Translate[' + name + '] is existing');
-      if (typeof translate == 'function') translate = {
-        apply: translate
+      if (_.isFunc(desc)) desc = {
+        transform: desc
       };
-      translate.type = translate.type || 'normal';
-      translates[name] = translate;
-      log.debug('register Translate[%s:%s]', translate.type, name);
+      desc.type = desc.type || 'normal';
+      translates[name] = desc;
+      log.debug('register Translate[' + desc.type + ':' + name + ']');
     },
     get: function (name) {
       return translates[name];
     },
+    apply: function (name, data, args, restore) {
+      var f = translates[name],
+          type = f && f.type,
+          fn = f && (restore ? f.restore : f.transform);
 
-
-    apply: apply,
-
+      if (!fn) {
+        log.warn('Translate[' + name + '].' + (restore ? 'Restore' : 'Transform') + ' is undefined');
+      } else {
+        if (_.isFunc(args)) args = args();
+        data = fn.apply(f, [data].concat(args));
+      }
+      return {
+        stop: type == 'event' && data === false,
+        data: data,
+        replaceData: type !== 'event'
+      };
+    },
     unapply: function (name, data, args) {
-      return apply(name, data, args, false);
+      return this.apply(name, data, args, false);
     }
   };
 
@@ -216,16 +165,16 @@
   _.each(eventTranslates, function (fn, name) {
     translate.register(name, {
       type: 'event',
-      apply: fn
+      transform: fn
     });
   });
 
   var nomalTranslates = {
     json: {
-      apply: function (value, indent) {
+      transform: function (value, indent) {
         return typeof value === 'string' ? value : JSON.stringify(value, null, Number(indent) || 2);
       },
-      unapply: function (value) {
+      restore: function (value) {
         try {
           return JSON.parse(value);
         } catch (e) {
@@ -233,17 +182,20 @@
         }
       }
     },
+    trim: {
+      transform: _.trim,
+      restore: _.trim
+    },
 
     capitalize: function (value) {
-      if (!value && value !== 0) return '';
-      value = value.toString();
-      return value.charAt(0).toUpperCase() + value.slice(1);
+      if (_.isString(value)) return value.charAt(0).toUpperCase() + value.slice(1);
+      return value;
     },
     uppercase: function (value) {
-      return value || value === 0 ? value.toString().toUpperCase() : '';
+      return _.isString(value) ? value.toUpperCase() : value;
     },
     lowercase: function (value) {
-      return value || value === 0 ? value.toString().toLowerCase() : '';
+      return _.isString(value) ? value.toLowerCase() : value;
     },
     currency: function (value, currency) {
       value = parseFloat(value);
@@ -257,9 +209,41 @@
       var sign = value < 0 ? '-' : '';
       return sign + currency + head + _int.slice(i).replace(digitsRE, '$1,') + _float;
     },
-    pluralize: function (value) {
-      var args = slice.call(arguments, 1);
-      return args.length > 1 ? args[value % 10 - 1] || args[args.length - 1] : args[0] + (value === 1 ? '' : 's');
+
+    plural: {
+      transform: function (value, plural) {
+        if (plural && _.isString(value)) return _.plural(value);
+        return value;
+      },
+      restore: function (value) {
+        return _.singular(value);
+      }
+    },
+    singular: {
+      transform: function (value, plural) {
+        if (plural && _.isString(value)) return _.singular(value);
+        return value;
+      },
+      restore: function (value) {
+        return _.plural(value);
+      }
+    },
+    unit: {
+      transform: function (value, unit, format, plural) {
+        if (plural !== false && value != 1 && value != 0) {
+          unit = _.plural(unit);
+        }
+        if (format) return format ? _.format(format, value, unit) : value + unit;
+      },
+      restore: function (value, unit, format) {
+        var reg = new RegExp('(' + unit + '|' + _.plural(unit));
+        return _.trim(value.replace(reg, ''));
+      }
+    },
+    format: {
+      transform: function (value, format) {
+        return _.format(format, value);
+      }
     }
   };
   _.each(nomalTranslates, function (f, name) {
@@ -443,7 +427,7 @@
     return _.isArrayLike(el) ? el[el.length - 1] : el;
   }
 
-  function apply$1(coll, callback) {
+  function apply(coll, callback) {
     _.isArrayLike(coll) ? _.each(coll, callback) : callback(coll);
   }
 
@@ -485,7 +469,7 @@
       return all ? el.childNodes : el.children;
     },
     remove: function (el) {
-      apply$1(el, function (el) {
+      apply(el, function (el) {
         var parent = el.parentNode;
         if (parent) parent.removeChild(el);
       });
@@ -494,7 +478,7 @@
     before: function (el, target) {
       target = firstEl(target);
       var parent = target.parentNode;
-      apply$1(el, function (el) {
+      apply(el, function (el) {
         parent.insertBefore(el, target);
       });
       return dom;
@@ -503,7 +487,7 @@
       target = lastEl(target);
       var parent = target.parentNode;
 
-      apply$1(el, parent.lastChild === target ? function (el) {
+      apply(el, parent.lastChild === target ? function (el) {
         parent.insertBefore(el, target);
       } : function () {
         var next = target.nextSibling;
@@ -515,7 +499,7 @@
     },
     append: function (target, el) {
       target = firstEl(target);
-      apply$1(el, function (el) {
+      apply(el, function (el) {
         target.appendChild(el);
       });
       return dom;
@@ -1167,46 +1151,47 @@ var   css$1 = dom.css;
     if (!_.isFunc(handler)) throw TypeError('Invalid Event Handler');
 
     var listens = el[listenKey],
-        handlers = void 0;
+        handlers = void 0,
+        ret = false;
 
     if (!listens) el[listenKey] = listens = {};
 
-    if (!(handlers = listens[type])) listens[type] = handlers = [];
-
+    if (!(handlers = listens[type])) {
+      listens[type] = handlers = new _.LinkedList();
+      ret = true;
+    } else if (handlers.contains(handler)) {
+      return false;
+    }
     handlers.push({
       handler: handler,
       once: once
     });
-    return handlers.length === 1;
+    return ret;
   }
 
   function removeListen(el, type, handler) {
     var listens = el[listenKey],
-        handlers = listens ? listens[type] : undefined;
+        handlers = listens && listens[type];
 
-    if (handlers) {
-      for (var _i = 0, l = handlers.length; _i < l; _i++) {
-        if (handlers[_i].handler === handler) {
-          handlers.splice(_i, 1);
-          return l === 1;
-        }
-      }
+    if (handlers && !handlers.empty()) {
+      handlers.remove(handler);
+      return handlers.empty();
     }
     return false;
   }
 
   function getListens(el, type) {
-    var listens = el[listenKey],
-        handlers = listens ? listens[type] : undefined;
+    var listens = el[listenKey];
 
-    return handlers ? handlers.slice() : undefined;
+    return listens && listens[type];
   }
 
   function hasListen(el, type, handler) {
     var listens = el[listenKey],
-        handlers = listens ? listens[type] : undefined;
+        handlers = listens && listens[type];
 
-    return handlers ? handler ? _.indexOf(handlers, handler) != -1 : !!handlers.length : false;
+    if (handlers) return handler ? handlers.contains(handler) : !handlers.empty();
+    return false;
   }
 
   var bind = dom.W3C ? function (el, type, fn, capture) {
@@ -1268,22 +1253,26 @@ var   css$1 = dom.css;
     var handlers = getListens(el, event.type);
 
     if (handlers) {
-      event.currentTarget = el;
       var handler = void 0,
-          _i2 = void 0,
+          _i = void 0,
           l = void 0;
-      for (_i2 = 0, l = handlers.length; _i2 < l && !event.isImmediatePropagationStopped; _i2++) {
-        handler = handlers[_i2];
+
+      event.currentTarget = el;
+      event.isImmediatePropagationStopped = false;
+      handlers.each(function (handler) {
         if (isMove) {
           var now = new Date();
           if (now - last > 16) {
             handler.handler.call(el, event);
             last = now;
           }
-        } else handler.handler.call(el, event);
+        } else {
+          handler.handler.call(el, event);
+        }
 
         if (handler.once) dom.off(el, event.type, handler.handler);
-      }
+        return !event.isImmediatePropagationStopped;
+      });
     }
   }
 
@@ -1907,14 +1896,13 @@ var   root$2 = document.documentElement;
         if (i) {
           markEl(_this4.insertNotBlankText(expr.substr(i), el), false);
           dom.remove(el);
-          console.log(p.childNodes.length + '====' + l + '   ' + (index - ii));
         } else {
           markEl(el, false);
         }
       });
     },
     insertNotBlankText: function (content, before) {
-      return (content = _.trim(content)) ? this.insertText(content, before) : undefined;
+      return content ? this.insertText(content, before) : undefined;
     },
     insertText: function (content, before) {
       var el = document.createTextNode(content);
@@ -2003,7 +1991,7 @@ var   root$2 = document.documentElement;
           index: index
         };
         desc.version = version;
-        desc.data = item;
+        desc.data = observer.proxy(item);
         indexMap[index] = desc;
         return desc;
       }),
@@ -2022,14 +2010,13 @@ var   root$2 = document.documentElement;
           if (!idle) {
             desc.scope = _this.createScope(parentScope, desc.data, desc.index);
             desc.tpl = domParser.complie(desc.scope);
-            return;
           } else {
             desc.scope = idle.scope;
             desc.tpl = idle.tpl;
+            _this.initScope(desc.scope, desc.data, desc.index);
           }
         }
         dom.append(fragment, desc.tpl.el);
-        _this.initScope(desc.scope, desc.data, desc.index);
       });
       tpl.before(fragment, end);
       tpl.each(descs, function (desc) {
@@ -2039,73 +2026,6 @@ var   root$2 = document.documentElement;
         return idle.tpl.destroy();
       });
     },
-    update2: function (data) {
-      var _this2 = this;
-
-      var domParser = this.domParser,
-          parentScope = this.realScope(),
-          begin = this.begin,
-          end = this.end,
-          indexExpr = this.indexExpr,
-          valueAlias = this.valueAlias,
-          keyAlias = this.keyAlias,
-          init = !this.cache,
-          oldSort = this.sort,
-          sort = this.sort = new Array(data.length),
-          cache = init ? this.cache = {} : this.cache,
-          removed = [],
-          added = [],
-          fragment = document.createDocumentFragment();
-
-      _.each(data, function (item, idx) {
-        var index = indexExpr ? _.get(item, indexExpr) : idx,
-            // read index of data item
-        scope = !init && cache[index]; // find scope in cache
-
-        if (scope) {
-          // update scope
-          _this2.initScope(scope, item, idx, index);
-        } else {
-          // create scope
-          scope = cache[index] = _this2.createScope(parentScope, item, idx, index);
-          if (!init) added.push(scope);
-        }
-        sort[idx] = scope; // update sort
-        if (init) {
-          // init compontent
-          scope.$tpl = domParser.complie(scope);
-          data[idx] = scope[valueAlias];
-          scope.$tpl.before(end);
-        }
-      });
-      if (!init) {
-        _.each(oldSort, function (oldScope) {
-          var scope = cache[oldScope.$index];
-          if (scope && scope !== sort[oldScope.$sort]) {
-            removed.push(oldScope);
-            cache[oldScope.$index] = undefined;
-          }
-        });
-
-        _.each(added, function (scope) {
-          var scope2 = removed.pop();
-          if (scope2) {
-            _this2.initScope(scope2, scope);
-            cache[scope.$index] = scope2;
-            sort[scope.$sort] = scope2;
-            scope = scope2;
-          } else {
-            scope.$tpl = domParser.complie(scope);
-          }
-          data[scope.$sort] = scope[valueAlias];
-          scope.$tpl.after(scope.$sort ? sort[scope.$sort - 1].$tpl.el : begin);
-        });
-
-        _.each(removed, function (scope) {
-          scope.$tpl.destroy();
-        });
-      }
-    },
     createScope: function (parentScope, value, index) {
       var scope = _.create(parentScope);
       scope.$parent = parentScope;
@@ -2114,7 +2034,7 @@ var   root$2 = document.documentElement;
       return scope;
     },
     initScope: function (scope, value, index, isCreate) {
-      if (!isCreate) scope = _.proxy(scope);
+      if (!isCreate) scope = observer.proxy(scope);
       scope[this.valueAlias] = value;
       if (this.keyAlias) scope[this.keyAlias] = index;
     },
@@ -2132,6 +2052,44 @@ var   root$2 = document.documentElement;
       this.update(target);
     }
   }));
+
+  var regHump = /(^[a-z])|([_-][a-zA-Z])/g;
+
+  function _hump(k) {
+    if (k[0] == '_' || k[0] == '-') k = k[1];
+    return k.toUpperCase();
+  }
+
+  function hump(str) {
+    return str.replace(regHump, _hump);
+  }
+
+  var YieId = _.dynamicClass({
+    constructor: function () {
+      this.doned = false;
+      this.thens = [];
+    },
+    then: function (callback) {
+      if (this.doned) callback();else this.thens.push(callback);
+    },
+    done: function () {
+      if (!this.doned) {
+        var thens = this.thens;
+        for (var i = 0, l = thens.length; i < l; i++) {
+          thens[i]();
+        }
+        this.doned = true;
+      }
+    },
+    isDone: function () {
+      return this.doned;
+    }
+  });
+
+var util = Object.freeze({
+    hump: hump,
+    YieId: YieId
+  });
 
   var expressionArgs$1 = ['$el', '$event'];
 
@@ -2178,7 +2136,7 @@ var   root$2 = document.documentElement;
 
   var event = _.assign(_.convert(events, function (opt) {
     var name = _.isObject(opt) ? opt.name : opt;
-    return _.hump(name + 'Directive');
+    return hump(name + 'Directive');
   }, function (opt) {
     if (!_.isObject(opt)) opt = {
       eventType: opt
@@ -2349,7 +2307,7 @@ var   directives$2 = {
     'if': {
       priority: 9,
       bind: function () {
-        this.yieId = new _.YieId();
+        this.yieId = new YieId();
         this.listen();
         return this.yieId;
       },
@@ -2467,7 +2425,7 @@ var   directives$2 = {
     }
   };
   var simple = _.assign(_.convert(directives$2, function (opt, name) {
-    return _.hump(name + 'Directive');
+    return hump(name + 'Directive');
   }, function (opt, name) {
     opt.extend = SimpleDirective;
     return Directive.register(name, opt);
@@ -2479,7 +2437,7 @@ var   directives$2 = {
     EachDirective: EachDirective
   }, event, simple);
 
-  var index = _.assign(Template, _, dom, {
+  _.assign(Template, {
     translate: translate,
     expression: expression,
     Directive: Directive,
@@ -2489,9 +2447,29 @@ var   directives$2 = {
       observer.init(cfg);
       config.config(cfg);
     }
+  }, dom, util);
+
+  function assign(target, source, alias) {
+    observer.each(source, function (v, k) {
+      target[alias[k] || k] = v;
+    });
+    return target;
+  }
+  var tpl$1 = function (el, cfg) {
+    return new Template(el, cfg);
+  };
+  _.assign(tpl$1, Template, {
+    Template: Template,
+    utility: _,
+    observer: observer
+  });
+  assign(_.assign(tpl$1, _), observer.observer, {
+    on: 'observe',
+    un: 'unobserve',
+    hasListen: 'isObserved'
   });
 
-  return index;
+  return tpl$1;
 
 }));
 //# sourceMappingURL=tpl.js.map

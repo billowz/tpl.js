@@ -1,4 +1,4 @@
-import _ from '../util'
+import _ from 'utility'
 
 const textContent = typeof document.createElement('div').textContent == 'string' ? 'textContent' : 'innerText'
 

@@ -1,4 +1,4 @@
-import _ from '../util'
+import _ from 'utility'
 import dom from '../dom'
 
 export default _.dynamicClass({

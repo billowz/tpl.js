@@ -3,7 +3,10 @@ import {
 } from '../binding'
 import Template from '../template'
 import expression from '../expression'
-import _ from '../util'
+import _ from 'utility'
+import {
+  hump
+} from '../util'
 import dom from '../dom'
 import log from '../log'
 
@@ -54,7 +57,7 @@ const events = ['blur', 'change', 'click', 'dblclick', 'error', 'focus', 'keydow
 
 export default _.assign(_.convert(events, (opt) => {
   let name = _.isObject(opt) ? opt.name : opt
-  return _.hump(name + 'Directive')
+  return hump(name + 'Directive')
 }, (opt) => {
   if (!_.isObject(opt))
     opt = {

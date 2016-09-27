@@ -1,5 +1,5 @@
 import dom from './core'
-import _ from '../util'
+import _ from 'utility'
 
 export default _.assign(dom, {
   css(el, name, value) {

@@ -1,5 +1,5 @@
 import Binding from './Binding'
-import _ from '../util'
+import _ from 'utility'
 import dom from '../dom'
 import config from '../config'
 import log from '../log'

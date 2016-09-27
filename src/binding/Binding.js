@@ -1,4 +1,5 @@
-import _ from '../util'
+import _ from 'utility'
+import observer from 'observer'
 import config from '../config'
 
 const Binding = _.dynamicClass({
@@ -6,12 +7,12 @@ const Binding = _.dynamicClass({
     commentCfg: 'generateComments'
   },
   constructor(cfg) {
-    this._scope = _.obj(cfg.scope)
+    this._scope = observer.obj(cfg.scope)
     this.el = cfg.el
   },
   scope() {
     let scope = this._scope
-    return _.proxy(scope) || scope
+    return observer.proxy(scope) || scope
   },
   realScope() {
     return this._scope
@@ -23,16 +24,16 @@ const Binding = _.dynamicClass({
     while ((parent = scope.$parent) && !_.hasOwnProp(scope, prop)) {
       scope = parent
     }
-    return _.proxy(scope) || scope
+    return observer.proxy(scope) || scope
   },
   exprScope(expr) {
     return this.propScope(_.parseExpr(expr)[0])
   },
   observe(expr, callback) {
-    _.observe(this.exprScope(expr), expr, callback)
+    observer.on(this.exprScope(expr), expr, callback)
   },
   unobserve(expr, callback) {
-    _.unobserve(this.exprScope(expr), expr, callback)
+    observer.un(this.exprScope(expr), expr, callback)
   },
   get(expr) {
     return _.get(this.realScope(), expr)

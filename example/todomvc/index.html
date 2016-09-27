@@ -38,7 +38,7 @@
     </div>
     <div class="footer" tpl-if="todos.length">
         <span class="todo-count">
-            {completedNum}&nbsp;<strong>{completedNum | pluralize 'item'}</strong>&nbsp;left
+            {completedNum | unit 'item','%s %s'}&nbsp;left
         </span>
         <ul class="filters">
             <li><a href="#" tpl-onclick="vis('all')" tpl-class="{selected: visibility == 'all'}">All</a></li>

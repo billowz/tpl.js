@@ -2,7 +2,11 @@ import {
   Directive
 } from '../binding'
 import expression from '../expression'
-import _ from '../util'
+import _ from 'utility'
+import {
+  hump,
+  YieId
+} from '../util'
 import dom from '../dom'
 import log from '../log'
 
@@ -162,7 +166,7 @@ const EVENT_CHANGE = 'change',
     'if': {
       priority: 9,
       bind() {
-        this.yieId = new _.YieId()
+        this.yieId = new YieId()
         this.listen()
         return this.yieId
       },
@@ -293,7 +297,7 @@ const EVENT_CHANGE = 'change',
   }
 
 export default _.assign(_.convert(directives, (opt, name) => {
-  return _.hump(name + 'Directive')
+  return hump(name + 'Directive')
 }, (opt, name) => {
   opt.extend = SimpleDirective
   return Directive.register(name, opt)

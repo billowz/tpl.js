@@ -1,48 +1,46 @@
-import _ from './util'
+import _ from 'utility'
 import log from './log'
 
 const slice = Array.prototype.slice,
   translates = {}
 
-function apply(name, data, args, apply) {
-  let f = translates[name],
-    type = f ? f.type : undefined,
-    fn
-
-  fn = f ? apply !== false ? f.apply : f.unapply : undefined
-  if (!fn) {
-    log.warn(`Translate[${name}].${apply !== false ? 'apply' : 'unapply'} is undefined`)
-  } else {
-    if (_.isFunc(args)) args = args()
-    data = fn.apply(f, [data].concat(args))
-  }
-  return {
-    stop: type == 'event' && data === false,
-    data: data,
-    replaceData: type !== 'event'
-  }
-}
 const translate = {
-  register(name, translate) {
+  register(name, desc) {
     if (translates[name])
       throw Error(`Translate[${name}] is existing`)
-    if (typeof translate == 'function')
-      translate = {
-        apply: translate
+    if (_.isFunc(desc))
+      desc = {
+        transform: desc
       }
-    translate.type = translate.type || 'normal'
-    translates[name] = translate
-    log.debug('register Translate[%s:%s]', translate.type, name)
+    desc.type = desc.type || 'normal'
+    translates[name] = desc
+    log.debug(`register Translate[${desc.type}:${name}]`)
   },
 
   get(name) {
     return translates[name]
   },
 
-  apply: apply,
+  apply(name, data, args, restore) {
+    let f = translates[name],
+      type = f && f.type,
+      fn = f && (restore ? f.restore : f.transform)
+
+    if (!fn) {
+      log.warn(`Translate[${name}].${restore ? 'Restore' : 'Transform'} is undefined`)
+    } else {
+      if (_.isFunc(args)) args = args()
+      data = fn.apply(f, [data].concat(args))
+    }
+    return {
+      stop: type == 'event' && data === false,
+      data: data,
+      replaceData: type !== 'event'
+    }
+  },
 
   unapply(name, data, args) {
-    return apply(name, data, args, false)
+    return this.apply(name, data, args, false)
   }
 }
 
@@ -86,16 +84,16 @@ let eventTranslates = {
 _.each(eventTranslates, (fn, name) => {
   translate.register(name, {
     type: 'event',
-    apply: fn
+    transform: fn
   })
 })
 
 let nomalTranslates = {
   json: {
-    apply: function(value, indent) {
+    transform(value, indent) {
       return typeof value === 'string' ? value : JSON.stringify(value, null, Number(indent) || 2)
     },
-    unapply: function(value) {
+    restore(value) {
       try {
         return JSON.parse(value)
       } catch (e) {
@@ -103,19 +101,23 @@ let nomalTranslates = {
       }
     }
   },
+  trim: {
+    transform: _.trim,
+    restore: _.trim
+  },
 
   capitalize(value) {
-    if (!value && value !== 0) return ''
-    value = value.toString()
-    return value.charAt(0).toUpperCase() + value.slice(1)
+    if (_.isString(value))
+      return value.charAt(0).toUpperCase() + value.slice(1)
+    return value
   },
 
   uppercase(value) {
-    return (value || value === 0) ? value.toString().toUpperCase() : ''
+    return _.isString(value) ? value.toUpperCase() : value
   },
 
   lowercase(value) {
-    return (value || value === 0) ? value.toString().toLowerCase() : ''
+    return _.isString(value) ? value.toLowerCase() : value
   },
 
   currency(value, currency) {
@@ -130,10 +132,43 @@ let nomalTranslates = {
     var sign = value < 0 ? '-' : ''
     return sign + currency + head + _int.slice(i).replace(digitsRE, '$1,') + _float
   },
-
-  pluralize(value) {
-    var args = slice.call(arguments, 1)
-    return args.length > 1 ? (args[value % 10 - 1] || args[args.length - 1]) : (args[0] + (value === 1 ? '' : 's'))
+  plural: {
+    transform(value, plural) {
+      if (plural && _.isString(value))
+        return _.plural(value)
+      return value
+    },
+    restore(value) {
+      return _.singular(value)
+    }
+  },
+  singular: {
+    transform(value, plural) {
+      if (plural && _.isString(value))
+        return _.singular(value)
+      return value
+    },
+    restore(value) {
+      return _.plural(value)
+    }
+  },
+  unit: {
+    transform(value, unit, format, plural) {
+      if (plural !== false && value != 1 && value != 0) {
+        unit = _.plural(unit)
+      }
+      if (format)
+        return format ? _.format(format, value, unit) : value + unit
+    },
+    restore(value, unit, format) {
+      let reg = new RegExp(`(${unit}|${_.plural(unit)}`)
+      return _.trim(value.replace(reg, ''))
+    }
+  },
+  format: {
+    transform(value, format) {
+      return _.format(format, value)
+    }
   }
 }
 _.each(nomalTranslates, (f, name) => {

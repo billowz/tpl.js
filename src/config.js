@@ -1,3 +1,3 @@
-import _ from './util'
+import _ from 'utility'
 
 export default new _.Configuration()

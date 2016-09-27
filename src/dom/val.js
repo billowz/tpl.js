@@ -1,5 +1,5 @@
 import dom from './core'
-import _ from '../util'
+import _ from 'utility'
 
 function stringValue(val) {
   if (_.isNil(val) || val === NaN)

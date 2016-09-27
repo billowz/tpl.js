@@ -1,4 +1,4 @@
-import _ from '../util'
+import _ from 'utility'
 import DomParser from './DomParser'
 import DirectiveParser from './DirectiveParser'
 import TextParser from './TextParser'

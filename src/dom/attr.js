@@ -1,5 +1,5 @@
 import dom from './core'
-import _ from '../util'
+import _ from 'utility'
 
 const rfocusable = /^(?:input|select|textarea|button|object)$/i,
   rclickable = /^(?:a|area)$/i
