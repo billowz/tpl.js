@@ -75,22 +75,26 @@ export default Directive.register('each', _.dynamicClass({
       })
 
     tpl.each(descs, (desc) => {
+      let newScope = false
       if (!desc.scope) {
         let idle = idles.pop()
 
         if (!idle) {
           desc.scope = this.createScope(parentScope, desc.data, desc.index)
           desc.tpl = domParser.complie(desc.scope)
+          newScope = true
         } else {
           desc.scope = idle.scope
           desc.tpl = idle.tpl
-          this.initScope(desc.scope, desc.data, desc.index)
         }
       }
+      if (!newScope)
+        this.initScope(desc.scope, desc.data, desc.index)
       dom.append(fragment, desc.tpl.el)
+      if (newScope)
+        desc.tpl.bind()
     })
     tpl.before(fragment, end)
-    tpl.each(descs, (desc) => desc.tpl.bind())
     tpl.each(idles, (idle) => idle.tpl.destroy())
   },
   createScope(parentScope, value, index) {

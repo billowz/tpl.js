@@ -24,7 +24,7 @@
         <input class="new-todo" autofocus autocomplete="off" placeholder="What needs to be done?" tpl-onkeydown="add | key 13">
     </div>
     <div class="main" tpl-if="todos.length">
-        <input class="toggle-all" type="checkbox" tpl-checked="completedNum == displayTodos.length" tpl-onchange="toggleAll()">
+        <input class="toggle-all" type="checkbox" tpl-checked="completedNum && completedNum == displayTodos.length" tpl-onchange="toggleAll()">
         <ul class="todo-list">
             <li class="todo" tpl-each="todo, idx in displayTodos " tpl-class="{completed: todo.completed, editing: todo === edited}">
                 <div class="view">

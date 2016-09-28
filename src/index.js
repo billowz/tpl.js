@@ -4,7 +4,6 @@ import translate from './translate'
 import {
   Directive
 } from './binding'
-
 import directives from './directives'
 import _ from 'utility'
 import observer from 'observer'

@@ -3,7 +3,7 @@
   "namespace": "tpl",
   "main": "src/index.js",
   "description": "data binding template",
-  "version": "0.0.16",
+  "version": "0.1.0",
   "scripts": {
     "lint": "eslint src build",
     "build": "npm run lint && npm run signle-unit && node build/build.js",
@@ -31,8 +31,8 @@
   "private": false,
   "license": "MIT",
   "dependencies": {
-    "utility.js": "~0.0.15",
-    "observer.js": "~0.3.4",
+    "utility.js": "~0.1.0",
+    "observer.js": "~0.4.0",
     "todomvc-common": "^1.0.2",
     "todomvc-app-css": "^2.0.4"
   },
