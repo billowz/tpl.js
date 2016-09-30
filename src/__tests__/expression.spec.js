@@ -286,6 +286,104 @@ const testCases = [{
     },
     expected: 1
   }, {
+    exp: 'a = 1',
+    scope: {
+      a: 0
+    },
+    expected: 1,
+    expect(scope, ret) {
+      expect(scope.a).equal(1)
+    }
+  }, {
+    exp: 'a.b.c = 1',
+    scope: {
+      a: {
+        b: {
+          c: 0
+        }
+      }
+    },
+    expected: 1,
+    expect(scope, ret) {
+      expect(scope.a.b.c).equal(1)
+    }
+  }, {
+    exp: 'a.b[0].c = 1',
+    scope: {
+      a: {
+        b: [{
+          c: 0
+        }]
+      }
+    },
+    expected: 1,
+    expect(scope, ret) {
+      expect(scope.a.b[0].c).equal(1)
+    }
+  }, {
+    exp: 'a += 1',
+    scope: {
+      a: 0
+    },
+    expected: 1,
+    expect(scope, ret) {
+      expect(scope.a).equal(1)
+    }
+  }, {
+    exp: 'a -= 1',
+    scope: {
+      a: 0
+    },
+    expected: -1,
+    expect(scope, ret) {
+      expect(scope.a).equal(-1)
+    }
+  }, {
+    exp: 'a *= 2',
+    scope: {
+      a: 1
+    },
+    expected: 2,
+    expect(scope, ret) {
+      expect(scope.a).equal(2)
+    }
+  }, {
+    exp: 'a /= 2',
+    scope: {
+      a: 1
+    },
+    expected: 0.5,
+    expect(scope, ret) {
+      expect(scope.a).equal(0.5)
+    }
+  }, {
+    exp: 'a &= 0',
+    scope: {
+      a: 1
+    },
+    expected: 0,
+    expect(scope, ret) {
+      expect(scope.a).equal(0)
+    }
+  }, {
+    exp: 'a <<= 1',
+    scope: {
+      a: 1
+    },
+    expected: 2,
+    expect(scope, ret) {
+      expect(scope.a).equal(2)
+    }
+  }, {
+    exp: 'a >>= 1',
+    scope: {
+      a: 2
+    },
+    expected: 1,
+    expect(scope, ret) {
+      expect(scope.a).equal(1)
+    }
+  }, {
     exp: 'a|plural',
     scope: {
       a: 'test'
@@ -303,6 +401,44 @@ const testCases = [{
       a: 'tests'
     },
     expected: '1231.12, 00123, tests'
+  }, {
+    exp: 'json|json',
+    scope: {
+      json: {
+        a: 1
+      }
+    },
+    expected: '{\n  \"a\": 1\n}'
+  }, {
+    exp: 'str|trim',
+    scope: {
+      str: '   test   '
+    },
+    expected: 'test'
+  }, {
+    exp: 'str|capitalize',
+    scope: {
+      str: 'test'
+    },
+    expected: 'Test'
+  }, {
+    exp: 'str|uppercase',
+    scope: {
+      str: 'aaAa'
+    },
+    expected: 'AAAA'
+  }, {
+    exp: 'str|lowercase',
+    scope: {
+      str: 'AAaA'
+    },
+    expected: 'aaaa'
+  }, {
+    exp: 'str| unit "item","%s %s"',
+    scope: {
+      str: 1123
+    },
+    expected: '1123 items'
   }
 ]
 
@@ -316,7 +452,12 @@ describe('Expression Parser', () => {
       _.each(exp.filters, f => {
         logger.info(f.name, ':', _.map(f.argExecutors, e => e.toString()))
       })
-      expect(exp.executeAll(testCase.scope, [testCase.scope, testCase])).to.eql(testCase.expected)
+      ret = exp.executeAll(testCase.scope, [testCase.scope, testCase])
+      logger.info(ret)
+      expect(ret).to.eql(testCase.expected)
+      if (_.isFunc(testCase.expect)) {
+        testCase.expect(testCase.scope, ret)
+      }
     })
   })
 })

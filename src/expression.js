@@ -142,11 +142,13 @@ const Expression = _.dynamicClass({
   },
   executeFilter(scope, params, data, transform) {
     _.each(this.filters, filter => {
+      if (transform === false && !translate.get(filter.name))
+        return
       let args = _.map(filter.argExecutors, (executor) => {
           return executor.apply(scope, params)
         }),
         rs
-      if (transform != false) {
+      if (transform !== false) {
         rs = translate.transform(filter.name, scope, data, args)
       } else {
         rs = translate.restore(filter.name, scope, data, args)

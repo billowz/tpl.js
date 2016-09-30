@@ -100,36 +100,17 @@ let nomalTranslates = {
       }
     }
   },
-  trim: {
-    transform: _.trim,
-    restore: _.trim
-  },
-
+  trim: _.trim,
   capitalize(value) {
     if (_.isString(value))
       return value.charAt(0).toUpperCase() + value.slice(1)
     return value
   },
-
   uppercase(value) {
     return _.isString(value) ? value.toUpperCase() : value
   },
-
   lowercase(value) {
     return _.isString(value) ? value.toLowerCase() : value
-  },
-
-  currency(value, currency) {
-    value = parseFloat(value)
-    if (!isFinite(value) || (!value && value !== 0)) return ''
-    currency = currency != null ? currency : '$'
-    var stringified = Math.abs(value).toFixed(2)
-    var _int = stringified.slice(0, -3)
-    var i = _int.length % 3
-    var head = i > 0 ? (_int.slice(0, i) + (_int.length > 3 ? ',' : '')) : ''
-    var _float = stringified.slice(-3)
-    var sign = value < 0 ? '-' : ''
-    return sign + currency + head + _int.slice(i).replace(digitsRE, '$1,') + _float
   },
   plural: {
     transform(value) {
@@ -149,8 +130,11 @@ let nomalTranslates = {
   },
   unit: {
     transform(value, unit, format, plural) {
-      if (plural !== false && value != 1 && value != 0)
-        unit = _.plural(unit)
+      if (plural !== false) {
+        value = parseInt(value)
+        if (value != 1 && value != 0 && value != NaN)
+          unit = _.plural(unit)
+      }
       return format ? _.format(format, value, unit) : value + unit
     }
   },
