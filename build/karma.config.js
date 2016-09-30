@@ -16,7 +16,9 @@ module.exports = function(config) {
     },
     rollupPreprocessor: {
       rollup: {
-        plugins: [multiEntry()].concat(rollup.plugins)
+        plugins: [multiEntry(), istanbul({
+          exclude: ['**/__tests__/*.spec.js', 'node_modules/**']
+        })].concat(rollup.plugins)
       },
       bundle: {
         //sourceMap: 'inline',
