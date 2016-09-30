@@ -17,6 +17,7 @@ const Directive = _.dynamicClass({
     this.attr = cfg.attr
     this.children = cfg.children
     this.domParser = cfg.domParser
+    this.group = cfg.group
     if (config.get(Binding.commentCfg)) {
       this.comment = document.createComment(`Directive[${this.attr}]: ${this.expr}`)
       dom.before(this.comment, this.el)

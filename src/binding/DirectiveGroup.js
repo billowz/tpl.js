@@ -5,12 +5,14 @@ export default _.dynamicClass({
   extend: Binding,
   constructor(cfg) {
     this.super(arguments)
-    this.directives = cfg.directives
     this.children = cfg.children
-    this.directiveCount = cfg.directives.length
     this.bindedCount = 0
     this.bindedChildren = false
     this._bind = this._bind.bind(this)
+  },
+  _setDirectives(directives) {
+    this.directives = directives
+    this.directiveCount = directives.length
   },
   _bind() {
     let idx = this.bindedCount

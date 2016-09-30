@@ -10,20 +10,22 @@ import {
 import dom from '../dom'
 import log from '../log'
 
-const expressionArgs = ['$el']
+const expressionArgs = ['$scope', '$el', '$tpl', '$binding']
 
 const SimpleDirective = _.dynamicClass({
   extend: Directive,
   constructor() {
     this.super(arguments)
     this.observeHandler = this.observeHandler.bind(this)
-    this.expression = expression(this.expr, expressionArgs)
+    this.expression = expression(this.expr, expressionArgs, this.expressionScopeProvider)
   },
   realValue() {
-    return this.expression.execute.call(this, this.scope(), this.el)
+    let scope = this.scope()
+    return this.expression.execute(scope, [scope, this.el, this.tpl, this])
   },
   value() {
-    return this.expression.executeAll.call(this, this.scope(), this.el)
+    let scope = this.scope()
+    return this.expression.executeAll(scope, [scope, this.el, this.tpl, this])
   },
   listen() {
     _.each(this.expression.identities, (ident) => {
@@ -49,8 +51,9 @@ const SimpleDirective = _.dynamicClass({
     return _.isNil(val) ? '' : val
   },
   observeHandler(expr, val) {
-    if (this.expression.simplePath) {
-      this.update(this.expression.applyFilter(val, this, [this.scope(), this.el]))
+    if (this.expression.isSimple()) {
+      let scope = this.scope()
+      this.update(this.expression.executeFilter(scope, [scope, this.el, this.tpl, this], val))
     } else {
       this.update(this.value())
     }
@@ -205,7 +208,7 @@ const EVENT_CHANGE = 'change',
       priority: 4,
       constructor() {
         this.super(arguments)
-        if (!this.expression.simplePath)
+        if (!this.expression.isSimple())
           throw TypeError(`Invalid Expression[${this.expression.expr}] on InputDirective`)
 
         this.onChange = this.onChange.bind(this)
@@ -237,11 +240,12 @@ const EVENT_CHANGE = 'change',
       },
 
       setRealValue(val) {
-        this.set(this.expression.path, val)
+        this.set(this.expression.expr, val)
       },
 
       setValue(val) {
-        this.setRealValue(this.expression.applyFilter(val, this, [this.scope(), this.el], false))
+        let scope = this.scope()
+        this.setRealValue(this.expression.restore(scope, [scope, this.el, this.tpl, this], val))
       },
 
       onChange(e) {

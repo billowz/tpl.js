@@ -22,7 +22,7 @@ tpl.ready(function() {
         check1: 'CheckBox1 Selected',
         check2: 'CheckBox2 Selected',
         handler: function() {
-            console.log('event:', this, arguments);
+            tpl.logger.info('event:', this, arguments);
         },
         eachArray: []
     }
@@ -57,7 +57,7 @@ tpl.ready(function() {
     renderTempl('tpl/checkbox.html');
     renderTempl('tpl/each.html');
     setTimeout(function() {
-        console.log('render use:' + (new Date() - s) + 'ms')
+        tpl.logger.info('render use:' + (new Date() - s) + 'ms')
         s = new Date();
         setTimeout(function() {
             s = new Date();
@@ -65,7 +65,7 @@ tpl.ready(function() {
                 tpl.proxy(data.eachArray[i]).title = 'updated test---' + i;
             }
             setTimeout(function() {
-                console.log('update each use:' + (new Date() - s)+'ms');
+                tpl.logger.info('update each use:' + (new Date() - s)+'ms');
             }, 0);
         }, 1000)
     }, 0)

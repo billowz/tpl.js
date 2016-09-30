@@ -5,36 +5,39 @@ import dom from '../dom'
 import config from '../config'
 import log from '../log'
 
-const expressionArgs = ['$el']
+const expressionArgs = ['$scope', '$el', '$tpl', '$binding']
+
 
 export default _.dynamicClass({
   extend: Binding,
   constructor(cfg) {
     this.super(arguments)
-    this.expr = expression(cfg.expression, expressionArgs)
+    this.expression = expression(cfg.expression, expressionArgs, this.expressionScopeProvider)
     if (config.get(Binding.commentCfg)) {
-      this.comment = document.createComment('Text Binding ' + this.expr)
+      this.comment = document.createComment('Text Binding ' + cfg.expression)
       dom.before(this.comment, this.el)
     }
     this.observeHandler = this.observeHandler.bind(this)
   },
   value() {
-    return this.expr.executeAll.call(this, this.scope(), this.el)
+    let scope = this.scope()
+    return this.expression.executeAll(scope, [scope, this.el, this.tpl, this])
   },
   bind() {
-    _.each(this.expr.identities, (ident) => {
+    _.each(this.expression.identities, (ident) => {
       this.observe(ident, this.observeHandler)
     })
     this.update(this.value())
   },
   unbind() {
-    _.each(this.expr.identities, (ident) => {
+    _.each(this.expression.identities, (ident) => {
       this.unobserve(ident, this.observeHandler)
     })
   },
   observeHandler(attr, val) {
-    if (this.expr.simplePath) {
-      this.update(this.expr.applyFilter(val, this, [this.scope(), this.el]))
+    if (this.expression.isSimple()) {
+      var scope = this.scope()
+      this.update(this.expression.executeFilter(scope, [scope, this.el, this.tpl, this], val))
     } else {
       this.update(this.value())
     }

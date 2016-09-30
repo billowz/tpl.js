@@ -2,44 +2,43 @@ import _ from 'utility'
 import log from './log'
 
 const slice = Array.prototype.slice,
-  translates = {}
+  translations = {}
 
 const translate = {
   register(name, desc) {
-    if (translates[name])
+    if (translations[name])
       throw Error(`Translate[${name}] is existing`)
     if (_.isFunc(desc))
       desc = {
         transform: desc
       }
     desc.type = desc.type || 'normal'
-    translates[name] = desc
+    translations[name] = desc
     log.debug(`register Translate[${desc.type}:${name}]`)
   },
 
   get(name) {
-    return translates[name]
+    return translations[name]
   },
 
-  apply(name, data, args, restore) {
-    let f = translates[name],
+  transform(name, scope, data, args, restore) {
+    let f = translations[name],
       type = f && f.type,
       fn = f && (restore ? f.restore : f.transform)
 
     if (!fn) {
       log.warn(`Translate[${name}].${restore ? 'Restore' : 'Transform'} is undefined`)
     } else {
-      if (_.isFunc(args)) args = args()
-      data = fn.apply(f, [data].concat(args))
+      data = fn.apply(scope, [data].concat(args))
     }
     return {
       stop: type == 'event' && data === false,
       data: data,
-      replaceData: type !== 'event'
+      replace: type !== 'event'
     }
   },
 
-  unapply(name, data, args) {
+  restore(name, data, args) {
     return this.apply(name, data, args, false)
   }
 }
@@ -133,41 +132,32 @@ let nomalTranslates = {
     return sign + currency + head + _int.slice(i).replace(digitsRE, '$1,') + _float
   },
   plural: {
-    transform(value, plural) {
-      if (plural && _.isString(value))
-        return _.plural(value)
-      return value
+    transform(value) {
+      return _.isString(value) ? _.plural(value) : value
     },
     restore(value) {
-      return _.singular(value)
+      return _.isString(value) ? _.singular(value) : value
     }
   },
   singular: {
     transform(value, plural) {
-      if (plural && _.isString(value))
-        return _.singular(value)
-      return value
+      return _.isString(value) ? _.singular(value) : value
     },
     restore(value) {
-      return _.plural(value)
+      return _.isString(value) ? _.plural(value) : value
     }
   },
   unit: {
     transform(value, unit, format, plural) {
-      if (plural !== false && value != 1 && value != 0) {
+      if (plural !== false && value != 1 && value != 0)
         unit = _.plural(unit)
-      }
-      if (format)
-        return format ? _.format(format, value, unit) : value + unit
-    },
-    restore(value, unit, format) {
-      let reg = new RegExp(`(${unit}|${_.plural(unit)}`)
-      return _.trim(value.replace(reg, ''))
+      return format ? _.format(format, value, unit) : value + unit
     }
   },
   format: {
     transform(value, format) {
-      return _.format(format, value)
+      let args = [format, value].concat(Array.prototype.slice.call(arguments, 2))
+      return _.format.apply(_, args)
     }
   }
 }

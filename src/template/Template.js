@@ -1,10 +1,15 @@
 import _ from 'utility'
+import observer from 'observer'
 import dom from '../dom'
 
 export default _.dynamicClass({
-  constructor(el, bindings) {
-    this.el = el
-    this.bindings = bindings
+  constructor(scope) {
+    this.scope = scope
+    this.proxyHandler = this.proxyHandler.bind(this)
+    observer.proxy.on(scope, this.proxyHandler)
+  },
+  proxyHandler(obj, proxy) {
+    this.scope = proxy || obj
   },
   before(target, bind) {
     if (bind !== false)
@@ -54,6 +59,7 @@ export default _.dynamicClass({
     return this
   },
   destroy() {
+    observer.proxy.un(this.scope, this.proxyHandler)
     if (this.binded)
       _.each(this.bindings, (bind) => {
         bind.unbind()

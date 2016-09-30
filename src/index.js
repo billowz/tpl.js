@@ -10,6 +10,7 @@ import observer from 'observer'
 import * as util from './util'
 import dom from './dom'
 import config from './config'
+import logger from './log'
 
 _.assign(Template, {
   translate,
@@ -17,6 +18,7 @@ _.assign(Template, {
   Directive,
   directives,
   config,
+  logger,
   init(cfg) {
     observer.init(cfg)
     config.config(cfg)

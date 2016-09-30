@@ -1,7 +1,6 @@
 import {
   Directive
 } from '../binding'
-import Template from '../template'
 import expression from '../expression'
 import _ from 'utility'
 import {
@@ -10,14 +9,14 @@ import {
 import dom from '../dom'
 import log from '../log'
 
-const expressionArgs = ['$el', '$event']
+const expressionArgs = ['$scope', '$el', '$event', '$tpl', '$binding']
 
 const EventDirective = _.dynamicClass({
   extend: Directive,
   constructor() {
     this.super(arguments)
     this.handler = this.handler.bind(this)
-    this.expression = expression(this.expr, expressionArgs)
+    this.expression = expression(this.expr, expressionArgs, this.expressionScopeProvider)
   },
   handler(e) {
     e.stopPropagation()
@@ -25,13 +24,12 @@ const EventDirective = _.dynamicClass({
     let scope = this.scope(),
       exp = this.expression
 
-    if (this.expression.applyFilter(e, this, [scope, this.el, e]) !== false) {
-      let fn = exp.execute.call(this, scope, this.el, e)
-
-      if (exp.simplePath) {
+    if (exp.executeFilter(scope, [scope, this.el, e, this.tpl, this], e) !== false) {
+      let fn = exp.execute(scope, [scope, this.el, e, this.tpl, this])
+      if (exp.isSimple()) {
         if (_.isFunc(fn)) {
-          let _scope = this.propScope(exp.path[0])
-          fn.call(_scope, scope, this.el, e, _scope)
+          scope = this.exprScope(exp.expr)
+          fn.call(scope, scope, this.el, e, this.tpl, this)
         } else {
           log.warn('Invalid Event Handler:%s', this.expr, fn)
         }

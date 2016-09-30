@@ -39,10 +39,6 @@ tpl.ready(function() {
       }]);
       tpl.focus(el);
       this.displayTodos = this.filters[this.visibility](this.todos)
-
-      console.log(tpl.map(this.displayTodos, function(todo) {
-        return todo.title + '(' + todo.completed + ')'
-      }).join(', '))
     },
     edit: function(todo) {
       this.edited = todo
@@ -59,9 +55,6 @@ tpl.ready(function() {
       if (todo.completed)
         this.completedNum--;
       this.displayTodos = this.filters[this.visibility](this.todos)
-      console.log(tpl.map(this.displayTodos, function(todo) {
-        return todo.title + '(' + todo.completed + ')'
-      }).join(', '))
     },
     toggleAll: function() {
       var done = this.completedNum != this.todos.length,
@@ -75,9 +68,6 @@ tpl.ready(function() {
       })
       this.completedNum = completedNum;
       this.displayTodos = this.filters[this.visibility](this.todos)
-      console.log(tpl.map(this.displayTodos, function(todo) {
-        return todo.title + '(' + todo.completed + ')'
-      }).join(', '))
     },
     toggle: function(todo) {
       todo.completed = !todo.completed;
@@ -87,9 +77,6 @@ tpl.ready(function() {
         this.completedNum--;
       }
       this.displayTodos = this.filters[this.visibility](this.todos)
-      console.log(tpl.map(this.displayTodos, function(todo) {
-        return todo.title + '(' + todo.completed + ')'
-      }).join(', '))
     },
     clear: function() {
       tpl.$each(this.todos, function(todo) {
@@ -97,17 +84,11 @@ tpl.ready(function() {
       })
       this.completedNum = 0;
       this.displayTodos = this.filters[this.visibility](this.todos)
-      console.log(tpl.map(this.displayTodos, function(todo) {
-        return todo.title + '(' + todo.completed + ')'
-      }).join(', '))
     },
     vis: function(type) {
       if (this.visibility !== type) {
         this.visibility = type
         this.displayTodos = this.filters[type](this.todos)
-        console.log(tpl.map(this.displayTodos, function(todo) {
-          return todo.title + '(' + todo.completed + ')'
-        }).join(', '))
       }
     }
   }

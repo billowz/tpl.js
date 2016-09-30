@@ -1,6 +1,7 @@
 var multiEntry = require('rollup-plugin-multi-entry'),
   istanbul = require('rollup-plugin-istanbul'),
-  rollup = require('./rollup.all.config').rollup
+  rollup = require('./rollup.all.config').rollup,
+  pkg = require('../package.json')
 
 module.exports = function(config) {
   config.set({
@@ -15,13 +16,14 @@ module.exports = function(config) {
     },
     rollupPreprocessor: {
       rollup: {
-        plugins: [multiEntry(), istanbul({
-          exclude: ['**/__tests__/*.spec.js', 'node_modules/**']
-        })].concat(rollup.plugins)
+        plugins: [multiEntry()].concat(rollup.plugins)
       },
       bundle: {
-        sourceMap: 'inline',
-        useStrict: false
+        //sourceMap: 'inline',
+        useStrict: false,
+        format: 'iife',
+        moduleId: pkg.namespace,
+        moduleName: pkg.namespace,
       }
     },
     autoWatch: true,

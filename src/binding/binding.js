@@ -9,6 +9,10 @@ const Binding = _.dynamicClass({
   constructor(cfg) {
     this._scope = observer.obj(cfg.scope)
     this.el = cfg.el
+    this.tpl = cfg.tpl
+  },
+  expressionScopeProvider(expr, realScope) {
+    return realScope ? `$binding.exprScope('${expr}')` : '$scope'
   },
   scope() {
     let scope = this._scope

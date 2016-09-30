@@ -27,9 +27,9 @@ module.exports = {
     mini: true,
     gzip: true,
     format: 'umd',
-    banner: banner,
     moduleId: pkg.namespace,
     moduleName: pkg.namespace,
+    banner: banner,
     sourceMap: true,
     useStrict: false,
     globals: {

@@ -1,5 +1,5 @@
 /*
- * tpl.js v0.0.16 built in Tue, 27 Sep 2016 08:01:29 GMT
+ * tpl.js v0.1.0 built in Fri, 30 Sep 2016 07:52:33 GMT
  * Copyright (c) 2016 Tao Zeng <tao.zeng.zt@gmail.com>
  * Released under the MIT license
  * support IE6+ and other browsers
@@ -45,6 +45,10 @@
     constructor: function (cfg) {
       this._scope = observer.obj(cfg.scope);
       this.el = cfg.el;
+      this.tpl = cfg.tpl;
+    },
+    expressionScopeProvider: function (expr, realScope) {
+      return realScope ? '$binding.exprScope(\'' + expr + '\')' : '$scope';
     },
     scope: function () {
       var scope = this._scope;
@@ -92,38 +96,37 @@
 
   var log = new _.Logger('tpl', 'debug');
 
-  var translates = {};
+  var translations = {};
   var translate = {
     register: function (name, desc) {
-      if (translates[name]) throw Error('Translate[' + name + '] is existing');
+      if (translations[name]) throw Error('Translate[' + name + '] is existing');
       if (_.isFunc(desc)) desc = {
         transform: desc
       };
       desc.type = desc.type || 'normal';
-      translates[name] = desc;
+      translations[name] = desc;
       log.debug('register Translate[' + desc.type + ':' + name + ']');
     },
     get: function (name) {
-      return translates[name];
+      return translations[name];
     },
-    apply: function (name, data, args, restore) {
-      var f = translates[name],
+    transform: function (name, scope, data, args, restore) {
+      var f = translations[name],
           type = f && f.type,
           fn = f && (restore ? f.restore : f.transform);
 
       if (!fn) {
         log.warn('Translate[' + name + '].' + (restore ? 'Restore' : 'Transform') + ' is undefined');
       } else {
-        if (_.isFunc(args)) args = args();
-        data = fn.apply(f, [data].concat(args));
+        data = fn.apply(scope, [data].concat(args));
       }
       return {
         stop: type == 'event' && data === false,
         data: data,
-        replaceData: type !== 'event'
+        replace: type !== 'event'
       };
     },
-    unapply: function (name, data, args) {
+    restore: function (name, data, args) {
       return this.apply(name, data, args, false);
     }
   };
@@ -211,38 +214,31 @@
     },
 
     plural: {
-      transform: function (value, plural) {
-        if (plural && _.isString(value)) return _.plural(value);
-        return value;
+      transform: function (value) {
+        return _.isString(value) ? _.plural(value) : value;
       },
       restore: function (value) {
-        return _.singular(value);
+        return _.isString(value) ? _.singular(value) : value;
       }
     },
     singular: {
       transform: function (value, plural) {
-        if (plural && _.isString(value)) return _.singular(value);
-        return value;
+        return _.isString(value) ? _.singular(value) : value;
       },
       restore: function (value) {
-        return _.plural(value);
+        return _.isString(value) ? _.plural(value) : value;
       }
     },
     unit: {
       transform: function (value, unit, format, plural) {
-        if (plural !== false && value != 1 && value != 0) {
-          unit = _.plural(unit);
-        }
-        if (format) return format ? _.format(format, value, unit) : value + unit;
-      },
-      restore: function (value, unit, format) {
-        var reg = new RegExp('(' + unit + '|' + _.plural(unit));
-        return _.trim(value.replace(reg, ''));
+        if (plural !== false && value != 1 && value != 0) unit = _.plural(unit);
+        return format ? _.format(format, value, unit) : value + unit;
       }
     },
     format: {
       transform: function (value, format) {
-        return _.format(format, value);
+        var args = [format, value].concat(Array.prototype.slice.call(arguments, 2));
+        return _.format.apply(_, args);
       }
     }
   };
@@ -250,172 +246,188 @@
     translate.register(name, f);
   });
 
-  var defaultKeywords = _.reverseConvert('Math,Date,this,true,false,null,undefined,Infinity,NaN,isNaN,isFinite,decodeURI,decodeURIComponent,encodeURI,encodeURIComponent,parseInt,parseFloat,$scope'.split(','), function () {
+  var keywords = _.reverseConvert('tpl,observer,utility,window,document,Math,Date,this,true,false,null,undefined,Infinity,NaN,isNaN,isFinite,decodeURI,decodeURIComponent,encodeURI,encodeURIComponent,parseInt,parseFloat'.split(','), function () {
     return true;
   });
   var wsReg = /\s/g;
   var newlineReg = /\n/g;
-  var translationReg = /[\{,]\s*[\w\$_]+\s*:|('(?:[^'\\]|\\.)*'|"(?:[^"\\]|\\.)*"|`(?:[^`\\]|\\.)*\$\{|\}(?:[^`\\]|\\.)*`|`(?:[^`\\]|\\.)*`)|new |typeof |void |(\|\|)/g;
-  var translationRestoreReg = /"(\d+)"/g;
-  var pathTestReg = /^[A-Za-z_$][\w$]*(?:\.[A-Za-z_$][\w$]*|\['.*?'\]|\[".*?"\]|\[\d+\]|\[[A-Za-z_$][\w$]*\])*$/;
-  var booleanLiteralReg = /^(?:true|false)$/;
-  var identityReg = /[A-Za-z_$][\w$]*(?:\.[A-Za-z_$][\w$]*|\['.*?'\]|\[".*?"\]|\[\d+\]|\[[A-Za-z_$][\w$]*\])*[^\w$\.]/g;
+  var transformReg = /[\{,]\s*[\w\$_]+\s*:|('(?:[^'\\]|\\.)*'|"(?:[^"\\]|\\.)*"|`(?:[^`\\]|\\.)*\$\{|\}(?:[^`\\"']|\\.)*`|`(?:[^`\\]|\\.)*`)|new |typeof |void |(\|\|)/g;
+  var restoreReg = /"(\d+)"/g;
+  var identityReg = /[^\w$\.](?:(?:this\.)?[A-Za-z_$][\w$]*(?:\.[A-Za-z_$][\w$]*)*)/g;
   var propReg = /^[A-Za-z_$][\w$]*/;
-  var translations = [];
+  var simplePathReg = /^[A-Za-z_$][\w$]*(?:\.[A-Za-z_$][\w$]*|\['.*?'\]|\[".*?"\]|\[\d+\]|\[[A-Za-z_$][\w$]*\])*$/;
+  var literalValueReg = /^(?:true|false|null|undefined|Infinity|NaN)$/;
+  var exprReg = /\s*\|\s*(?:\|\s*)*/;
+  var applyFuncReg = /\.call|\.apply$/;
+  var thisReg = /^this\./;
+  config.register('keywords', {});
 
-  function translationProcessor(str, isString) {
-    var i = translations.length;
-    translations[i] = isString ? str.replace(newlineReg, '\\n') : str;
+  var cfg = config.get();
+
+  var saved = [];
+
+  function transform(str, isString) {
+    var i = saved.length;
+    saved[i] = isString ? str.replace(newlineReg, '\\n') : str;
     return '"' + i + '"';
   }
 
-  function translationRestoreProcessor(str, i) {
-    return translations[i];
+  function restore(str, i) {
+    return saved[i];
   }
 
-  var currentIdentities = void 0;
-  var currentKeywords = void 0;
-  var prevPropScope = void 0;
-  function identityProcessor(raw, idx, str) {
-    var l = raw.length,
-        suffix = raw.charAt(l - 1),
-        exp = raw.slice(0, l - 1),
-        prop = exp.match(propReg)[0];
-
-    if (defaultKeywords[prop] || currentKeywords[prop]) return raw;
-    if (prop === '$context') return raw.replace(propReg, prevPropScope);
-    if (suffix == '(') {
-      suffix = idx + l == str.length || str.charAt(idx + l) == ')' ? '' : ',';
-      prevPropScope = 'this.propScope(\'' + prop + '\')';
-      return '$scope.' + exp + '.call(' + prevPropScope + suffix;
-    }
-    currentIdentities[exp] = true;
-    return '$scope.' + exp + suffix;
+  var identities = void 0;
+  var params = void 0;
+  var scopeProvider = void 0;
+  function defaultScopeProvider() {
+    return 'this';
   }
 
-  function complileExpr(body) {
-    prevPropScope = undefined;
-    return (body + ' ').replace(identityReg, identityProcessor).replace(translationRestoreReg, translationRestoreProcessor);
-  }
-
-  function compileFilterArgs(argExprs, keywords) {
-    for (var i = 0, l = argExprs.length; i < l; i++) {
-      argExprs[i] = makeExecuter(complileExpr(argExprs[i]), keywords);
-    }
-    return argExprs;
-  }
-
-  function compileFilter(filterExprs, keywords) {
-    if (!filterExprs || !filterExprs.length) return [];
-
-    var filters = [],
-        filterExpr = void 0,
-        name = void 0,
-        argExprs = void 0;
-
-    for (var i = 0, l = filterExprs.length; i < l; i++) {
-      if (filterExpr = _.trim(filterExprs[i])) {
-        argExprs = filterExpr.replace(/,?\s+/g, ',').split(',');
-        filters.push({
-          name: argExprs.shift().replace(translationRestoreReg, translationRestoreProcessor),
-          args: compileFilterArgs(argExprs, keywords)
-        });
-      }
-    }
-    return filters;
-  }
-
-  function compileExecuter(exp, keywords) {
-    var filterExprs = void 0,
-        ret = void 0,
-        isSimple = isSimplePath(exp);
-
-    currentIdentities = {};
-    currentKeywords = keywords ? _.reverseConvert(keywords, function () {
+  function initStatus(_params, _scopeProvider) {
+    identities = {};
+    scopeProvider = _scopeProvider || defaultScopeProvider;
+    params = _params.__MAP__;
+    if (!params) params = _params.__MAP__ = _.reverseConvert(_params, function () {
       return true;
-    }) : {};
-
-    if (!isSimple) {
-      filterExprs = exp.replace(translationReg, translationProcessor).split('|');
-      exp = filterExprs.shift().replace(wsReg, '');
-      isSimple = isSimplePath(exp);
-    }
-    if (isSimple) {
-      exp = exp.replace(translationRestoreReg, translationRestoreProcessor);
-      currentIdentities[exp] = true;
-      ret = {
-        execute: makeExecuter('$scope.' + exp, keywords),
-        path: _.parseExpr(exp),
-        expr: exp
-      };
-    } else {
-      ret = {
-        execute: makeExecuter(complileExpr(exp), keywords),
-        expr: exp
-      };
-    }
-    ret.filters = compileFilter(filterExprs, keywords);
-    ret.simplePath = isSimple;
-    ret.identities = _.keys(currentIdentities);
-
-    currentKeywords = undefined;
-    currentIdentities = undefined;
-    translations.length = 0;
-    ret.applyFilter = function (data, argScope, args, apply) {
-      var fs = ret.filters,
-          f = void 0,
-          _args = void 0,
-          rs = void 0;
-
-      for (var i = 0, l = fs.length; i < l; i++) {
-        f = fs[i];
-        _args = parseFilterArgs(f.args, argScope, args);
-        rs = (apply !== false ? translate.apply : translate.unapply)(f.name, data, _args);
-        if (rs.stop) {
-          return rs.data;
-        } else if (rs.replaceData) data = rs.data;
-      }
-      return data;
-    };
-    ret.executeAll = function () {
-      var val = ret.execute.apply(this, arguments);
-      val = ret.applyFilter(val, this, arguments);
-      return val;
-    };
-    return ret;
-  }
-
-  function parseFilterArgs(executors, scope, args) {
-    return _.map(executors, function (executor) {
-      return executor.apply(scope, args);
     });
   }
 
-  function makeExecuter(body, args) {
-    var _args = ['$scope'];
+  function cleanStates() {
+    identities = undefined;
+    params = undefined;
+    scopeProvider = undefined;
+    saved.length = 0;
+  }
 
-    args = args ? _args.concat(args) : _args;
-    args.push('return ' + body + ';');
+  function rewrite(raw, idx, str) {
+    var prefix = raw.charAt(0),
+        userExpr = raw.slice(1),
+        expr = userExpr.replace(thisReg, ''),
+        prop = expr.match(propReg)[0];
+
+    if (expr == userExpr && (keywords[prop] || params[prop] || cfg.keywords[prop])) return raw;
+
+    var nextIdx = idx + raw.length,
+        nextChar = str.charAt(nextIdx++),
+        realScope = false,
+        ident = true;
+
+    switch (nextChar) {
+      case '(':
+        realScope = !applyFuncReg.test(expr);
+        ident = false;
+        break;
+      case '=':
+        realScope = str.charAt(nextIdx) != '=';
+        break;
+      case '/':
+      case '*':
+      case '+':
+      case '-':
+      case '%':
+      case '&':
+      case '&':
+        realScope = str.charAt(nextIdx) == '=';
+        break;
+      case '>':
+      case '<':
+        realScope = str.charAt(nextIdx) == nextChar && str.charAt(nextIdx + 1) == '=';
+        break;
+    }
+    if (!realScope && ident) identities[expr] = true;
+    return '' + prefix + scopeProvider(expr, realScope) + '.' + expr;
+  }
+
+  function makeExecutor(body, params) {
+    params = params.slice();
+    params.push('return ' + body + ';');
     try {
-      return Function.apply(Function, args);
+      return Function.apply(Function, params);
     } catch (e) {
       throw Error('Invalid expression. Generated function body: ' + body);
     }
   }
 
-  function isSimplePath(exp) {
-    return pathTestReg.test(exp) && !booleanLiteralReg.test(exp);
+  function complileExpr(body) {
+    return (' ' + body).replace(identityReg, rewrite).replace(restoreReg, restore);
   }
+
+  function compileFilter(exprs, params) {
+    return _.map(exprs, function (expr) {
+      var args = expr.replace(/,?\s+/g, ',').split(',');
+      return {
+        name: args.shift().replace(restoreReg, restore),
+        argExecutors: _.map(args, function (expr) {
+          return makeExecutor(complileExpr(expr), params);
+        })
+      };
+    });
+  }
+
+  function isSimplePath(expr) {
+    return simplePathReg.test(expr) && !literalValueReg.test(expr) && expr.slice(0, 5) !== 'Math.';
+  }
+
+  var Expression = _.dynamicClass({
+    constructor: function (fullExpr, params) {
+      var exprs = fullExpr.replace(transformReg, transform).split(exprReg),
+          expr = exprs.shift().replace(wsReg, ''),
+          filterExprs = exprs;
+
+      this.expr = expr.replace(restoreReg, restore);
+      this.filterExprs = _.map(function (expr) {
+        return expr.replace(restoreReg, restore);
+      });
+      this.fullExpr = fullExpr;
+      this.params = params;
+      this.executor = makeExecutor(complileExpr(expr), params);
+      this.filters = compileFilter(filterExprs, params);
+      this.identities = _.keys(identities);
+      this.simplePath = isSimplePath(this.expr);
+    },
+    executeFilter: function (scope, params, data, transform) {
+      _.each(this.filters, function (filter) {
+        var args = _.map(filter.argExecutors, function (executor) {
+          return executor.apply(scope, params);
+        }),
+            rs = void 0;
+        if (transform != false) {
+          rs = translate.transform(filter.name, scope, data, args);
+        } else {
+          rs = translate.restore(filter.name, scope, data, args);
+        }
+        if (rs.replace || rs.stop) data = rs.data;
+        return !rs.stop;
+      });
+      return data;
+    },
+    restore: function (scope, params, data) {
+      return this.executeFilter(scope, params, data, false);
+    },
+    execute: function (scope, params) {
+      return this.executor.apply(scope, params);
+    },
+    executeAll: function (scope, params) {
+      return this.executeFilter(scope, params, this.executor.apply(scope, params), true);
+    },
+    isSimple: function () {
+      return this.simplePath;
+    }
+  });
 
   var cache = {};
 
-  function expression(exp, args) {
-    var res = void 0;
-
-    exp = _.trim(exp);
-    if (!(res = cache[exp])) cache[exp] = res = compileExecuter(exp, args);
-    return res;
+  function expression(expr, params, scopeProvider) {
+    var rs = cache[expr];
+    if (!rs) {
+      initStatus(params, scopeProvider);
+      cache[expr] = rs = new Expression(expr, params);
+      cleanStates();
+    }
+    return rs;
   }
+
+  expression.cache = cache;
 
   var textContent = typeof document.createElement('div').textContent == 'string' ? 'textContent' : 'innerText';
 
@@ -1445,26 +1457,27 @@ var   root$2 = document.documentElement;
     return dom$1;
   };
 
-  var expressionArgs = ['$el'];
+  var expressionArgs = ['$scope', '$el', '$tpl', '$binding'];
 
   var Text = _.dynamicClass({
     extend: Binding,
     constructor: function (cfg) {
       this['super'](arguments);
-      this.expr = expression(cfg.expression, expressionArgs);
+      this.expression = expression(cfg.expression, expressionArgs, this.expressionScopeProvider);
       if (config.get(Binding.commentCfg)) {
-        this.comment = document.createComment('Text Binding ' + this.expr);
+        this.comment = document.createComment('Text Binding ' + cfg.expression);
         dom.before(this.comment, this.el);
       }
       this.observeHandler = this.observeHandler.bind(this);
     },
     value: function () {
-      return this.expr.executeAll.call(this, this.scope(), this.el);
+      var scope = this.scope();
+      return this.expression.executeAll(scope, [scope, this.el, this.tpl, this]);
     },
     bind: function () {
       var _this = this;
 
-      _.each(this.expr.identities, function (ident) {
+      _.each(this.expression.identities, function (ident) {
         _this.observe(ident, _this.observeHandler);
       });
       this.update(this.value());
@@ -1472,13 +1485,14 @@ var   root$2 = document.documentElement;
     unbind: function () {
       var _this2 = this;
 
-      _.each(this.expr.identities, function (ident) {
+      _.each(this.expression.identities, function (ident) {
         _this2.unobserve(ident, _this2.observeHandler);
       });
     },
     observeHandler: function (attr, val) {
-      if (this.expr.simplePath) {
-        this.update(this.expr.applyFilter(val, this, [this.scope(), this.el]));
+      if (this.expression.isSimple()) {
+        var scope = this.scope();
+        this.update(this.expression.executeFilter(scope, [scope, this.el, this.tpl, this], val));
       } else {
         this.update(this.value());
       }
@@ -1502,6 +1516,7 @@ var   root$2 = document.documentElement;
       this.attr = cfg.attr;
       this.children = cfg.children;
       this.domParser = cfg.domParser;
+      this.group = cfg.group;
       if (config.get(Binding.commentCfg)) {
         this.comment = document.createComment('Directive[' + this.attr + ']: ' + this.expr);
         dom.before(this.comment, this.el);
@@ -1567,12 +1582,14 @@ var   root$2 = document.documentElement;
     extend: Binding,
     constructor: function (cfg) {
       this['super'](arguments);
-      this.directives = cfg.directives;
       this.children = cfg.children;
-      this.directiveCount = cfg.directives.length;
       this.bindedCount = 0;
       this.bindedChildren = false;
       this._bind = this._bind.bind(this);
+    },
+    _setDirectives: function (directives) {
+      this.directives = directives;
+      this.directiveCount = directives.length;
     },
     _bind: function () {
       var idx = this.bindedCount;
@@ -1623,9 +1640,13 @@ var   root$2 = document.documentElement;
   });
 
   var Template$1 = _.dynamicClass({
-    constructor: function (el, bindings) {
-      this.el = el;
-      this.bindings = bindings;
+    constructor: function (scope) {
+      this.scope = scope;
+      this.proxyHandler = this.proxyHandler.bind(this);
+      observer.proxy.on(scope, this.proxyHandler);
+    },
+    proxyHandler: function (obj, proxy) {
+      this.scope = proxy || obj;
     },
     before: function (target, bind) {
       if (bind !== false) this.bind();
@@ -1670,6 +1691,7 @@ var   root$2 = document.documentElement;
       return this;
     },
     destroy: function () {
+      observer.proxy.un(this.scope, this.proxyHandler);
       if (this.binded) _.each(this.bindings, function (bind) {
         bind.unbind();
         bind.destroy();
@@ -1683,6 +1705,18 @@ var   root$2 = document.documentElement;
   config.register('directiveParser', new DirectiveParser(), [DirectiveParser]);
   config.register('TextParser', TextParser, TextParser, true);
 
+  function _clone(el) {
+    var elem = el.cloneNode(false);
+    if (el.nodeType == 1) _.each(el.childNodes, function (c) {
+      elem.appendChild(_clone(c));
+    });
+    return elem;
+  }
+
+  function clone(el) {
+    return _.isArrayLike(el) ? _.map(el, _clone) : _clone(el);
+  }
+
   var TEXT = 1;
   var DIRECTIVE = 2;
   var DIRECTIVE_GROUP = 3;
@@ -1694,21 +1728,25 @@ var   root$2 = document.documentElement;
       this.parse();
     },
     complie: function (scope) {
-      var el = dom.cloneNode(this.el),
-          df = document.createDocumentFragment();
+      var el = clone(this.el),
+          df = document.createDocumentFragment(),
+          tpl = new Template$1(scope);
+
       dom.append(df, el);
-      return new Template$1(_.map(df.childNodes, function (n) {
-        return n;
-      }), this.parseBindings(this.bindings, scope, this.parseEls(el)));
+
+      tpl.el = el;
+      tpl.bindings = this.parseBindings(this.bindings, scope, this.parseEls(el), tpl);
+      return tpl;
     },
-    parseBindings: function (descs, scope, els) {
+    parseBindings: function (descs, scope, els, tpl) {
       var _this = this;
 
       return _.map(descs, function (desc) {
         var type = desc.type,
             cfg = {
           el: els[desc.index],
-          scope: scope
+          scope: scope,
+          tpl: tpl
         };
 
         if (type === TEXT) {
@@ -1716,27 +1754,30 @@ var   root$2 = document.documentElement;
           return new Text(cfg);
         }
 
-        var Const = void 0;
+        cfg.block = desc.block;
+        cfg.children = desc.children ? _this.parseBindings(desc.children || [], scope, els) : undefined;
+
         if (type === DIRECTIVE) {
-          Const = desc.directive;
           cfg.expression = desc.expression;
           cfg.attr = desc.attr;
           cfg.domParser = desc.domParser;
           cfg.independent = desc.independent;
+          cfg.group = undefined;
+          return new desc.directive(cfg);
         } else {
-          Const = DirectiveGroup;
-          cfg.directives = _.map(desc.directives, function (desc) {
+          var group = new DirectiveGroup(cfg);
+          group._setDirectives(_.map(desc.directives, function (desc) {
             return new desc.directive({
               el: cfg.el,
               scope: scope,
               expression: desc.expression,
-              attr: desc.attr
+              attr: desc.attr,
+              tpl: tpl,
+              group: group
             });
-          });
+          }));
+          return group;
         }
-        cfg.block = desc.block;
-        cfg.children = desc.children ? _this.parseBindings(desc.children || [], scope, els) : undefined;
-        return new Const(cfg);
       });
     },
     parseEls: function (el) {
@@ -1744,7 +1785,7 @@ var   root$2 = document.documentElement;
           elStatus = this.elStatus;
       return this.eachDom(el, [], function (el, els) {
         els.push(el);
-        return elStatus[index++] && els;
+        return elStatus[index++].marked && els;
       }, function (el, els) {
         els.push(el);
         index++;
@@ -1802,7 +1843,10 @@ var   root$2 = document.documentElement;
 
       function markEl(el, marked) {
         if (el) {
-          elStatus.push(marked);
+          elStatus.push({
+            el: el,
+            marked: marked
+          });
           index++;
         }
         return el;
@@ -1902,7 +1946,7 @@ var   root$2 = document.documentElement;
       });
     },
     insertNotBlankText: function (content, before) {
-      return content ? this.insertText(content, before) : undefined;
+      return content ? this.insertText(content || '&nbsp;', before) : undefined;
     },
     insertText: function (content, before) {
       var el = document.createTextNode(content);
@@ -2004,24 +2048,24 @@ var   root$2 = document.documentElement;
       });
 
       tpl.each(descs, function (desc) {
+        var newScope = false;
         if (!desc.scope) {
           var idle = idles.pop();
 
           if (!idle) {
             desc.scope = _this.createScope(parentScope, desc.data, desc.index);
             desc.tpl = domParser.complie(desc.scope);
+            newScope = true;
           } else {
             desc.scope = idle.scope;
             desc.tpl = idle.tpl;
-            _this.initScope(desc.scope, desc.data, desc.index);
           }
         }
+        if (!newScope) _this.initScope(desc.scope, desc.data, desc.index);
         dom.append(fragment, desc.tpl.el);
+        if (newScope) desc.tpl.bind();
       });
       tpl.before(fragment, end);
-      tpl.each(descs, function (desc) {
-        return desc.tpl.bind();
-      });
       tpl.each(idles, function (idle) {
         return idle.tpl.destroy();
       });
@@ -2053,11 +2097,10 @@ var   root$2 = document.documentElement;
     }
   }));
 
-  var regHump = /(^[a-z])|([_-][a-zA-Z])/g;
+  var regHump = /^[a-z]|[_-]+[a-zA-Z]/g;
 
   function _hump(k) {
-    if (k[0] == '_' || k[0] == '-') k = k[1];
-    return k.toUpperCase();
+    return k.charAt(k.length - 1).toUpperCase();
   }
 
   function hump(str) {
@@ -2074,11 +2117,11 @@ var   root$2 = document.documentElement;
     },
     done: function () {
       if (!this.doned) {
+        this.doned = true;
         var thens = this.thens;
         for (var i = 0, l = thens.length; i < l; i++) {
           thens[i]();
         }
-        this.doned = true;
       }
     },
     isDone: function () {
@@ -2091,14 +2134,14 @@ var util = Object.freeze({
     YieId: YieId
   });
 
-  var expressionArgs$1 = ['$el', '$event'];
+  var expressionArgs$1 = ['$scope', '$el', '$event', '$tpl', '$binding'];
 
   var EventDirective = _.dynamicClass({
     extend: Directive,
     constructor: function () {
       this['super'](arguments);
       this.handler = this.handler.bind(this);
-      this.expression = expression(this.expr, expressionArgs$1);
+      this.expression = expression(this.expr, expressionArgs$1, this.expressionScopeProvider);
     },
     handler: function (e) {
       e.stopPropagation();
@@ -2106,13 +2149,12 @@ var util = Object.freeze({
       var scope = this.scope(),
           exp = this.expression;
 
-      if (this.expression.applyFilter(e, this, [scope, this.el, e]) !== false) {
-        var fn = exp.execute.call(this, scope, this.el, e);
-
-        if (exp.simplePath) {
+      if (exp.executeFilter(scope, [scope, this.el, e, this.tpl, this], e) !== false) {
+        var fn = exp.execute(scope, [scope, this.el, e, this.tpl, this]);
+        if (exp.isSimple()) {
           if (_.isFunc(fn)) {
-            var _scope = this.propScope(exp.path[0]);
-            fn.call(_scope, scope, this.el, e, _scope);
+            scope = this.exprScope(exp.expr);
+            fn.call(scope, scope, this.el, e, this.tpl, this);
           } else {
             log.warn('Invalid Event Handler:%s', this.expr, fn);
           }
@@ -2148,20 +2190,22 @@ var util = Object.freeze({
     EventDirective: EventDirective
   });
 
-  var expressionArgs$2 = ['$el'];
+  var expressionArgs$2 = ['$scope', '$el', '$tpl', '$binding'];
 
   var SimpleDirective = _.dynamicClass({
     extend: Directive,
     constructor: function () {
       this['super'](arguments);
       this.observeHandler = this.observeHandler.bind(this);
-      this.expression = expression(this.expr, expressionArgs$2);
+      this.expression = expression(this.expr, expressionArgs$2, this.expressionScopeProvider);
     },
     realValue: function () {
-      return this.expression.execute.call(this, this.scope(), this.el);
+      var scope = this.scope();
+      return this.expression.execute(scope, [scope, this.el, this.tpl, this]);
     },
     value: function () {
-      return this.expression.executeAll.call(this, this.scope(), this.el);
+      var scope = this.scope();
+      return this.expression.executeAll(scope, [scope, this.el, this.tpl, this]);
     },
     listen: function () {
       var _this = this;
@@ -2191,8 +2235,9 @@ var util = Object.freeze({
       return _.isNil(val) ? '' : val;
     },
     observeHandler: function (expr, val) {
-      if (this.expression.simplePath) {
-        this.update(this.expression.applyFilter(val, this, [this.scope(), this.el]));
+      if (this.expression.isSimple()) {
+        var scope = this.scope();
+        this.update(this.expression.executeFilter(scope, [scope, this.el, this.tpl, this], val));
       } else {
         this.update(this.value());
       }
@@ -2345,7 +2390,7 @@ var   directives$2 = {
       priority: 4,
       constructor: function () {
         this['super'](arguments);
-        if (!this.expression.simplePath) throw TypeError('Invalid Expression[' + this.expression.expr + '] on InputDirective');
+        if (!this.expression.isSimple()) throw TypeError('Invalid Expression[' + this.expression.expr + '] on InputDirective');
 
         this.onChange = this.onChange.bind(this);
         var tag = this.tag = this.el.tagName;
@@ -2373,10 +2418,11 @@ var   directives$2 = {
         dom.off(this.el, this.event, this.onChange);
       },
       setRealValue: function (val) {
-        this.set(this.expression.path, val);
+        this.set(this.expression.expr, val);
       },
       setValue: function (val) {
-        this.setRealValue(this.expression.applyFilter(val, this, [this.scope(), this.el], false));
+        var scope = this.scope();
+        this.setRealValue(this.expression.restore(scope, [scope, this.el, this.tpl, this], val));
       },
       onChange: function (e) {
         var val = this.elVal(),
@@ -2443,6 +2489,7 @@ var   directives$2 = {
     Directive: Directive,
     directives: directives$1,
     config: config,
+    logger: log,
     init: function (cfg) {
       observer.init(cfg);
       config.config(cfg);

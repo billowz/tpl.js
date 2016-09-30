@@ -1,11 +1,9 @@
 import _ from 'utility'
 
-const regHump = /(^[a-z])|([_-][a-zA-Z])/g
+const regHump = /^[a-z]|[_-]+[a-zA-Z]/g
 
 function _hump(k) {
-  if (k[0] == '_' || k[0] == '-')
-    k = k[1]
-  return k.toUpperCase();
+  return k.charAt(k.length - 1).toUpperCase()
 }
 
 export function hump(str) {
@@ -25,11 +23,11 @@ export const YieId = _.dynamicClass({
   },
   done() {
     if (!this.doned) {
+      this.doned = true
       let thens = this.thens;
       for (let i = 0, l = thens.length; i < l; i++) {
         thens[i]()
       }
-      this.doned = true
     }
   },
   isDone() {

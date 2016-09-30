@@ -40,18 +40,22 @@ const DomParser = _.dynamicClass({
   },
   complie(scope) {
     let el = clone(this.el),
-      df = document.createDocumentFragment()
+      df = document.createDocumentFragment(),
+      tpl = new Template(scope)
 
     dom.append(df, el)
-    return new Template(_.map(df.childNodes, (n) => n),
-      this.parseBindings(this.bindings, scope, this.parseEls(el)))
+
+    tpl.el = el
+    tpl.bindings = this.parseBindings(this.bindings, scope, this.parseEls(el), tpl)
+    return tpl
   },
-  parseBindings(descs, scope, els) {
+  parseBindings(descs, scope, els, tpl) {
     return _.map(descs, (desc) => {
       let type = desc.type,
         cfg = {
           el: els[desc.index],
-          scope: scope
+          scope: scope,
+          tpl: tpl
         }
 
       if (type === TEXT) {
@@ -59,27 +63,30 @@ const DomParser = _.dynamicClass({
         return new Text(cfg)
       }
 
-      let Const
+      cfg.block = desc.block
+      cfg.children = desc.children ? this.parseBindings(desc.children || [], scope, els) : undefined
+
       if (type === DIRECTIVE) {
-        Const = desc.directive
         cfg.expression = desc.expression
         cfg.attr = desc.attr
         cfg.domParser = desc.domParser
         cfg.independent = desc.independent
+        cfg.group = undefined
+        return new desc.directive(cfg)
       } else {
-        Const = DirectiveGroup
-        cfg.directives = _.map(desc.directives, desc => {
+        var group = new DirectiveGroup(cfg)
+        group._setDirectives(_.map(desc.directives, desc => {
           return new desc.directive({
             el: cfg.el,
             scope: scope,
             expression: desc.expression,
-            attr: desc.attr
+            attr: desc.attr,
+            tpl: tpl,
+            group: group
           })
-        })
+        }))
+        return group
       }
-      cfg.block = desc.block
-      cfg.children = desc.children ? this.parseBindings(desc.children || [], scope, els) : undefined
-      return new Const(cfg)
     })
   },
   parseEls(el) {
